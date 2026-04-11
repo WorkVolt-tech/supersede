@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperSede — Inventory</title>
+  <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+<div class="book-wrap">
+  <div id="nav"></div>
+
+  <div class="book animate-in">
+    <div class="page-left parchment">
+      <div class="page-inner">
+        <p class="chapter-label">Equipment</p>
+        <h1 class="page-title">Loadout</h1>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#7a6435;margin-bottom:.5rem" id="equip-hint">Select an item from the right, then click a slot.</p>
+        <hr class="ink-divider">
+        <div id="equip-slots"></div>
+        <hr class="ink-divider">
+        <div id="total-stats" style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#7a6435;display:flex;gap:1.5rem;letter-spacing:.06em"></div>
+      </div>
+    </div>
+
+    <div class="spine"></div>
+
+    <div class="page-right parchment">
+      <div class="page-inner">
+        <p class="chapter-label">Item Bag</p>
+        <h2 class="page-title" id="bag-count">— items</h2>
+        <hr class="ink-divider">
+        <div style="display:flex;gap:3px;margin-bottom:.75rem;flex-wrap:wrap" id="filter-tabs"></div>
+        <div class="item-grid" id="item-grid"></div>
+        <div id="item-detail"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { supabase }           from '../supabase.js'
+  import { renderNav, showToast } from '../components/nav.js'
+
+  const SLOTS = [
+    { key:'helmet',     label:'Helmet',      icon:'⛑',  accepts:['helmet'] },
+    { key:'chest',      label:'Chest',       icon:'🦺', accepts:['chest'] },
+    { key:'gloves',     label:'Gloves',      icon:'🧤', accepts:['gloves'] },
+    { key:'boots',      label:'Boots',       icon:'👢', accepts:['boots'] },
+    { key:'accessory1', label:'Accessory 1', icon:'💍', accepts:['accessory'] },
+    { key:'accessory2', label:'Accessory 2', icon:'📿', accepts:['accessory'] },
+    { key:'mainhand',   label:'Weapon',      icon:'🗡',  accepts:['sword','dagger','staff','bow','spear','shield'] },
+    { key:'offhand',    label:'Off-hand',    icon:'🛡',  accepts:['shield','dagger','tome','sword'] },
+  ]
+
+  const RARITY = { common:'#888', uncommon:'#5ec45e', rare:'#5eaee0', epic:'#a07de0', legendary:'#c8b96e' }
+  const FILTERS = ['all','weapon','armor','consumable','material','key']
+
+  let player = await renderNav('nav')
+  if (!player) throw new Error('no player')
+
+  let items = [], selectedId = null, filter = 'all'
+
+  async function load() {
+    const { data } = await supabase.from('inventory').select('*').eq('player_id', player.id).order('obtained_at',{ascending:false})
+    items = data || []
+    render()
+  }
+
+  function render() {
+    renderSlots()
+    renderGrid()
+    renderStats()
+  }
+
+  function renderSlots() {
+    const equipped = {}
+    items.filter(i=>i.equipped_slot).forEach(i=>{ equipped[i.equipped_slot]=i })
+    document.getElementById('equip-slots').innerHTML = SLOTS.map(s => {
+      const item = equipped[s.key]
+      return `<div class="equip-slot${selectedId?' clickable':''}" data-slot="${s.key}" title="${item?item.name+' — click to unequip':s.label}">
+        <span class="slot-icon">${item ? item.icon : s.icon}</span>
+        <span class="slot-label" style="color:${item ? RARITY[item.rarity] : '#9a8050'}">${item ? item.name : s.label}</span>
+        ${item ? '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.55rem;color:#c8b96e">EQ</span>' : ''}
+      </div>`
+    }).join('')
+
+    document.querySelectorAll('.equip-slot').forEach(el => {
+      el.addEventListener('click', async () => {
+        const slot = el.dataset.slot
+        if (selectedId) {
+          await equipItem(selectedId, slot)
+        } else {
+          const item = items.find(i=>i.equipped_slot===slot)
+          if (item) await unequipSlot(slot)
+        }
+      })
+    })
+  }
+
+  function renderGrid() {
+    const filtered = items.filter(i=>filter==='all'||i.item_type===filter)
+    document.getElementById('bag-count').textContent = items.length + ' items'
+    document.getElementById('item-grid').innerHTML = filtered.map(item => `
+      <div class="item-card${selectedId===item.id?' selected':''}" data-id="${item.id}">
+        <span class="item-icon">${item.icon||'📦'}</span>
+        <p class="item-name" style="color:${RARITY[item.rarity]||'#888'}">${item.name}</p>
+        <p class="item-type">${item.subtype||item.item_type}</p>
+        ${item.quantity>1?`<span class="item-qty">×${item.quantity}</span>`:''}
+        ${item.equipped_slot?`<span class="item-eq">EQ</span>`:''}
+      </div>
+    `).join('') || `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#7a6435;grid-column:span 3">Nothing here.</p>`
+
+    document.querySelectorAll('.item-card').forEach(el => {
+      el.addEventListener('click', () => {
+        selectedId = selectedId === el.dataset.id ? null : el.dataset.id
+        render()
+        renderDetail()
+      })
+    })
+  }
+
+  function renderStats() {
+    const atk = 1 + items.filter(i=>i.equipped_slot).reduce((s,i)=>s+(i.atk_bonus||0),0)
+    const def  =     items.filter(i=>i.equipped_slot).reduce((s,i)=>s+(i.def_bonus||0),0)
+    document.getElementById('total-stats').innerHTML = `<span>ATK <strong style="color:#1a1208">${atk}</strong></span><span>DEF <strong style="color:#1a1208">${def}</strong></span>`
+  }
+
+  function renderDetail() {
+    const el = document.getElementById('item-detail')
+    if (!selectedId) { el.innerHTML=''; return }
+    const item = items.find(i=>i.id===selectedId)
+    if (!item) { el.innerHTML=''; return }
+    el.innerHTML = `
+      <div style="border:0.5px solid rgba(139,106,32,.3);border-radius:3px;padding:.75rem;margin-top:.5rem;background:rgba(0,0,0,.05)">
+        <div style="display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.5rem">
+          <span style="font-size:1.6rem">${item.icon}</span>
+          <div>
+            <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${RARITY[item.rarity]||'#888'};margin:0 0 2px">${item.name}</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#7a6435;margin:0;letter-spacing:.06em">${item.rarity} · ${item.subtype||item.item_type}${item.two_handed?' · 2H':''}</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:.75rem;font-family:'Share Tech Mono',monospace;font-size:.65rem;margin-bottom:.6rem;flex-wrap:wrap">
+          ${item.atk_bonus>0?`<span style="color:#e05555">ATK +${item.atk_bonus}</span>`:''}
+          ${item.def_bonus>0?`<span style="color:#5ec45e">DEF +${item.def_bonus}</span>`:''}
+          ${item.hp_restore>0?`<span style="color:#5eaee0">+${item.hp_restore} HP</span>`:''}
+          ${!item.atk_bonus&&!item.def_bonus&&!item.hp_restore?`<span style="color:#7a6435">Utility item</span>`:''}
+        </div>
+        <div style="display:flex;gap:.5rem">
+          ${item.item_type==='consumable'?`<button onclick="useItem('${item.id}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#5eaee0;background:none;border:.5px solid #5eaee040;border-radius:3px;padding:4px 12px;cursor:pointer">Use ×1</button>`:''}
+          ${item.equipped_slot?`<button onclick="unequipSlot('${item.equipped_slot}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#c8b96e;background:none;border:.5px solid #c8b96e40;border-radius:3px;padding:4px 12px;cursor:pointer">Unequip</button>`:''}
+        </div>
+      </div>
+    `
+  }
+
+  async function equipItem(itemId, slot) {
+    const item = items.find(i=>i.id===itemId)
+    if (!item) return
+    const slotDef = SLOTS.find(s=>s.key===slot)
+    if (!slotDef.accepts.includes(item.subtype||item.item_type)) {
+      showToast(`${item.name} can't go in ${slotDef.label}`, true); return
+    }
+    // Unequip current in slot
+    const current = items.find(i=>i.equipped_slot===slot)
+    if (current) await supabase.from('inventory').update({equipped_slot:null}).eq('id',current.id)
+    // If 2H, clear offhand
+    if (item.two_handed && slot==='mainhand') {
+      const oh = items.find(i=>i.equipped_slot==='offhand')
+      if (oh) await supabase.from('inventory').update({equipped_slot:null}).eq('id',oh.id)
+    }
+    await supabase.from('inventory').update({equipped_slot:slot}).eq('id',itemId)
+    showToast(`${item.name} equipped`)
+    selectedId = null
+    await load()
+  }
+
+  async function unequipSlot(slot) {
+    const item = items.find(i=>i.equipped_slot===slot)
+    if (!item) return
+    await supabase.from('inventory').update({equipped_slot:null}).eq('id',item.id)
+    showToast(`${item.name} unequipped`)
+    await load()
+  }
+
+  window.unequipSlot = unequipSlot
+
+  window.useItem = async (itemId) => {
+    const item = items.find(i=>i.id===itemId)
+    if (!item||item.item_type!=='consumable') return
+    const newQty = item.quantity - 1
+    if (newQty<=0) await supabase.from('inventory').delete().eq('id',itemId)
+    else await supabase.from('inventory').update({quantity:newQty}).eq('id',itemId)
+    showToast(`+${item.hp_restore} HP restored`)
+    selectedId = null
+    await load()
+  }
+
+  // Filter tabs
+  document.getElementById('filter-tabs').innerHTML = FILTERS.map(f => `
+    <button onclick="setFilter('${f}')" id="ftab-${f}" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.07em;background:none;border:.5px solid rgba(139,106,32,.2);border-radius:20px;padding:2px 9px;cursor:pointer;color:#7a6435;transition:all .15s">${f}</button>
+  `).join('')
+
+  window.setFilter = (f) => {
+    filter = f
+    FILTERS.forEach(x => {
+      const t = document.getElementById('ftab-'+x)
+      t.style.background   = x===f ? 'rgba(139,106,32,.15)' : 'none'
+      t.style.borderColor  = x===f ? 'rgba(139,106,32,.6)'  : 'rgba(139,106,32,.2)'
+      t.style.color        = x===f ? '#1a1208' : '#7a6435'
+    })
+    renderGrid()
+  }
+
+  await load()
+</script>
+</body>
+</html>

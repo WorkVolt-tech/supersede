@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperSede — Sign In</title>
+  <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+<div class="auth-outer">
+  <div class="auth-card parchment">
+    <p class="auth-sys">SYSTEM ACCESS</p>
+    <h1 class="auth-title">SuperSede</h1>
+    <p class="auth-sub" id="auth-sub">Welcome back, player.</p>
+
+    <div class="auth-form">
+      <label class="auth-label">Email</label>
+      <input class="auth-input" type="email" id="email" placeholder="you@example.com">
+      <label class="auth-label">Password</label>
+      <input class="auth-input" type="password" id="password" placeholder="••••••••">
+      <p class="auth-error" id="auth-error"></p>
+      <button class="auth-btn" id="submit-btn">Enter ›</button>
+    </div>
+
+    <button class="auth-toggle" id="toggle-btn">No account? Sign up.</button>
+  </div>
+</div>
+
+<script type="module">
+  import { supabase } from '../supabase.js'
+
+  let mode = 'login'
+
+  // If already logged in, go to book
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) location.href = 'book.html'
+
+  document.getElementById('submit-btn').addEventListener('click', async () => {
+    const email    = document.getElementById('email').value.trim()
+    const password = document.getElementById('password').value
+    const errorEl  = document.getElementById('auth-error')
+    const btn      = document.getElementById('submit-btn')
+
+    errorEl.textContent = ''
+    btn.textContent = 'Connecting…'
+    btn.disabled = true
+
+    let result
+    if (mode === 'login') {
+      result = await supabase.auth.signInWithPassword({ email, password })
+    } else {
+      result = await supabase.auth.signUp({ email, password })
+    }
+
+    btn.disabled = false
+    btn.textContent = mode === 'login' ? 'Enter ›' : 'Register ›'
+
+    if (result.error) {
+      errorEl.textContent = result.error.message
+      return
+    }
+
+    // Create player row if new signup
+    if (mode === 'signup') {
+      const userId = result.data.user.id
+      const username = 'Player_' + Math.random().toString(36).slice(2,7).toUpperCase()
+      await supabase.from('players').insert({ user_id: userId, username })
+    }
+
+    location.href = 'book.html'
+  })
+
+  document.getElementById('toggle-btn').addEventListener('click', () => {
+    mode = mode === 'login' ? 'signup' : 'login'
+    document.getElementById('auth-sub').textContent   = mode === 'login' ? 'Welcome back, player.' : 'Register your identity with the System.'
+    document.getElementById('submit-btn').textContent  = mode === 'login' ? 'Enter ›' : 'Register ›'
+    document.getElementById('toggle-btn').textContent  = mode === 'login' ? 'No account? Sign up.' : 'Already registered? Log in.'
+    document.getElementById('auth-error').textContent  = ''
+  })
+
+  // Allow Enter key
+  document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('submit-btn').click()
+  })
+</script>
+</body>
+</html>

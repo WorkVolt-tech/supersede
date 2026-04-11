@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperSede — Chapter 1</title>
+  <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+<div class="book-wrap">
+  <div id="nav"></div>
+
+  <div class="book animate-in">
+    <!-- Left: story -->
+    <div class="page-left parchment" id="left-page">
+      <div class="page-inner">
+        <p class="chapter-label" id="ch-label">Chapter 1 — System Initialization</p>
+        <p class="chapter-sub">The world stops. The game begins.</p>
+        <hr class="ink-divider">
+        <p class="story-text" id="story-text"></p>
+        <div class="notice-box animate-in" id="outcome-box" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="spine"></div>
+
+    <!-- Right: HUD + choices -->
+    <div class="page-right parchment">
+      <div class="page-inner">
+        <!-- HUD -->
+        <div class="hud" id="hud"></div>
+        <hr class="ink-divider">
+
+        <!-- Choices -->
+        <div id="right-panel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { supabase }           from '../supabase.js'
+  import { renderNav, showToast, showSysOverlay } from '../components/nav.js'
+  import { NODES, META }        from '../data/chapter1.js'
+
+  // ── Load player ──────────────────────────────────
+  let player = await renderNav('nav')
+  if (!player) throw new Error('no player')
+
+  // ── State ─────────────────────────────────────────
+  let nodeId   = (player.current_node || '').startsWith('ch1_')
+    ? player.current_node.replace('ch1_', '')
+    : 'opening'
+  let bossMode = 'solo'
+  let outcome  = null
+
+  // ── Render HUD ────────────────────────────────────
+  function renderHUD() {
+    const hp  = player.hp || 100
+    const mhp = player.max_hp || 100
+    const xp  = player.xp || 0
+    const lvl = player.level || 1
+    const badgeColors = { neutral:'#c8b96e', red:'#e05555', green:'#5ec45e', elite:'#a07de0', unknown:'#666' }
+    const badgeSeals  = { neutral:'🟡', red:'🔴', green:'🟢', elite:'🟣', unknown:'⚫' }
+    const bc = badgeColors[player.badge] || badgeColors.neutral
+    const bs = badgeSeals[player.badge]  || '🟡'
+    const hpPct = Math.round(hp / mhp * 100)
+    const hpColor = hpPct > 60 ? '#5ec45e' : hpPct > 30 ? '#c8b96e' : '#e05555'
+
+    document.getElementById('hud').innerHTML = `
+      <div class="hud-badge-row">
+        <span class="hud-seal">${bs}</span>
+        <div>
+          <p class="hud-seal-label" style="color:${bc}">${(player.badge||'neutral').charAt(0).toUpperCase()+(player.badge||'neutral').slice(1)}</p>
+          <p class="hud-chapter">Chapter ${player.current_chapter || 1}</p>
+        </div>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">HP</span>
+        <div class="stat-bar-wrap"><div class="stat-bar" style="width:${hpPct}%;background:${hpColor}"></div></div>
+        <span class="stat-val">${hp}/${mhp}</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">XP</span>
+        <div class="stat-bar-wrap"><div class="stat-bar" style="width:${Math.min(100,Math.round(xp%(lvl*100)/(lvl*100)*100))}%;background:#a07de0"></div></div>
+        <span class="stat-val">Lvl ${lvl}</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box"><span class="stat-box-key">ATK</span><span class="stat-box-val">${player.atk||1}</span></div>
+        <div class="stat-box"><span class="stat-box-key">DEF</span><span class="stat-box-val">${player.def||0}</span></div>
+        <div class="stat-box"><span class="stat-box-key">GOLD</span><span class="stat-box-val" style="color:#c8b96e">${player.gold||0}</span></div>
+      </div>
+    `
+  }
+
+  // ── Save progress ─────────────────────────────────
+  async function save(updates) {
+    const { data } = await supabase
+      .from('players').update({ ...updates, last_seen_at: new Date().toISOString() })
+      .eq('id', player.id).select().single()
+    if (data) player = data
+    renderHUD()
+  }
+
+  // ── Add item to inventory ─────────────────────────
+  async function addItem(itemKey, qty = 1) {
+    const { data: master } = await supabase.from('items').select('*').eq('item_key', itemKey).single()
+    if (!master) return
+    // Check if stackable already exists
+    const { data: existing } = await supabase.from('inventory')
+      .select('*').eq('player_id', player.id).eq('item_key', itemKey)
+      .eq('item_type', 'consumable').maybeSingle()
+    if (existing) {
+      await supabase.from('inventory').update({ quantity: existing.quantity + qty }).eq('id', existing.id)
+    } else {
+      await supabase.from('inventory').insert({
+        player_id: player.id, item_key: master.item_key, name: master.name,
+        item_type: master.item_type, subtype: master.subtype, rarity: master.rarity,
+        atk_bonus: master.atk_bonus, def_bonus: master.def_bonus, hp_restore: master.hp_restore,
+        two_handed: master.two_handed, icon: master.icon, quantity: qty,
+      })
+    }
+    showToast(`+ ${master.name}`)
+  }
+
+  // ── Go to node ────────────────────────────────────
+  async function goTo(nextId, choice = {}) {
+    const current = NODES[nodeId]
+
+    // Apply rewards / xp / hp loss from current node
+    const updates = { current_node: 'ch1_' + nextId }
+    if (current?.xp)     updates.xp = (player.xp||0) + current.xp
+    if (current?.hpLoss) updates.hp = Math.max(1, (player.hp||100) - current.hpLoss)
+    if (choice.outcome === 'attack') { updates.reputation = 'red'; updates.badge = 'red' }
+    if (choice.bossMode) bossMode = choice.bossMode
+    if (choice.outcome)  outcome  = choice.outcome
+    if (current?.rewards) {
+      for (const r of current.rewards) await addItem(r.itemKey, r.qty)
+    }
+
+    await save(updates)
+
+    // Animate transition
+    document.getElementById('left-page').style.opacity = '0'
+    document.getElementById('left-page').style.transform = 'translateX(-8px)'
+    setTimeout(() => {
+      nodeId = nextId
+      render()
+      document.getElementById('left-page').style.transition = 'opacity .35s,transform .35s'
+      document.getElementById('left-page').style.opacity = '1'
+      document.getElementById('left-page').style.transform = 'translateX(0)'
+      window.scrollTo({ top:0, behavior:'smooth' })
+    }, 300)
+  }
+
+  // ── Render node ───────────────────────────────────
+  function render() {
+    const node = NODES[nodeId]
+    if (!node) return
+
+    // System message
+    if (node.sysMsg) showSysOverlay(node.sysMsg)
+
+    // Story text
+    const storyEl = document.getElementById('story-text')
+    storyEl.textContent = node.text || ''
+    if (nodeId === 'opening') storyEl.classList.add('drop-cap')
+    else storyEl.classList.remove('drop-cap')
+
+    // Outcome flavour
+    const outBox = document.getElementById('outcome-box')
+    if (outcome && node.id === 'encounter') {
+      outBox.style.display = 'block'
+      outBox.textContent =
+        outcome === 'team'    ? 'You nod. They nod back. A fragile alliance — for now.' :
+        outcome === 'attack'  ? 'One strike. Done. The System records it. Your reputation shifts.' :
+                                'You study every movement. Useful data stored.'
+    } else {
+      outBox.style.display = 'none'
+    }
+
+    // Right panel
+    const panel = document.getElementById('right-panel')
+
+    if (node.type === 'boss') {
+      renderCombat(panel, node)
+    } else if (node.type === 'end') {
+      renderEnd(panel, node)
+    } else {
+      renderChoices(panel, node)
+    }
+  }
+
+  // ── Render choices ────────────────────────────────
+  function renderChoices(panel, node) {
+    panel.innerHTML = `
+      <p class="choices-label">What do you do?</p>
+      <div class="choices">
+        ${(node.choices||[]).map(c => `
+          <button class="choice ${c.variant||''}" data-next="${c.next}" data-outcome="${c.outcome||''}" data-bossmode="${c.bossMode||''}">
+            <span class="choice-arrow">→</span>
+            <span class="choice-body">
+              ${c.label}
+              ${c.sub ? `<span class="choice-sub">${c.sub}</span>` : ''}
+            </span>
+          </button>
+        `).join('')}
+      </div>
+    `
+    panel.querySelectorAll('.choice').forEach(btn => {
+      btn.addEventListener('click', () => {
+        goTo(btn.dataset.next, {
+          outcome:  btn.dataset.outcome  || null,
+          bossMode: btn.dataset.bossmode || null,
+        })
+      })
+    })
+  }
+
+  // ── Render end screen ─────────────────────────────
+  function renderEnd(panel, node) {
+    panel.innerHTML = `
+      <div class="end-box">
+        <p class="end-title">Chapter 1 Complete</p>
+        <p class="end-sub">The Watcher has been defeated.<br>Chapter 2 awaits.</p>
+        <a href="book.html" class="end-btn">Return to Book ›</a>
+      </div>
+    `
+  }
+
+  // ── Combat ────────────────────────────────────────
+  function renderCombat(panel, node) {
+    const enemy = { ...node.enemy }
+    if (bossMode === 'solo')   enemy.hp = 140
+    if (bossMode === 'betray') enemy.hp = 220
+
+    let playerHp = player.hp || 100
+    let enemyHp  = enemy.hp
+    const maxEnemyHp  = enemy.hp
+    const maxPlayerHp = player.max_hp || 100
+
+    function update() {
+      const ePct = Math.round(enemyHp / maxEnemyHp * 100)
+      const pPct = Math.round(playerHp / maxPlayerHp * 100)
+      document.getElementById('e-bar').style.width = ePct + '%'
+      document.getElementById('p-bar').style.width = pPct + '%'
+      document.getElementById('e-hp').textContent  = `${enemyHp} / ${maxEnemyHp} HP`
+      document.getElementById('p-hp').textContent  = playerHp
+      document.getElementById('e-bar').style.background = ePct > 50 ? '#e05555' : '#c8b96e'
+      document.getElementById('p-bar').style.background = pPct > 60 ? '#5ec45e' : pPct > 30 ? '#c8b96e' : '#e05555'
+    }
+
+    function log(msg) {
+      document.getElementById('combat-log').textContent = msg
+    }
+
+    panel.innerHTML = `
+      <div class="combat-panel" id="combat-panel">
+        <div class="combat-enemy-row">
+          <span class="combat-enemy-icon">${enemy.icon}</span>
+          <div style="flex:1">
+            <p class="combat-enemy-name">${enemy.name}</p>
+            <div class="stat-bar-wrap"><div class="stat-bar" id="e-bar" style="background:#e05555;width:100%"></div></div>
+            <p id="e-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435;margin-top:2px"></p>
+          </div>
+        </div>
+        <div class="combat-log" id="combat-log">The eye opens. It sees everything.</div>
+        <div class="stat-row" style="margin-bottom:1rem">
+          <span class="stat-key">HP</span>
+          <div class="stat-bar-wrap"><div class="stat-bar" id="p-bar" style="width:100%"></div></div>
+          <span class="stat-val" id="p-hp"></span>
+        </div>
+        <div class="combat-actions" id="combat-actions">
+          <button class="combat-btn" id="btn-attack">⚔ Attack</button>
+          <button class="combat-btn" id="btn-defend">🛡 Defend</button>
+          <button class="combat-btn" id="btn-skill" disabled title="Locked">✦ Skill</button>
+          <button class="combat-btn" id="btn-escape">💨 Escape</button>
+        </div>
+        <p id="combat-over" style="display:none;text-align:center;font-family:'Cinzel',serif;font-size:1rem;color:#8b6a20;letter-spacing:.1em;padding:.5rem"></p>
+      </div>
+    `
+    update()
+
+    function endCombat(won) {
+      document.getElementById('combat-actions').style.display = 'none'
+      document.getElementById('combat-over').style.display = 'block'
+      document.getElementById('combat-over').textContent = won ? '✦ Victory ✦' : '✦ Defeated ✦'
+      setTimeout(async () => {
+        if (won) {
+          const xpGain = enemy.xp || 80
+          await save({ xp: (player.xp||0) + xpGain, hp: playerHp })
+          if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
+          // Unlock chapter 2
+          const unlocked = player.chapters_unlocked || [1]
+          if (!unlocked.includes(2)) await save({ chapters_unlocked: [...unlocked, 2] })
+          goTo('chapter_end')
+        } else {
+          await save({ hp: 20 })
+          goTo('mid_event') // retry boss choice
+        }
+      }, 1200)
+    }
+
+    document.getElementById('btn-attack').addEventListener('click', () => {
+      const atk     = (player.atk||1) + Math.floor(Math.random()*6)
+      const enemyDmg = Math.max(0, enemy.atk + Math.floor(Math.random()*4) - (player.def||0))
+      enemyHp  = Math.max(0, enemyHp  - atk)
+      playerHp = Math.max(0, playerHp - enemyDmg)
+      document.getElementById('combat-panel').classList.add('animate-shake')
+      setTimeout(() => document.getElementById('combat-panel')?.classList.remove('animate-shake'), 400)
+      log(`You strike for ${atk}. ${enemy.name} hits back for ${enemyDmg}.`)
+      update()
+      if (enemyHp <= 0)  { log(`${enemy.name} has fallen.`); endCombat(true)  }
+      else if (playerHp <= 0) { log('You collapse…');          endCombat(false) }
+    })
+
+    document.getElementById('btn-defend').addEventListener('click', () => {
+      const dmg = Math.max(0, Math.floor(enemy.atk * .5) - (player.def||0))
+      playerHp = Math.max(0, playerHp - dmg)
+      log(`You brace. ${dmg > 0 ? `Took ${dmg} damage.` : 'Blocked completely.'}`)
+      update()
+      if (playerHp <= 0) { log('You collapse…'); endCombat(false) }
+    })
+
+    document.getElementById('btn-escape').addEventListener('click', () => {
+      if (Math.random() > .4) {
+        log('You slip away into the shadows…')
+        document.getElementById('combat-actions').style.display = 'none'
+        setTimeout(() => goTo('mid_event'), 800)
+      } else {
+        const dmg = Math.max(0, enemy.atk - (player.def||0))
+        playerHp = Math.max(0, playerHp - dmg)
+        log(`No escape — took ${dmg} damage.`)
+        update()
+        if (playerHp <= 0) endCombat(false)
+      }
+    })
+  }
+
+  // ── Init ──────────────────────────────────────────
+  renderHUD()
+  render()
+</script>
+</body>
+</html>
