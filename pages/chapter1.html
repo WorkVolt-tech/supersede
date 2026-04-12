@@ -748,9 +748,22 @@ Chapter 2 is waiting.`,
       <div class="end-box">
         <p class="end-title">Chapter 1 Complete</p>
         <p class="end-sub">The Watcher has been defeated.<br>Chapter 2 awaits.</p>
-        <a href="book.html" class="end-btn">Return to Book ›</a>
+        <a href="book.html" class="end-btn" style="margin-bottom:.75rem;display:block">Return to Book ›</a>
+        <button class="end-btn" onclick="restartChapter()" style="font-size:.8rem;opacity:.7">↺ Replay Chapter 1</button>
       </div>
     `
+  }
+
+  // Restart — clears saved node and goes back to opening
+  window.restartChapter = async () => {
+    await supabase.from('players').update({ current_node: 'ch1_opening' }).eq('id', player.id)
+    player.current_node = 'ch1_opening'
+    currentHp = player.hp
+    outcome   = null
+    bossMode  = 'solo'
+    nodeId    = 'opening'
+    render()
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   // ── Combat ────────────────────────────────────────
