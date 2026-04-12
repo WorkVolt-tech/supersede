@@ -1078,6 +1078,20 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
       }
       await save(updates)
       if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
+
+      // ── Rune drops ──────────────────────────────────
+      // Common enemies: 20% chance to drop ignis/aqua/terra/aero
+      // Hard enemies:   35% chance, can also drop umbra/lux
+      // Boss:           guaranteed rune drop, rare runes included
+      const RUNE_POOL_COMMON = ['rune_ignis','rune_aqua','rune_terra','rune_aero']
+      const RUNE_POOL_RARE   = ['rune_ignis','rune_aqua','rune_terra','rune_aero','rune_umbra','rune_lux']
+      const isHardEnemy      = (enemy.hp||0) > 60
+      const runeChance       = isBoss ? 1.0 : isHardEnemy ? 0.35 : 0.20
+      const runePool         = (isBoss || isHardEnemy) ? RUNE_POOL_RARE : RUNE_POOL_COMMON
+      if (Math.random() < runeChance) {
+        const rune = runePool[Math.floor(Math.random()*runePool.length)]
+        await addItem(rune, 1)
+      }
       setTimeout(() => goTo(onWin), 1200)
     } else {
       await save({ hp: Math.max(1, currentHp) })

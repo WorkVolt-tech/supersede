@@ -138,6 +138,32 @@
         <hr class="ink-divider">
         <div>${rows}</div>
       `
+    } else if (n.type==='runesmith') {
+      const rows = n.services.map(s=>{
+        const canAfford = (player.gold||0) >= s.goldCost
+        return `
+          <div style="display:flex;align-items:center;gap:.6rem;padding:.75rem 0;border-bottom:.5px solid rgba(139,106,32,.15)">
+            <div style="flex:1">
+              <p style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208;margin:0 0 1px">${s.label}</p>
+              <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;margin:0">${s.desc}</p>
+            </div>
+            <span style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${canAfford?'#c8b96e':'#804040'}">◈${s.goldCost}</span>
+            <button onclick="runesmith('${s.action}','${s.goldCost}')" ${canAfford?'':'disabled'} style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);padding:.3rem .75rem;cursor:pointer;border-radius:2px;opacity:${canAfford?1:.4}">Use</button>
+          </div>
+        `
+      }).join('')
+      panel.innerHTML = `
+        <p class="chapter-label">${n.title}</p>
+        <h2 class="page-title">${n.name}</h2>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:#5a4a2a;margin-bottom:.5rem">${n.dialogue}</p>
+        <hr class="ink-divider">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#9a8050;letter-spacing:.06em;margin-bottom:.75rem">Select the rarity of item you want to socket. Maximum sockets: Common=1, Uncommon=2, Rare=3, Epic=4, Legendary=5</p>
+        <div>${rows}</div>
+        <hr class="ink-divider">
+        <a href="crafting.html" style="font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.08em;color:#a07de0;text-decoration:none;border:.5px solid #a07de040;padding:.35rem .9rem;border-radius:2px">
+          ✦ Open Crafting Table →
+        </a>
+      `
     } else if (n.type==='healer') {
       const rows = n.services.map(s=>{
         const canAfford = (player.gold||0) >= s.goldCost
