@@ -87,7 +87,7 @@
           <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;margin:0">${ch.sub}</p>
         </div>
         ${isUnlocked
-          ? `<a href="chapter${ch.number}.html" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);padding:.3rem .8rem;text-decoration:none;border-radius:2px;white-space:nowrap">${isCurrent ? 'Continue ›' : canPlayChapter(ch.number + 1) ? 'Replay ›' : 'Read ›'}</a>`
+          ? `<a href="chapter${ch.number}.html" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);padding:.3rem .8rem;text-decoration:none;border-radius:2px;white-space:nowrap">${isCurrent ? 'Continue ›' : unlocked.includes(ch.number + 1) ? 'Replay ›' : 'Read ›'}</a>`
           : `<span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#7a6435">Sealed</span>`
         }
       </div>
