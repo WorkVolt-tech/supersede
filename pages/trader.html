@@ -136,7 +136,12 @@
         <h2 class="page-title">${n.name}</h2>
         <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:#5a4a2a;margin-bottom:.5rem">${n.dialogue}</p>
         <hr class="ink-divider">
-        <div>${rows}</div>
+        <div style="display:flex;gap:6px;margin-bottom:.75rem">
+          <button id="tab-buy"  onclick="switchTab('buy',  '${n.key}')" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.07em;padding:3px 14px;border-radius:20px;cursor:pointer;background:rgba(139,106,32,.2);border:.5px solid rgba(139,106,32,.5);color:#1a1208">BUY</button>
+          <button id="tab-sell" onclick="switchTab('sell', '${n.key}')" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.07em;padding:3px 14px;border-radius:20px;cursor:pointer;background:none;border:.5px solid rgba(139,106,32,.2);color:#7a6435">SELL</button>
+        </div>
+        <div id="tab-content-buy">${rows}</div>
+        <div id="tab-content-sell" style="display:none"></div>
       `
     } else if (n.type==='runesmith') {
       const rows = n.services.map(s=>{
@@ -187,6 +192,99 @@
         <div>${rows}</div>
       `
     }
+  }
+
+  window.switchTab = async (tab, npcKey) => {
+    const buyBtn  = document.getElementById('tab-buy')
+    const sellBtn = document.getElementById('tab-sell')
+    const buyDiv  = document.getElementById('tab-content-buy')
+    const sellDiv = document.getElementById('tab-content-sell')
+    if (!buyBtn) return
+
+    if (tab === 'buy') {
+      buyBtn.style.background  = 'rgba(139,106,32,.2)'
+      buyBtn.style.borderColor = 'rgba(139,106,32,.5)'
+      buyBtn.style.color       = '#1a1208'
+      sellBtn.style.background = 'none'
+      sellBtn.style.borderColor= 'rgba(139,106,32,.2)'
+      sellBtn.style.color      = '#7a6435'
+      buyDiv.style.display  = 'block'
+      sellDiv.style.display = 'none'
+    } else {
+      sellBtn.style.background  = 'rgba(139,106,32,.2)'
+      sellBtn.style.borderColor = 'rgba(139,106,32,.5)'
+      sellBtn.style.color       = '#1a1208'
+      buyBtn.style.background   = 'none'
+      buyBtn.style.borderColor  = 'rgba(139,106,32,.2)'
+      buyBtn.style.color        = '#7a6435'
+      buyDiv.style.display  = 'none'
+      sellDiv.style.display = 'block'
+
+      // Load player inventory for selling
+      sellDiv.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:#9a8050">Loading...</p>'
+      const { data: inv } = await supabase.from('inventory').select('*')
+        .eq('player_id', player.id)
+        .not('item_type', 'eq', 'material')
+        .order('item_type')
+
+      if (!inv || !inv.length) {
+        sellDiv.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.85rem;color:#7a6435">Nothing to sell.</p>'
+        return
+      }
+
+      // Filter out equipped items
+      const sellable = inv.filter(i => !i.equipped_slot)
+
+      if (!sellable.length) {
+        sellDiv.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.85rem;color:#7a6435">All items are currently equipped. Unequip items in Inventory to sell them.</p>'
+        return
+      }
+
+      const RC = {common:'#888',uncommon:'#5ec45e',rare:'#5eaee0',epic:'#a07de0',legendary:'#c8b96e',mythic:'#ff88ff'}
+
+      sellDiv.innerHTML = sellable.map(item => {
+        // Sell price: use item's sell_price from DB if available, otherwise 40% of buy_price estimate
+        const sellPrice = item.sell_price || Math.max(1, Math.floor((item.buy_price||20) * 0.4))
+        const hasSocket = (item.sockets_total||0) > 0
+        const hasRune   = (item.sockets_used||0) > 0
+        return `
+          <div style="display:flex;align-items:center;gap:.6rem;padding:.65rem 0;border-bottom:.5px solid rgba(139,106,32,.15)">
+            <span style="font-size:1.1rem">${item.icon||'📦'}</span>
+            <div style="flex:1;min-width:0">
+              <p style="font-family:'Cinzel',serif;font-size:.8rem;color:${RC[item.rarity]||'#888'};margin:0 0 1px">
+                ${item.name}
+                ${hasSocket?`<span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a07de0;margin-left:4px">[${item.sockets_used||0}/${item.sockets_total} runes]</span>`:''}
+              </p>
+              <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#7a6435;margin:0">
+                ${item.rarity} ${item.subtype||item.item_type}
+                ${item.atk_bonus>0?` · ATK +${item.atk_bonus}`:''}
+                ${item.def_bonus>0?` · DEF +${item.def_bonus}`:''}
+                ${item.hp_restore>0?` · +${item.hp_restore}HP`:''}
+                ${(item.quantity||1)>1?` · ×${item.quantity}`:''}
+              </p>
+              ${hasRune?'<p style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#e05555;margin:1px 0 0">⚠ Runes will be lost on sell</p>':''}
+            </div>
+            <span style="font-family:'Cinzel',serif;font-size:.85rem;font-weight:600;color:#c8b96e">◈${sellPrice}</span>
+            <button onclick="sellItem('${item.id}','${item.name}',${sellPrice})" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);padding:.3rem .75rem;cursor:pointer;border-radius:2px">Sell</button>
+          </div>
+        `
+      }).join('')
+    }
+  }
+
+  window.sellItem = async (itemId, itemName, sellPrice) => {
+    // Remove item from inventory
+    await supabase.from('inventory').delete().eq('id', itemId)
+
+    // Add gold to player
+    const newGold = (player.gold||0) + sellPrice
+    await supabase.from('players').update({ gold: newGold }).eq('id', player.id)
+    player.gold = newGold
+    document.getElementById('gold-display').textContent = '◈ ' + newGold
+    showToast('Sold ' + itemName + ' for ◈' + sellPrice)
+
+    // Refresh sell panel
+    window.switchTab('sell', '')
   }
 
   window.buyItem = async (itemKey) => {
