@@ -714,6 +714,11 @@ Chapter 2 is waiting.`,
     if (node.type === 'boss')  renderCombat(panel, node)
     else if (node.type === 'end') renderEnd(panel)
     else renderChoices(panel, node)
+
+    // Always make sure story text is visible — fallback if empty
+    if (!storyEl.textContent.trim()) {
+      storyEl.textContent = node.text || '(No text found for node: ' + nodeId + ')'
+    }
   }
 
   // ── Choices ───────────────────────────────────────
@@ -744,6 +749,12 @@ Chapter 2 is waiting.`,
 
   // ── End screen ────────────────────────────────────
   function renderEnd(panel) {
+    // Put the story ending text on the LEFT page
+    const storyEl = document.getElementById('story-text')
+    const node = NODES['chapter_end']
+    if (storyEl && node) storyEl.textContent = node.text
+
+    // Put buttons on the RIGHT page
     panel.innerHTML = `
       <div class="end-box">
         <p class="end-title">Chapter 1 Complete</p>
