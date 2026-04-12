@@ -78,10 +78,12 @@
     items.filter(i=>i.equipped_slot).forEach(i=>{ equipped[i.equipped_slot]=i })
     document.getElementById('equip-slots').innerHTML = SLOTS.map(s => {
       const item = equipped[s.key]
+      const EL_COLORS = {fire:'#ff5500',water:'#0088ff',earth:'#8b5e3c',air:'#a8d8ea',dark:'#b06eff',light:'#ffd700',none:'#9a8050'}
+      const elColor = item ? (EL_COLORS[item.element] || '#9a8050') : '#9a8050'
       return `<div class="equip-slot${selectedId?' clickable':''}" data-slot="${s.key}" title="${item?item.name+' — click to unequip':s.label}">
         <span class="slot-icon">${item ? item.icon : s.icon}</span>
-        <span class="slot-label" style="color:${item ? RARITY[item.rarity] : '#9a8050'}">${item ? item.name : s.label}</span>
-        ${item ? '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.55rem;color:#c8b96e">EQ</span>' : ''}
+        <span class="slot-label" style="color:${item ? (RARITY[item.rarity]||elColor) : '#9a8050'}">${item ? item.name : s.label}</span>
+        ${item ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:${elColor}">${item.element && item.element!=='none' ? item.element.toUpperCase() : 'EQ'}</span>` : ''}
       </div>`
     }).join('')
 
@@ -121,9 +123,25 @@
   }
 
   function renderStats() {
-    const atk = 1 + items.filter(i=>i.equipped_slot).reduce((s,i)=>s+(i.atk_bonus||0),0)
-    const def  =     items.filter(i=>i.equipped_slot).reduce((s,i)=>s+(i.def_bonus||0),0)
-    document.getElementById('total-stats').innerHTML = `<span>ATK <strong style="color:#1a1208">${atk}</strong></span><span>DEF <strong style="color:#1a1208">${def}</strong></span>`
+    const eq   = items.filter(i=>i.equipped_slot)
+    const atk  = 1 + eq.reduce((s,i)=>s+(i.atk_bonus||0),0)
+    const def  =     eq.reduce((s,i)=>s+(i.def_bonus||0),0)
+    const pwr  =     eq.reduce((s,i)=>s+(i.power_bonus||0),0)
+    const ctr  =     eq.reduce((s,i)=>s+(i.control_bonus||0),0)
+    const grd  =     eq.reduce((s,i)=>s+(i.guard_bonus||0),0)
+    const spd  =     eq.reduce((s,i)=>s+(i.speed_bonus||0),0)
+    const ins  =     eq.reduce((s,i)=>s+(i.insight_bonus||0),0)
+    const lck  =     eq.reduce((s,i)=>s+(i.luck_bonus||0),0)
+    document.getElementById('total-stats').innerHTML = `
+      <span>ATK <strong style="color:#e05555">${atk}</strong></span>
+      <span>DEF <strong style="color:#5ec45e">${def}</strong></span>
+      ${pwr?`<span>PWR <strong style="color:#ff5500">${pwr}</strong></span>`:''}
+      ${ctr?`<span>CTR <strong style="color:#0088ff">${ctr}</strong></span>`:''}
+      ${grd?`<span>GRD <strong style="color:#8b5e3c">${grd}</strong></span>`:''}
+      ${spd?`<span>SPD <strong style="color:#a8d8ea">${spd}</strong></span>`:''}
+      ${ins?`<span>INS <strong style="color:#ffd700">${ins}</strong></span>`:''}
+      ${lck?`<span>LCK <strong style="color:#b06eff">${lck}</strong></span>`:''}
+    `
   }
 
   function renderDetail() {
