@@ -744,7 +744,11 @@ Chapter 2 is waiting.`,
 }
 
 // ── Constants ────────────────────────────────────
-const XP_PER_LEVEL = 100 // XP needed per level = level * XP_PER_LEVEL
+// XP needed to reach next level — exponential curve
+// Level 1→2: 100, 2→3: 150, 3→4: 225, 4→5: 337, 5→6: 506, 6→7: 759...
+function xpForLevel(level) {
+  return Math.floor(100 * Math.pow(1.5, level - 1))
+}
 
 // ── App state ────────────────────────────────────
 let player   = await renderNav('nav')
@@ -766,9 +770,9 @@ async function checkLevelUp(oldXp, newXp, oldLevel) {
   let xp     = newXp
   let leveled = false
 
-  // Keep leveling while XP threshold is crossed
-  while (xp >= level * XP_PER_LEVEL) {
-    xp    -= level * XP_PER_LEVEL
+  // Keep leveling while XP threshold crossed — exponential curve
+  while (xp >= xpForLevel(level)) {
+    xp    -= xpForLevel(level)
     level += 1
     leveled = true
   }
@@ -799,7 +803,8 @@ function renderHUD() {
   const bs  = BS[player.badge] || '🟡'
   const hpPct  = Math.max(0, Math.round(hp / mhp * 100))
   const hpCol  = hpPct > 60 ? '#5ec45e' : hpPct > 30 ? '#c8b96e' : '#e05555'
-  const xpNext = lvl * XP_PER_LEVEL
+  const xpNext = xpForLevel(lvl)
+  // xp here is the raw accumulated XP — calculate progress within current level
   const xpPct  = Math.min(100, Math.round((xp % xpNext) / xpNext * 100))
   document.getElementById('hud').innerHTML = `
     <div class="hud-badge-row">
