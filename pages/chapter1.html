@@ -848,26 +848,54 @@ async function save(updates) {
 }
 
 // ── Add item ─────────────────────────────────────
+const SOCKET_RULES = {
+  common:   {chance:0.20,max:1}, uncommon:{chance:0.35,max:2},
+  rare:     {chance:0.50,max:3}, epic:    {chance:0.65,max:4},
+  legendary:{chance:0.80,max:5}, mythic:  {chance:1.00,max:6},
+}
+function rollSockets(rarity, itemType) {
+  if (!['weapon','armor'].includes(itemType)) return 0
+  const rule = SOCKET_RULES[rarity] || {chance:0.2,max:1}
+  if (Math.random() > rule.chance) return 0
+  return Math.floor(Math.random() * rule.max) + 1
+}
+
 async function addItem(itemKey, qty = 1) {
   const { data: m } = await supabase.from('items').select('*').eq('item_key', itemKey).single()
   if (!m) return
-  const { data: ex } = await supabase.from('inventory').select('*')
-    .eq('player_id', player.id).eq('item_key', itemKey).eq('item_type','consumable').maybeSingle()
-  if (ex) {
-    await supabase.from('inventory').update({ quantity: ex.quantity + qty }).eq('id', ex.id)
-  } else {
-    await supabase.from('inventory').insert({
-      player_id:player.id, item_key:m.item_key, name:m.name, item_type:m.item_type,
-      subtype:m.subtype, rarity:m.rarity, atk_bonus:m.atk_bonus, def_bonus:m.def_bonus,
-      hp_restore:m.hp_restore, two_handed:m.two_handed, icon:m.icon, quantity:qty,
-      element:m.element||'none',
-      power_bonus:m.power_bonus||0, control_bonus:m.control_bonus||0,
-      guard_bonus:m.guard_bonus||0, speed_bonus:m.speed_bonus||0,
-      insight_bonus:m.insight_bonus||0, luck_bonus:m.luck_bonus||0,
-      special_effect:m.special_effect||null
-    })
+  const stackable = ['consumable','material','key']
+  if (stackable.includes(m.item_type)) {
+    const { data: ex } = await supabase.from('inventory').select('*')
+      .eq('player_id', player.id).eq('item_key', itemKey).maybeSingle()
+    if (ex) {
+      await supabase.from('inventory').update({ quantity:(ex.quantity||1)+qty }).eq('id',ex.id)
+    } else {
+      await supabase.from('inventory').insert({
+        player_id:player.id, item_key:m.item_key, name:m.name, item_type:m.item_type,
+        subtype:m.subtype, rarity:m.rarity, atk_bonus:m.atk_bonus||0, def_bonus:m.def_bonus||0,
+        hp_restore:m.hp_restore||0, two_handed:m.two_handed||false, icon:m.icon, quantity:qty,
+        element:m.element||'none', power_bonus:m.power_bonus||0, control_bonus:m.control_bonus||0,
+        guard_bonus:m.guard_bonus||0, speed_bonus:m.speed_bonus||0,
+        insight_bonus:m.insight_bonus||0, luck_bonus:m.luck_bonus||0,
+        special_effect:m.special_effect||null, sockets_total:0, sockets_used:0, socketed_runes:[]
+      })
+    }
+    showToast('+ ' + m.name)
+    return
   }
-  showToast('+ ' + m.name)
+  const socketsRolled = rollSockets(m.rarity, m.item_type)
+  await supabase.from('inventory').insert({
+    player_id:player.id, item_key:m.item_key, name:m.name, item_type:m.item_type,
+    subtype:m.subtype, rarity:m.rarity, atk_bonus:m.atk_bonus||0, def_bonus:m.def_bonus||0,
+    hp_restore:m.hp_restore||0, two_handed:m.two_handed||false, icon:m.icon, quantity:1,
+    element:m.element||'none', power_bonus:m.power_bonus||0, control_bonus:m.control_bonus||0,
+    guard_bonus:m.guard_bonus||0, speed_bonus:m.speed_bonus||0,
+    insight_bonus:m.insight_bonus||0, luck_bonus:m.luck_bonus||0,
+    special_effect:m.special_effect||null,
+    sockets_total:socketsRolled, sockets_used:0, socketed_runes:[]
+  })
+  const socketMsg = socketsRolled > 0 ? ` [${socketsRolled} socket${socketsRolled>1?'s':''}!]` : ''
+  showToast('+ ' + m.name + socketMsg)
 }
 
 // ── Navigate ─────────────────────────────────────
@@ -964,7 +992,7 @@ function renderLocationHub(panel, node) {
     <p class="choices-label">Choose a Zone</p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem">
       ${node.locations.map(loc => {
-        const zMap = {'loc_garage':'../assets/zone_parking_garage.png','loc_market':'../assets/zone_frozen_market.png','loc_tower':'../assets/zone_glass_tower.png'}
+        const zMap = {'loc_garage':'../assets/zones/zone_parking_garage.png','loc_market':'../assets/zones/zone_frozen_market.png','loc_tower':'../assets/zones/zone_glass_tower.png'}
         const zImg = zMap[loc.id]
         return `
         <div onclick="enterLocation('${loc.id}')"
@@ -997,9 +1025,9 @@ window.enterLocation = function(locId) {
 
 function renderFarmZone(panel, loc) {
   const zoneImgs = {
-    'loc_garage': '../assets/zone_parking_garage.png',
-    'loc_market': '../assets/zone_frozen_market.png',
-    'loc_tower':  '../assets/zone_glass_tower.png',
+    'loc_garage': '../assets/zones/zone_parking_garage.png',
+    'loc_market': '../assets/zones/zone_frozen_market.png',
+    'loc_tower':  '../assets/zones/zone_glass_tower.png',
   }
   const zoneImg = zoneImgs[loc.id]
 
@@ -1020,7 +1048,7 @@ function renderFarmZone(panel, loc) {
           'Glitch Rat':'../assets/enemy/enemy_glitch_rat.png',
           'Static Crawler':'../assets/enemy/enemy_static_crawler.png',
           'Pixel Shard':'../assets/enemy/enemy_pixel_shard.png',
-          'Flicker Hound':'../assets/enemy/enemy_flicker_hound.png',
+          'Flicker Hound':'../assets/enemy/flicker_hound.png',
           'Pixel Drone':'../assets/enemy/enemy_pixel_drone.png',
           'Fracture Wolf':'../assets/enemy/enemy_fracture_wolf.png',
           'Corrupted Sentry':'../assets/enemy/enemy_corrupted_sentry.png',
@@ -1158,7 +1186,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
             'Glitch Rat':       '../assets/enemy/enemy_glitch_rat.png',
             'Static Crawler':   '../assets/enemy/enemy_static_crawler.png',
             'Pixel Shard':      '../assets/enemy/enemy_pixel_shard.png',
-            'Flicker Hound':    '../assets/enemy/enemy_flicker_hound.png',
+            'Flicker Hound':    '../assets/enemy/flicker_hound.png',
             'Pixel Drone':      '../assets/enemy/enemy_pixel_drone.png',
             'Fracture Wolf':    '../assets/enemy/enemy_fracture_wolf.png',
             'Corrupted Sentry': '../assets/enemy/enemy_corrupted_sentry.png',
