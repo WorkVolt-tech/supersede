@@ -176,6 +176,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
         <p class="item-type">${item.subtype||item.item_type}</p>
         ${item.quantity>1?`<span class="item-qty">×${item.quantity}</span>`:''}
         ${item.equipped_slot?`<span class="item-eq">EQ</span>`:''}
+        ${(item.sockets_total||0)>0?`<span style="position:absolute;bottom:4px;left:4px;font-size:.45rem;color:#a07de0;font-family:'Share Tech Mono',monospace">${item.sockets_used||0}/${item.sockets_total}◈</span>`:''} 
       </div>
     `).join('') || `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#7a6435;grid-column:span 3">Nothing here.</p>`
 
@@ -230,9 +231,25 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           ${item.hp_restore>0?`<span style="color:#5eaee0">+${item.hp_restore} HP</span>`:''}
           ${!item.atk_bonus&&!item.def_bonus&&!item.hp_restore?`<span style="color:#7a6435">Utility item</span>`:''}
         </div>
-        <div style="display:flex;gap:.5rem">
+        ${(item.sockets_total||0) > 0 ? `
+          <div style="margin-bottom:.5rem">
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a07de0;letter-spacing:.07em;margin-bottom:3px">SOCKETS ${item.sockets_used||0}/${item.sockets_total}</p>
+            <div style="display:flex;gap:4px">
+              ${Array.from({length:item.sockets_total||0}).map((_,i) => {
+                const rune = (item.socketed_runes||[])[i]
+                const runeColors = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+                const runeIcons  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+                const color = rune ? (runeColors[rune]||'#a07de0') : 'rgba(160,125,224,.3)'
+                return `<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid ${color};display:flex;align-items:center;justify-content:center;font-size:.75rem;background:${rune?color+'22':'rgba(0,0,0,.15)'};" title="${rune||'Empty socket'}">${rune?(runeIcons[rune]||'?'):'○'}</div>`
+              }).join('')}
+            </div>
+            ${item.runeword_name ? `<p style="font-family:'Cinzel',serif;font-size:.68rem;color:#a07de0;margin-top:4px">✦ ${item.runeword_name}</p>` : ''}
+          </div>
+        ` : ''}
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
           ${item.item_type==='consumable'?`<button onclick="useItem('${item.id}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#5eaee0;background:none;border:.5px solid #5eaee040;border-radius:3px;padding:4px 12px;cursor:pointer">Use ×1</button>`:''}
           ${item.equipped_slot?`<button onclick="unequipSlot('${item.equipped_slot}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#c8b96e;background:none;border:.5px solid #c8b96e40;border-radius:3px;padding:4px 12px;cursor:pointer">Unequip</button>`:''}
+          ${!item.equipped_slot?`<button onclick="sellItem('${item.id}','${item.name}',${item.sell_price||Math.max(1,Math.floor((item.buy_price||20)*.4))},${item.quantity||1})" style="font-family:'Cinzel',serif;font-size:.72rem;color:#e05555;background:none;border:.5px solid #e0555540;border-radius:3px;padding:4px 12px;cursor:pointer">Sell ◈${item.sell_price||Math.max(1,Math.floor((item.buy_price||20)*.4))}</button>`:''}
         </div>
       </div>
     `
@@ -268,6 +285,21 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
   }
 
   window.unequipSlot = unequipSlot
+
+  window.sellItem = async (itemId, itemName, sellPrice, qty) => {
+    if (qty > 1) {
+      // Sell one at a time
+      await supabase.from('inventory').update({ quantity: qty - 1 }).eq('id', itemId)
+    } else {
+      await supabase.from('inventory').delete().eq('id', itemId)
+    }
+    const newGold = (player.gold || 0) + sellPrice
+    await supabase.from('players').update({ gold: newGold }).eq('id', player.id)
+    player.gold = newGold
+    showToast('Sold ' + itemName + ' for ◈' + sellPrice)
+    selectedId = null
+    await load()
+  }
 
   window.useItem = async (itemId) => {
     const item = items.find(i=>i.id===itemId)
