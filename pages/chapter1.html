@@ -1153,9 +1153,23 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
   panel.innerHTML = `
     <div class="combat-panel" id="combat-wrap">
       <div class="combat-enemy-row">
-        ${isBoss
-          ? '<img src=\'../assets/the_watcher.png\' alt=\'The Watcher\' style=\'width:72px;height:72px;object-fit:cover;border-radius:50%;border:2px solid #00ffe7;box-shadow:0 0 16px #00ffe740;flex-shrink:0\'>'
-          : '<span class="combat-enemy-icon">'+enemy.icon+'</span>'}
+        ${(()=>{
+          const EIMGS = {
+            'Glitch Rat':       '../assets/enemy_glitch_rat.png',
+            'Static Crawler':   '../assets/enemy_static_crawler.png',
+            'Pixel Shard':      '../assets/enemy_pixel_shard.png',
+            'Flicker Hound':    '../assets/flicker_hound.png',
+            'Pixel Drone':      '../assets/enemy_pixel_drone.png',
+            'Fracture Wolf':    '../assets/enemy_fracture_wolf.png',
+            'Corrupted Sentry': '../assets/enemy_corrupted_sentry.png',
+            'Void Sentinel':    '../assets/enemy_void_sentinel.png',
+            'System Enforcer':  '../assets/enemy_system_enforcer.png',
+          }
+          if (isBoss) return '<img src=\'../assets/the_watcher.png\' alt=\'The Watcher\' style=\'width:80px;height:80px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 12px #00ffe740)\'>'
+          const src = EIMGS[enemy.name]
+          if (src) return `<img src="${src}" alt="${enemy.name}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))" onerror="this.outerHTML='<span class=\'combat-enemy-icon\'>${enemy.icon}</span>'">`
+          return `<span class="combat-enemy-icon">${enemy.icon}</span>`
+        })()}
         <div style="flex:1">
           <p class="combat-enemy-name">${enemy.name}</p>
           <div class="stat-bar-wrap">
