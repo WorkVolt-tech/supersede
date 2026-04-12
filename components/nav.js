@@ -1,4 +1,10 @@
 // components/nav.js — inject nav into any page
+
+// ── Admin config ─────────────────────────────────
+// Add your Supabase user ID here to get the cloaked admin appearance
+const ADMIN_USER_IDS = new Set([
+  'YOUR_USER_ID_HERE',  // ← replace with your actual Supabase user ID
+])
 import { supabase } from '../supabase.js'
 
 export async function renderNav(containerId = 'nav') {
@@ -20,10 +26,14 @@ export async function renderNav(containerId = 'nav') {
   const inPages = location.pathname.includes('/pages/')
   const base = inPages ? '../' : ''
 
+  const adminImg = ADMIN_USER_IDS.has(player.user_id)
+    ? `<img src="${base}assets/mysterious_cloaked_player.png" alt="Admin" style="width:22px;height:22px;border-radius:50%;object-fit:cover;object-position:top;border:1px solid #00ffe7;box-shadow:0 0 6px #00ffe750;vertical-align:middle;margin-right:4px;">`
+    : ''
+
   root.innerHTML = `
     <nav class="nav">
       <a href="${base}index.html" class="nav-logo">SuperSede</a>
-      <span class="nav-player">
+      <span class="nav-player">${adminImg}
         <span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${color};margin-right:4px;vertical-align:middle"></span>
         ${player.username} · Lvl ${player.level} · ${player.xp} XP · ◈ ${player.gold}
       </span>
