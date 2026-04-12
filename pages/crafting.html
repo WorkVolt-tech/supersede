@@ -222,9 +222,11 @@ function renderRuneInventory() {
   el.innerHTML = runeInventory.map(r => {
     const key = r.item_key.replace('rune_','')
     const re  = RUNE_ELEMENTS[key] || {}
-    return `<span class="rune-pill" style="color:${re.color||'#888'};border-color:${re.color||'#888'}40;background:${re.color||'#888'}12"
+    const runeImgPath = `../assets/rune_${key}.png`
+    return `<span class="rune-pill" style="color:${re.color||'#888'};border-color:${re.color||'#888'}40;background:${re.color||'#888'}12;display:inline-flex;align-items:center;gap:4px"
       onclick="socketRune('${key}','${r.id}')" title="Socket ${re.name||key} rune (qty: ${r.quantity||1})">
-      ${re.icon||'?'} ${re.name||key} ×${r.quantity||1}
+      <img src="${runeImgPath}" style="width:18px;height:18px;object-fit:contain;border-radius:2px" onerror="this.style.display='none'">
+      ${re.name||key} ×${r.quantity||1}
     </span>`
   }).join('')
 }
