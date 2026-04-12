@@ -1249,7 +1249,21 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
         const rune = runePool[Math.floor(Math.random()*runePool.length)]
         await addItem(rune, 1)
       }
-      setTimeout(() => goTo(onWin), 1200)
+      setTimeout(async () => {
+        if (onWin === '__farm_win__') {
+          // Farm win — process per-enemy loot drops then return to zone
+          if (farmLoc && farmLoc.enemies[farmIdx]) {
+            for (const drop of farmLoc.enemies[farmIdx].loot) {
+              if (Math.random() < drop.chance) await addItem(drop.itemKey, 1)
+            }
+          }
+          const p = document.getElementById('right-panel')
+          if (farmLoc && p) renderFarmZone(p, farmLoc)
+          else if (p) renderLocationHub(p, NODES['farming_hub'])
+        } else {
+          goTo(onWin)
+        }
+      }, 1200)
     } else {
       await save({ hp: Math.max(1, currentHp) })
       setTimeout(() => {
