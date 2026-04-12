@@ -520,7 +520,10 @@ Forty. The number lands.
 They look at the sky. "I think we're about to find out."
 
 Your interface pulses. CHAPTER PROGRESS: 70%`,
-    choices: [{ label: 'Ask them what they know', next: 'plaza_talk' }],
+    choices: [
+      { label: 'Ask them what they know', next: 'plaza_talk' },
+      { label: 'Explore the district',    sub: 'Farm enemies in 3 locations', next: 'farming_hub', icon: '🗺' },
+    ],
   },
 
   plaza_talk: {
@@ -543,6 +546,7 @@ Yara looks at you. "How are your stats?"`,
     choices: [
       { label: 'I am ready — let it come',           sub: 'Engage The Watcher now',         next: 'pre_boss_check' },
       { label: 'Hit the north plaza spawn first',    sub: 'More XP before the boss fight',  next: 'plaza_grind' },
+      { label: 'Explore the district first',         sub: 'Farm enemies in 3 locations — grind XP and loot', next: 'farming_hub', icon: '🗺' },
     ],
   },
 
@@ -665,6 +669,62 @@ It already knows everything.`,
   },
 
   // ═══════════════════════════════════════
+  // FARMING LOCATIONS
+  // Each 'location' node lets players grind repeatedly
+  // ═══════════════════════════════════════
+
+  // Hub — accessible from street_midpoint and plaza_talk
+  farming_hub: {
+    id: 'farming_hub', type: 'location_hub',
+    text: `Your interface opens a tactical overlay of the district.
+
+Three zones pulse with System entity activity — each one a different threat level, each one dropping different loot. You can move between them freely, or return to the main story whenever you're ready.`,
+    sysMsg: '⚠ Farming zones active — entities respawn indefinitely.',
+    locations: [
+      {
+        id: 'loc_garage',
+        name: 'Parking Garage',
+        icon: '🅿️',
+        level: 'Easy',
+        color: '#5ec45e',
+        desc: 'Common spawns. Good for early runes and consumables.',
+        enemies: [
+          { name:'Glitch Rat',      icon:'🐀', hp:20, atk:3,  agility:3, xp:25,  loot:[{itemKey:'rune_ignis',chance:.25},{itemKey:'energy_drink',chance:.4},{itemKey:'scrap_metal',chance:.6}] },
+          { name:'Static Crawler',  icon:'🦎', hp:30, atk:4,  agility:4, xp:35,  loot:[{itemKey:'rune_aqua', chance:.25},{itemKey:'scrap_blade', chance:.3},{itemKey:'scrap_metal',chance:.5}] },
+          { name:'Pixel Shard',     icon:'💠', hp:15, atk:2,  agility:5, xp:20,  loot:[{itemKey:'rune_terra',chance:.2}, {itemKey:'energy_drink',chance:.5},{itemKey:'flashlight',  chance:.2}] },
+        ],
+      },
+      {
+        id: 'loc_market',
+        name: 'Frozen Market',
+        icon: '🏪',
+        level: 'Medium',
+        color: '#c8b96e',
+        desc: 'Mid-tier entities. Better gear drops, rare runes.',
+        enemies: [
+          { name:'Flicker Hound',   icon:'🐕', hp:55, atk:6,  agility:6, xp:60,  loot:[{itemKey:'rune_aero', chance:.3}, {itemKey:'jacket',      chance:.25},{itemKey:'knife',       chance:.2}] },
+          { name:'Pixel Drone',     icon:'🤖', hp:45, atk:7,  agility:5, xp:65,  loot:[{itemKey:'rune_ignis',chance:.35},{itemKey:'scrap_metal', chance:.6}, {itemKey:'medkit',      chance:.15}] },
+          { name:'Fracture Wolf',   icon:'🐺', hp:70, atk:7,  agility:7, xp:75,  loot:[{itemKey:'rune_umbra',chance:.2}, {itemKey:'leather_gloves',chance:.2},{itemKey:'worn_boots',  chance:.2}] },
+        ],
+      },
+      {
+        id: 'loc_tower',
+        name: 'Glass Tower',
+        icon: '🏢',
+        level: 'Hard',
+        color: '#e05555',
+        desc: 'Elite entities. Rare and epic loot, high XP.',
+        enemies: [
+          { name:'Corrupted Sentry',icon:'👾', hp:90, atk:10, agility:6, xp:100, loot:[{itemKey:'rune_lux',  chance:.3}, {itemKey:'iron_sword',   chance:.15},{itemKey:'riot_vest',   chance:.1}] },
+          { name:'Void Sentinel',   icon:'⚫', hp:110,atk:12, agility:7, xp:120, loot:[{itemKey:'rune_umbra',chance:.4}, {itemKey:'iron_helm',    chance:.15},{itemKey:'medkit',      chance:.25}] },
+          { name:'System Enforcer', icon:'🔴', hp:130,atk:14, agility:8, xp:150, loot:[{itemKey:'rune_lux',  chance:.35},{itemKey:'iron_shield',  chance:.1}, {itemKey:'iron_ring',   chance:.1}] },
+        ],
+      },
+    ],
+    returnNode: 'plaza_talk',
+  },
+
+  // ═══════════════════════════════════════
   // END
   // ═══════════════════════════════════════
   chapter_end: {
@@ -732,13 +792,13 @@ async function checkLevelUp(oldXp, newXp, oldLevel) {
 
   // Stat gains per level
   const levelsGained = level - oldLevel
-  const newAtk   = (player.atk   || 1)   + levelsGained * 2
-  const newDef   = (player.def   || 0)   + levelsGained * 1
-  const newAgi   = (player.agility || 0) + levelsGained * 1
-  const newMaxHp = (player.max_hp || 100) + levelsGained * 20
+  const newAtk   = (player.atk     || 1)   + levelsGained * 3
+  const newDef   = (player.def     || 0)   + levelsGained * 2
+  const newAgi   = (player.agility || 0)   + levelsGained * 1
+  const newMaxHp = (player.max_hp  || 100) + levelsGained * 20
   const newHp    = newMaxHp  // FULL restore on level up
 
-  showToast('LEVEL UP! Level ' + level + ' — ATK+2 DEF+1 AGI+1 · HP fully restored!')
+  showToast('LEVEL UP! Level ' + level + ' — ATK+3 DEF+2 AGI+1 · HP fully restored!')
   currentHp = newHp
 
   return { level, atk: newAtk, def: newDef, agility: newAgi, max_hp: newMaxHp, hp: newHp }
@@ -906,13 +966,104 @@ function render() {
   } else { ob.style.display = 'none' }
 
   const panel = document.getElementById('right-panel')
-  if      (node.type === 'boss')   renderBoss(panel, node)
-  else if (node.type === 'combat') renderCombat(panel, node)
-  else if (node.type === 'end')    renderEnd(panel, node)
-  else                              renderChoices(panel, node)
+  if      (node.type === 'boss')         renderBoss(panel, node)
+  else if (node.type === 'combat')       renderCombat(panel, node)
+  else if (node.type === 'end')          renderEnd(panel, node)
+  else if (node.type === 'location_hub') renderLocationHub(panel, node)
+  else                                   renderChoices(panel, node)
 }
 
 // ── Choices ──────────────────────────────────────
+// ── Location hub — shows 3 farmable zones ────────
+function renderLocationHub(panel, node) {
+  panel.innerHTML = `
+    <p class="choices-label">Choose a Zone</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem">
+      ${node.locations.map(loc => `
+        <div style="border:.5px solid ${loc.color}40;border-radius:5px;padding:.75rem;cursor:pointer;transition:all .2s;background:${loc.color}08"
+          onclick="enterLocation('${loc.id}')">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:3px">
+            <span style="font-size:1.1rem">${loc.icon}</span>
+            <span style="font-family:'Cinzel',serif;font-size:.85rem;color:#1a1208;font-weight:500">${loc.name}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:${loc.color};border:.5px solid ${loc.color}50;padding:1px 6px;border-radius:12px;margin-left:auto">${loc.level}</span>
+          </div>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#7a6435;margin:0">${loc.desc}</p>
+        </div>
+      `).join('')}
+    </div>
+    <button class="choice" onclick="goTo('${node.returnNode}')" style="width:100%;text-align:left">
+      <span class="choice-arrow">→</span>
+      <span class="choice-body">Return to main story</span>
+    </button>
+  `
+  // Store locations on window so enterLocation can access them
+  window._farmingLocations = node.locations
+}
+
+window.enterLocation = function(locId) {
+  const loc = window._farmingLocations.find(l => l.id === locId)
+  if (!loc) return
+  window._currentLocation = loc
+  renderFarmZone(document.getElementById('right-panel'), loc)
+}
+
+// ── Farm zone — pick an enemy to fight, loop back ─────
+function renderFarmZone(panel, loc) {
+  const RARITY_COL = {common:'#888',uncommon:'#5ec45e',rare:'#5eaee0',epic:'#a07de0',legendary:'#c8b96e'}
+
+  panel.innerHTML = `
+    <p class="choices-label">${loc.icon} ${loc.name}</p>
+    <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#7a6435;margin-bottom:.75rem">
+      Enemies respawn — fight as many times as you need. Return to story when ready.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem">
+      ${loc.enemies.map((e,i) => {
+        const drops = e.loot.map(l => {
+          const pct = Math.round(l.chance * 100)
+          const key = l.itemKey.replace('rune_','').replace('_',' ')
+          return `<span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#9a8050">${key} ${pct}%</span>`
+        }).join(' · ')
+        return `<div style="border:.5px solid rgba(139,106,32,.25);border-radius:4px;padding:.6rem .75rem;cursor:pointer;transition:all .15s;background:rgba(0,0,0,.04)"
+          onclick="fightFarmEnemy(${i})">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:3px">
+            <span style="font-size:1.1rem">${e.icon}</span>
+            <span style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208">${e.name}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#7a6435;margin-left:auto">HP ${e.hp} · ATK ${e.atk} · XP ${e.xp}</span>
+          </div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">${drops}</div>
+        </div>`
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="choice" onclick="enterLocation('${loc.id}')" style="flex:1;text-align:left;font-size:.82rem">
+        <span class="choice-arrow">←</span><span class="choice-body">Back to zones</span>
+      </button>
+      <button class="choice" onclick="goTo('plaza_talk')" style="flex:1;text-align:left;font-size:.82rem">
+        <span class="choice-arrow">→</span><span class="choice-body">Return to story</span>
+      </button>
+    </div>
+  `
+}
+
+window.fightFarmEnemy = function(enemyIndex) {
+  const loc   = window._currentLocation
+  const enemy = { ...loc.enemies[enemyIndex] }
+  const panel = document.getElementById('right-panel')
+
+  // After win/lose, come back to this farm zone
+  buildCombatUI(
+    panel,
+    enemy,
+    '__farm_win__' + enemyIndex,  // special signal
+    '__farm_zone__',              // on loss — back to zone
+    '__farm_zone__',              // on escape — back to zone
+    false,
+    null,
+    loc,                          // pass location for loot processing
+    enemyIndex
+  )
+}
+
 function renderChoices(panel, node) {
   const insight = player.insight || 0
   // Filter choices: show hidden ones only if player has enough Insight
@@ -985,30 +1136,40 @@ function renderCombat(panel, node) {
 function renderBoss(panel, node) {
   const lvl   = player.level || 1
   const enemy = { ...node.enemy }
-  if (bossMode === 'solo')   enemy.hp = 120 + lvl * 20
-  if (bossMode === 'team')   enemy.hp = 160 + lvl * 20
-  if (bossMode === 'betray') enemy.hp = 180 + lvl * 25
-  enemy.atk      = node.enemy.atk + Math.floor(lvl * 1.5)
-  enemy.agility  = 8  // Watcher is fast — needs high player agility to go first
-  enemy.isBoss   = true
-  // Boss move pool — different attacks each turn
+
+  // Fixed Watcher stats — not level-scaling so player progress matters
+  // bossMode affects HP and ATK to reflect the scenario
+  if (bossMode === 'solo')   { enemy.hp = 180; enemy.atk = 16 }
+  if (bossMode === 'team')   { enemy.hp = 160; enemy.atk = 14 }  // easier — ally helps
+  if (bossMode === 'betray') { enemy.hp = 200; enemy.atk = 20 }  // hardest
+
+  enemy.agility = 8
+  enemy.isBoss  = true
   enemy.moves = [
-    { name:'Judgement Pulse',  weight:3, fn:(agi)=>({ dmg: Math.floor(enemy.atk * 1.2), msg:'The eye pulses — Judgement Pulse strikes for' }) },
-    { name:'Gaze of Knowing',  weight:2, fn:(agi)=>({ dmg: Math.floor(enemy.atk * 0.8), msg:'The Watcher reads your past — Gaze of Knowing deals' }) },
-    { name:'Void Stare',       weight:2, fn:(agi)=>({ dmg: enemy.atk, msg:'An endless void opens — Void Stare hits for' }) },
-    { name:'Charge',           weight:1, fn:(agi)=>({ dmg: 0, msg:'The Watcher charges… next attack will be devastating.', charge:true }) },
-    { name:'Charged Strike',   weight:0, fn:(agi)=>({ dmg: Math.floor(enemy.atk * 2.2), msg:'The charged energy releases — Devastating Strike deals' }) },
+    { name:'Judgement Pulse', weight:3, fn:()=>({ dmg: Math.floor(enemy.atk*1.2), msg:'The eye pulses — Judgement Pulse strikes for' }) },
+    { name:'Gaze of Knowing', weight:2, fn:()=>({ dmg: Math.floor(enemy.atk*0.8), msg:'The Watcher reads your past — Gaze of Knowing deals' }) },
+    { name:'Void Stare',      weight:2, fn:()=>({ dmg: enemy.atk,                 msg:'An endless void opens — Void Stare hits for' }) },
+    { name:'Charge',          weight:1, fn:()=>({ dmg: 0, msg:'The Watcher draws back… bracing for a devastating strike.', charge:true }) },
+    { name:'Charged Strike',  weight:0, fn:()=>({ dmg: Math.floor(enemy.atk*2.2), msg:'The charged energy releases — Devastating Strike deals' }) },
   ]
-  // Team ally stats if bossMode is team
+
+  // Team ally — Yara's stats add to player's effective ATK and DEF in combat
+  // Her ATK contributes to every player attack, her DEF reduces incoming damage
   const ally = bossMode === 'team' ? {
-    name:'Yara', icon:'🟢', hp: 80 + lvl * 10, atk: 3 + lvl,
-    agility: 5, active: true
+    name:    'Yara',
+    icon:    '🟢',
+    hp:      80 + lvl * 8,
+    atk:     3  + lvl,        // adds to player damage each turn
+    def:     2  + lvl,        // reduces incoming Watcher damage
+    agility: 5,
+    active:  true,
   } : null
+
   buildCombatUI(panel, enemy, 'chapter_end', 'pre_boss_check', 'pre_boss_check', true, ally)
 }
 
 // ── Shared combat UI builder (turn-based) ────────
-function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, ally) {
+function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, ally, farmLocation, farmEnemyIndex) {
   // ── Combat state ──────────────────────────────
   let enemyHp      = enemy.hp
   const maxEnemyHp  = enemy.hp
@@ -1030,6 +1191,11 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, ally) {
   const playerAgi = (player.agility || 0) + eqSpeed  // agility + speed gear
   const enemyAgi  = enemy.agility || 5
 
+  // ── Ally stat bonuses ─────────────────────────
+  // Yara's ATK adds to every attack, her DEF reduces incoming damage
+  const allyAtkBonus = (ally && allyHp > 0) ? (ally.atk || 0) : 0
+  const allyDefBonus = (ally && allyHp > 0) ? (ally.def || 0) : 0
+
   // ── Who goes first ────────────────────────────
   // Higher agility acts first. Ties go to player.
   if (enemyAgi > playerAgi) {
@@ -1045,7 +1211,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, ally) {
     <div id="ally-row" style="display:flex;align-items:center;gap:.6rem;padding:.5rem 0;border-top:.5px solid rgba(139,106,32,.2);margin-top:.4rem">
       <div style="width:28px;height:28px;border-radius:50%;background:rgba(94,196,94,.15);border:1.5px solid #5ec45e;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0">🟢</div>
       <div style="flex:1">
-        <p style="font-family:'Cinzel',serif;font-size:.72rem;color:#5ec45e;margin:0 0 2px">${ally.name} <span style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#7a6435">· Ally · ATK ${ally.atk} · AGI ${ally.agility}</span></p>
+        <p style="font-family:'Cinzel',serif;font-size:.72rem;color:#5ec45e;margin:0 0 2px">${ally.name} <span style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#7a6435">· Ally · ATK +${ally.atk} · DEF +${ally.def||0} · AGI ${ally.agility}</span></p>
         <div class="stat-bar-wrap"><div class="stat-bar" id="ally-bar" style="background:#5ec45e;width:100%;transition:width .4s"></div></div>
       </div>
       <span id="ally-hp" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#4a3c22;min-width:50px;text-align:right">${ally.hp}/${maxAllyHp}</span>
@@ -1082,11 +1248,16 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, ally) {
         ${ally ? '&nbsp;·&nbsp; Ally active' : ''}
       </div>
 
-      <div class="combat-actions" id="combat-actions">
+      <div class="combat-actions" id="combat-actions" style="grid-template-columns:1fr 1fr 1fr 1fr">
         <button class="combat-btn" id="btn-attack">⚔ Attack</button>
         <button class="combat-btn" id="btn-defend">🛡 Defend</button>
-        <button class="combat-btn" id="btn-skill" disabled title="Coming soon">✦ Skill</button>
+        <button class="combat-btn" id="btn-items" style="color:#5eaee0">🎒 Items</button>
         <button class="combat-btn" id="btn-escape">💨 Escape</button>
+      </div>
+      <div id="items-panel" style="display:none;margin-top:.5rem;border:.5px solid rgba(139,106,32,.3);border-radius:4px;padding:.6rem;background:rgba(0,0,0,.05)">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#9a8050;letter-spacing:.06em;margin-bottom:.4rem">USE ITEM</p>
+        <div id="items-list" style="display:flex;flex-direction:column;gap:3px"></div>
+        <button onclick="document.getElementById('items-panel').style.display='none'" style="font-family:'IM Fell English',serif;font-size:.78rem;color:#7a6435;background:none;border:none;cursor:pointer;margin-top:.4rem">✕ Close</button>
       </div>
       <p id="combat-over" style="display:none;text-align:center;font-family:'Cinzel',serif;font-size:1rem;color:#8b6a20;letter-spacing:.1em;padding:.5rem"></p>
     </div>
@@ -1169,14 +1340,26 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, ally) {
         charged = true
         log(result.msg)
       } else {
-        let dmg = Math.max(0, result.dmg - (player.def||0) - eqGuard)
-        // If defending this turn, halve damage (set by defend action)
+        let dmg = Math.max(0, result.dmg - (player.def||0) - eqGuard - allyDefBonus)
+        // If defending this turn, halve damage
         if (window._defending) { dmg = Math.floor(dmg * 0.35); window._defending = false }
         currentHp = Math.max(0, currentHp - dmg)
         shake()
-        log(result.msg + ' ' + dmg + (dmg === 0 ? ' — blocked!' : ' damage.'))
+        const defMsg = allyDefBonus > 0
+          ? result.msg + ' ' + dmg + ' (Yara shielded ' + allyDefBonus + ')' + (dmg===0?' — blocked!':'.')
+          : result.msg + ' ' + dmg + (dmg===0?' — blocked!':' damage.')
+        log(defMsg)
         syncBars()
-        if (currentHp <= 0) { log('You have fallen.'); endCombat('defeat'); return }
+        if (currentHp <= 0) {
+      if (window._hasRevive) {
+        window._hasRevive = false
+        currentHp = 20
+        syncBars()
+        log('Phoenix Feather activates — you rise at 20 HP!')
+        return
+      }
+      log('You have fallen.'); endCombat('defeat'); return
+    }
       }
 
       // Ally attacks after enemy if active
@@ -1243,10 +1426,37 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, ally) {
         const rune = runePool[Math.floor(Math.random()*runePool.length)]
         await addItem(rune, 1)
       }
-      setTimeout(() => goTo(onWin), 1500)
+      setTimeout(async () => {
+        if (onWin.startsWith('__farm_win__')) {
+          // Farm win — process loot drops then return to zone
+          if (farmLocation) {
+            const enemyDef = farmLocation.enemies[farmEnemyIndex]
+            if (enemyDef && enemyDef.loot) {
+              for (const drop of enemyDef.loot) {
+                if (Math.random() < drop.chance) {
+                  await addItem(drop.itemKey, 1)
+                }
+              }
+            }
+          }
+          // Return to farm zone
+          const panel = document.getElementById('right-panel')
+          if (farmLocation && panel) renderFarmZone(panel, farmLocation)
+        } else {
+          goTo(onWin)
+        }
+      }, 1500)
     } else {
       await save({ hp: Math.max(1, currentHp) })
-      setTimeout(() => goTo(result==='escape' ? onEscape : onLose), 1500)
+      setTimeout(() => {
+        if (onLose === '__farm_zone__' || onEscape === '__farm_zone__') {
+          const panel = document.getElementById('right-panel')
+          if (farmLocation && panel) renderFarmZone(panel, farmLocation)
+          else if (panel) renderLocationHub(panel, NODES['farming_hub'])
+        } else {
+          goTo(result==='escape' ? onEscape : onLose)
+        }
+      }, 1500)
     }
   }
 
@@ -1257,10 +1467,16 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, ally) {
     setTurnLabel('⚔ ATTACKING…')
 
     const luckBonus = Math.floor(eqLuck / 2)
-    const atk = (player.atk||1) + eqPower + Math.floor(Math.random()*(6+luckBonus)) + 1
-    enemyHp = Math.max(0, enemyHp - atk)
+    const rollMax   = window._forceHit ? 99 : Math.floor(Math.random()*(6+luckBonus))
+    window._forceHit = false
+    const baseAtk   = (player.atk||1) + eqPower + rollMax + 1
+    const totalAtk  = baseAtk + allyAtkBonus
+    enemyHp = Math.max(0, enemyHp - totalAtk)
     shake()
-    log('You strike for ' + atk + ' damage.')
+    const atkMsg = allyAtkBonus > 0
+      ? 'You strike for ' + baseAtk + ' + Yara ' + allyAtkBonus + ' = ' + totalAtk + ' total damage.'
+      : 'You strike for ' + totalAtk + ' damage.'
+    log(atkMsg)
     syncBars()
 
     if (enemyHp <= 0) { log(enemy.name+' has fallen!'); endCombat('win'); return }
@@ -1279,6 +1495,91 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, ally) {
     playerTurn = false
     setTimeout(() => enemyTurn(), 500)
   })
+
+  // ── Items button — open consumables panel ────
+  document.getElementById('btn-items').addEventListener('click', async () => {
+    if (over) return
+    const panel = document.getElementById('items-panel')
+    const list  = document.getElementById('items-list')
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none'
+    if (panel.style.display !== 'block') return
+
+    // Load consumables and key items from inventory
+    const { data } = await supabase.from('inventory').select('*')
+      .eq('player_id', player.id)
+      .in('item_type', ['consumable', 'key'])
+      .order('item_type')
+
+    if (!data || !data.length) {
+      list.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#7a6435">No usable items.</p>'
+      return
+    }
+
+    const RARITY_COL = {common:'#888',uncommon:'#5ec45e',rare:'#5eaee0',epic:'#a07de0',legendary:'#c8b96e'}
+
+    list.innerHTML = data.map(item => `
+      <div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .25rem;border-bottom:.5px solid rgba(139,106,32,.12);cursor:pointer"
+        onclick="useItemInCombat('${item.id}','${item.item_type}',${item.hp_restore||0},'${item.name}',${item.quantity||1})">
+        <span style="font-size:.95rem">${item.icon||'📦'}</span>
+        <span style="font-family:'Cinzel',serif;font-size:.75rem;color:${RARITY_COL[item.rarity]||'#888'};flex:1">${item.name}</span>
+        ${item.hp_restore > 0 ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#5ec45e">+${item.hp_restore}HP</span>` : ''}
+        ${item.special_effect ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#a07de0;max-width:80px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.special_effect}</span>` : ''}
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#9a8050">×${item.quantity||1}</span>
+      </div>
+    `).join('')
+  })
+
+  window.useItemInCombat = async function(itemId, itemType, hpRestore, itemName, qty) {
+    if (over) return
+
+    // Heal consumables
+    if (itemType === 'consumable' && hpRestore > 0) {
+      const newHp   = Math.min(player.max_hp || 100, currentHp + hpRestore)
+      currentHp     = newHp
+      syncBars()
+      log('Used ' + itemName + ' — restored ' + hpRestore + ' HP. (' + currentHp + '/' + (player.max_hp||100) + ')')
+
+      // Consume item
+      if (qty <= 1) {
+        await supabase.from('inventory').delete().eq('id', itemId)
+      } else {
+        await supabase.from('inventory').update({ quantity: qty - 1 }).eq('id', itemId)
+      }
+      document.getElementById('items-panel').style.display = 'none'
+      return
+    }
+
+    // Phoenix Feather — store as revive token
+    if (itemName === 'Phoenix Feather') {
+      window._hasRevive = true
+      log('Phoenix Feather ready — will auto-revive once if you fall.')
+      await supabase.from('inventory').delete().eq('id', itemId)
+      document.getElementById('items-panel').style.display = 'none'
+      return
+    }
+
+    // Explosion Scroll — force next attack to max damage
+    if (itemName === 'Explosion Scroll') {
+      window._forceHit = true
+      log('Explosion Scroll loaded — next attack will be devastating.')
+      await supabase.from('inventory').delete().eq('id', itemId)
+      document.getElementById('items-panel').style.display = 'none'
+      return
+    }
+
+    // Lava Bomb — skip combat entirely
+    if (itemName === 'Lava Bomb') {
+      log('Lava Bomb detonated — enemy destroyed.')
+      await supabase.from('inventory').delete().eq('id', itemId)
+      document.getElementById('items-panel').style.display = 'none'
+      enemyHp = 0
+      syncBars()
+      endCombat('win')
+      return
+    }
+
+    log('Cannot use ' + itemName + ' in combat.')
+  }
 
   document.getElementById('btn-escape').addEventListener('click', () => {
     if (over || buttonsLocked || !playerTurn) return
