@@ -42,6 +42,72 @@
   import { supabase }           from '../supabase.js'
   import { renderNav, showToast } from '../components/nav.js'
 
+const ITEM_IMAGES = {
+  'ember_blade':'../assets/weapon/fire/ember_blade.png',
+  'flame_dagger':'../assets/weapon/fire/flame_dagger.png',
+  'inferno_sword':'../assets/weapon/fire/inferno_sword.png',
+  'burning_staff':'../assets/weapon/fire/burning_staff.png',
+  'ashen_tome':'../assets/weapon/fire/ashen_tome.png',
+  'lava_gauntlets':'../assets/weapon/fire/lava_gauntlets.png',
+  'tide_blade':'../assets/weapon/water/tide_blade.png',
+  'ocean_staff':'../assets/weapon/water/ocean_staff.png',
+  'flow_dagger':'../assets/weapon/water/flow_dagger.png',
+  'deep_tome':'../assets/weapon/water/deep_tome.png',
+  'current_gauntlets':'../assets/weapon/water/current_gauntlets.png',
+  'stone_sword':'../assets/weapon/earth/stone_sword.png',
+  'root_blade':'../assets/weapon/earth/root_blade.png',
+  'titan_hammer':'../assets/weapon/earth/titan_hammer.png',
+  'crystal_staff':'../assets/weapon/earth/crystal_staff.png',
+  'boulder_gauntlets':'../assets/weapon/earth/boulder_gauntlets.png',
+  'wind_dagger':'../assets/weapon/air/wind_dagger.png',
+  'gale_blade':'../assets/weapon/air/gale_blade.png',
+  'storm_sword':'../assets/weapon/air/storm_sword.png',
+  'sky_staff':'../assets/weapon/air/sky_staff.png',
+  'swift_gauntlets':'../assets/weapon/air/swift_gauntlets.png',
+  'shadow_blade':'../assets/weapon/dark/shadow_blade.png',
+  'void_dagger':'../assets/weapon/dark/void_dagger.png',
+  'curse_sword':'../assets/weapon/dark/curse_sword.png',
+  'nightmare_staff':'../assets/weapon/dark/nightmare_staff.png',
+  'abyss_gauntlets':'../assets/weapon/dark/abyss_gauntlets.png',
+  'radiant_blade':'../assets/weapon/light/radiant_blade.png',
+  'halo_staff':'../assets/weapon/light/halo_staff.png',
+  'dawn_sword':'../assets/weapon/light/dawn_sword.png',
+  'blessing_tome':'../assets/weapon/light/blessing_tome.png',
+  'light_gauntlets':'../assets/weapon/light/light_gauntlets.png',
+  'cinder_armor':'../assets/armor/cinder_armor.png',
+  'inferno_cloak':'../assets/armor/inferno_cloak.png',
+  'blazing_robes':'../assets/armor/blazing_robes.png',
+  'smoke_veil':'../assets/armor/smoke_veil.png',
+  'mist_cloak':'../assets/armor/mist_cloak.png',
+  'ocean_armor':'../assets/armor/ocean_armor.png',
+  'rain_robes':'../assets/armor/rain_robes.png',
+  'tide_shield':'../assets/armor/tide_shield.png',
+  'rock_armor':'../assets/armor/rock_armor.png',
+  'root_cloak':'../assets/armor/root_cloak.png',
+  'terra_plate':'../assets/armor/terra_plate.png',
+  'crystal_shell':'../assets/armor/crystal_shell.png',
+  'feather_cloak':'../assets/armor/feather_cloak.png',
+  'storm_armor':'../assets/armor/storm_armor.png',
+  'cloud_robes':'../assets/armor/cloud_robes.png',
+  'wind_veil':'../assets/armor/wind_veil.png',
+  'shadow_cloak':'../assets/armor/shadow_cloak.png',
+  'void_armor':'../assets/armor/void_armor.png',
+  'nightmare_robes':'../assets/armor/nightmare_robes.png',
+  'curse_shell':'../assets/armor/curse_shell.png',
+  'holy_armor':'../assets/armor/holy_armor.png',
+  'blessing_cloak':'../assets/armor/blessing_cloak.png',
+  'radiant_robes':'../assets/armor/radiant_robes.png',
+  'halo_shield':'../assets/armor/halo_shield.png',
+  'rune_ignis':'../assets/runes/rune_ignis.png',
+  'rune_aqua':'../assets/runes/rune_aqua.png',
+  'rune_terra':'../assets/runes/rune_terra.png',
+  'rune_aero':'../assets/runes/rune_aero.png',
+  'rune_umbra':'../assets/runes/rune_umbra.png',
+  'rune_lux':'../assets/runes/rune_lux.png',
+}
+function getItemImg(k) { return ITEM_IMAGES[k] || null }
+
+
   const SLOTS = [
     { key:'helmet',     label:'Helmet',      icon:'⛑',  accepts:['helmet'] },
     { key:'chest',      label:'Chest',       icon:'🦺', accepts:['chest'] },
@@ -81,7 +147,7 @@
       const EL_COLORS = {fire:'#ff5500',water:'#0088ff',earth:'#8b5e3c',air:'#a8d8ea',dark:'#b06eff',light:'#ffd700',none:'#9a8050'}
       const elColor = item ? (EL_COLORS[item.element] || '#9a8050') : '#9a8050'
       return `<div class="equip-slot${selectedId?' clickable':''}" data-slot="${s.key}" title="${item?item.name+' — click to unequip':s.label}">
-        <span class="slot-icon">${item ? item.icon : s.icon}</span>
+        ${(()=>{if(!item)return '<span class="slot-icon">'+s.icon+'</span>';const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="slot-icon" style="width:28px;height:28px;object-fit:contain" onerror="this.style.display=\'none\'">'):'<span class="slot-icon">'+item.icon+'</span>';})()}
         <span class="slot-label" style="color:${item ? (RARITY[item.rarity]||elColor) : '#9a8050'}">${item ? item.name : s.label}</span>
         ${item ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:${elColor}">${item.element && item.element!=='none' ? item.element.toUpperCase() : 'EQ'}</span>` : ''}
       </div>`
@@ -105,7 +171,7 @@
     document.getElementById('bag-count').textContent = items.length + ' items'
     document.getElementById('item-grid').innerHTML = filtered.map(item => `
       <div class="item-card${selectedId===item.id?' selected':''}" data-id="${item.id}">
-        <span class="item-icon">${item.icon||'📦'}</span>
+        ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="item-icon" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display=\'none\'">'):'<span class="item-icon">'+(item.icon||'📦')+'</span>';})()}
         <p class="item-name" style="color:${RARITY[item.rarity]||'#888'}">${item.name}</p>
         <p class="item-type">${item.subtype||item.item_type}</p>
         ${item.quantity>1?`<span class="item-qty">×${item.quantity}</span>`:''}
@@ -152,7 +218,7 @@
     el.innerHTML = `
       <div style="border:0.5px solid rgba(139,106,32,.3);border-radius:3px;padding:.75rem;margin-top:.5rem;background:rgba(0,0,0,.05)">
         <div style="display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.5rem">
-          <span style="font-size:1.6rem">${item.icon}</span>
+          ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" style="width:52px;height:52px;object-fit:contain;border-radius:6px" onerror="this.style.display=\'none\'">'):'<span style="font-size:1.6rem">'+(item.icon||'📦')+'</span>';})()}
           <div>
             <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${RARITY[item.rarity]||'#888'};margin:0 0 2px">${item.name}</p>
             <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#7a6435;margin:0;letter-spacing:.06em">${item.rarity} · ${item.subtype||item.item_type}${item.two_handed?' · 2H':''}</p>
