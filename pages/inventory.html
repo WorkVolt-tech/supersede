@@ -205,11 +205,35 @@
 
   window.useItem = async (itemId) => {
     const item = items.find(i=>i.id===itemId)
-    if (!item||item.item_type!=='consumable') return
-    const newQty = item.quantity - 1
-    if (newQty<=0) await supabase.from('inventory').delete().eq('id',itemId)
-    else await supabase.from('inventory').update({quantity:newQty}).eq('id',itemId)
-    showToast(`+${item.hp_restore} HP restored`)
+    if (!item || item.item_type !== 'consumable') return
+
+    // ── Fetch current player HP from DB (always fresh) ──
+    const { data: freshPlayer } = await supabase
+      .from('players').select('hp,max_hp').eq('id', player.id).single()
+
+    const currentHp = freshPlayer?.hp    || 100
+    const maxHp     = freshPlayer?.max_hp || 100
+
+    if (item.hp_restore > 0) {
+      const newHp = Math.min(maxHp, currentHp + item.hp_restore)
+      const healed = newHp - currentHp
+      // Save to DB
+      await supabase.from('players').update({ hp: newHp }).eq('id', player.id)
+      showToast('+' + healed + ' HP restored (' + newHp + '/' + maxHp + ')')
+    } else if (item.special_effect) {
+      showToast(item.name + ' used — ' + item.special_effect)
+    } else {
+      showToast(item.name + ' used')
+    }
+
+    // Consume item
+    const newQty = (item.quantity || 1) - 1
+    if (newQty <= 0) {
+      await supabase.from('inventory').delete().eq('id', itemId)
+    } else {
+      await supabase.from('inventory').update({ quantity: newQty }).eq('id', itemId)
+    }
+
     selectedId = null
     await load()
   }
