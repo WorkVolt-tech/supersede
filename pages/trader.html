@@ -122,7 +122,7 @@
             <div style="flex:1;min-width:0">
               <p style="font-family:'Cinzel',serif;font-size:.82rem;color:${RARITY[item.rarity]||'#888'};margin:0 0 1px">${item.name}</p>
               <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#7a6435;margin:0">
-                ${item.item_type}${item.atk_bonus>0?` · ATK +${item.atk_bonus}`:''}${item.def_bonus>0?` · DEF +${item.def_bonus}`:''}${item.hp_restore>0?` · +${item.hp_restore}HP`:''}
+                ${item.element&&item.element!=='none'?`[${item.element.toUpperCase()}] `:''}${item.item_type}${item.atk_bonus>0?` · ATK +${item.atk_bonus}`:''}${item.def_bonus>0?` · DEF +${item.def_bonus}`:''}${item.hp_restore>0?` · +${item.hp_restore}HP`:''}${(item.power_bonus||0)>0?` · PWR +${item.power_bonus}`:''}${(item.speed_bonus||0)>0?` · SPD +${item.speed_bonus}`:''}${(item.insight_bonus||0)>0?` · INS +${item.insight_bonus}`:''}
               </p>
             </div>
             <span style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${canAfford?'#c8b96e':'#804040'}">◈${item.buy_price}</span>
@@ -179,6 +179,11 @@
         item_type:item.item_type, subtype:item.subtype, rarity:item.rarity,
         atk_bonus:item.atk_bonus, def_bonus:item.def_bonus, hp_restore:item.hp_restore,
         two_handed:item.two_handed, icon:item.icon, quantity:1,
+        element:item.element||'none',
+        power_bonus:item.power_bonus||0, control_bonus:item.control_bonus||0,
+        guard_bonus:item.guard_bonus||0, speed_bonus:item.speed_bonus||0,
+        insight_bonus:item.insight_bonus||0, luck_bonus:item.luck_bonus||0,
+        special_effect:item.special_effect||null
       })
     }
     await supabase.from('trade_log').insert({player_id:player.id,trader_key:activeNPC.key,item_key:itemKey,quantity:1,gold_spent:item.buy_price})
