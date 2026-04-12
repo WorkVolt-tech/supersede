@@ -83,65 +83,112 @@ The game has started.`,
 
 Everything feels paused — yet alive, like held breath.
 
-You rummage quickly. A bag on the passenger seat of a nearby car. A jacket draped over a bicycle. Underneath a delivery scooter, a cracked phone still showing a flashlight app, frozen mid-beam.
+You rummage quickly. A bag on the passenger seat. A jacket draped over a bicycle. Underneath a scooter, a cracked phone still showing a flashlight app, frozen mid-beam.
 
-You take what you can carry.`,
+You take what you can carry. Then something moves at the edge of your vision — not a frozen person. Something deliberate.
+
+A rat-sized creature skitters across the pavement. Except it glows faintly. And it has a health bar above its head.
+
+SYSTEM SPAWN: GLITCH RAT — HP 20, ATK 3
+
+Your interface pings: "Defeat enemies to gain XP and improve your stats."`,
     rewards: [{ itemKey:'scrap_blade', qty:1 }, { itemKey:'flashlight', qty:1 }],
-    xp: 15,
-    choices: [{ label: 'Continue exploring', next: 'search_deeper' }],
+    xp: 30,
+    choices: [
+      { label: 'Fight the Glitch Rat', sub: 'Easy fight — good XP to start', next: 'fight_rat_1' },
+      { label: 'Ignore it and keep searching', sub: 'Skip the fight', next: 'search_deeper' },
+    ],
+  },
+
+  fight_rat_1: {
+    id: 'fight_rat_1', type: 'combat',
+    text: `The creature turns toward you. Its eyes are static — like a broken screen. It hisses.
+
+Your interface confirms the engagement.`,
+    enemy: { name:'Glitch Rat', icon:'🐀', hp:20, atk:3, xp:40, loot:[] },
+    onWin: 'search_after_rat',
+    onLose: 'search_deeper',
+    onEscape: 'search_deeper',
+  },
+
+  search_after_rat: {
+    id: 'search_after_rat', type: 'story',
+    text: `The creature dissolves into pixels when it falls. A small burst of light — and then nothing.
+
+Your interface updates:
+
+COMBAT COMPLETE. XP GAINED. STATS IMPROVING.
+
+You feel it physically — a sharpness behind your eyes, a solidness in your limbs. The System is rewriting you in real time.
+
+Two more of the creatures skitter out from under a nearby van. Slightly larger. Slightly faster.
+
+GLITCH RAT x2 — HP 25 each, ATK 4`,
+    choices: [
+      { label: 'Fight them both', sub: 'More XP — higher risk', next: 'fight_rats_2', variant: 'danger' },
+      { label: 'Move on — you have enough', sub: 'Head deeper into the city', next: 'search_deeper' },
+    ],
+  },
+
+  fight_rats_2: {
+    id: 'fight_rats_2', type: 'combat',
+    text: `Two at once. You've done this before — or at least the System thinks you have.`,
+    enemy: { name:'Glitch Rats x2', icon:'🐀🐀', hp:50, atk:4, xp:60, loot:[{itemKey:'scrap_metal', qty:1}] },
+    onWin: 'search_deeper',
+    onLose: 'search_deeper',
+    onEscape: 'search_deeper',
   },
 
   search_deeper: {
     id: 'search_deeper', type: 'story',
-    text: `You move further from the road, into a parking structure. The shadow is thick here. Your flashlight cuts through it in a narrow beam.
+    text: `You move further from the road, into a parking structure. The shadow is thick here.
 
-On the second level, you find something strange — a player. Not frozen. Sitting against a concrete pillar, knees pulled up, staring at their interface screen.
+On the second level, you find a player. Not frozen. Sitting against a concrete pillar, knees pulled up, studying their interface screen.
 
-They look up when you approach. They can't be older than nineteen. Their badge reads NEUTRAL. Their hands are shaking.
+They look up. They can't be older than nineteen. Their badge reads NEUTRAL. Their hands are shaking.
 
 "I don't want to fight," they say before you've said anything. "I just want to know what the rules are."
 
 You don't have an answer for them.`,
     sysMsg: '⚠ A player is nearby…',
     choices: [
-      { id: 'enc_team',    label: 'Sit with them a moment',    sub: 'Listen — gain Awareness XP',               next: 'search_team',    outcome: 'team' },
-      { id: 'enc_attack',  label: 'Take their supplies',       sub: 'Easy loot. Reputation shifts red.',         next: 'search_attack',  outcome: 'attack', variant: 'danger' },
-      { id: 'enc_observe', label: 'Say nothing and move on',   sub: 'Keep your distance — observe',              next: 'search_observe', outcome: 'observe' },
+      { id: 'enc_team',    label: 'Sit with them a moment',  sub: 'Listen — gain Awareness XP',        next: 'search_team',    outcome: 'team' },
+      { id: 'enc_attack',  label: 'Take their supplies',     sub: 'Easy loot. Reputation shifts red.',  next: 'search_attack',  outcome: 'attack', variant: 'danger' },
+      { id: 'enc_observe', label: 'Say nothing and move on', sub: 'Keep your distance — observe',       next: 'search_observe', outcome: 'observe' },
     ],
   },
 
   search_team: {
     id: 'search_team', type: 'story',
-    text: `You lower yourself to sit across from them. For a moment neither of you speaks.
+    text: `You sit across from them. For a moment neither of you speaks.
 
 "My name was Marcus," they say eventually. "Don't know if that matters here."
 
 "It matters," you say.
 
-He nods. Shows you his interface — he's found something in the System you haven't seen yet. A map overlay. Basic, glitchy, but real. He shares it with you. You share your flashlight.
+He nods. Shows you his interface — he's found a map overlay. Basic, glitchy, but real. He shares it with you. You share your flashlight.
 
-You part ways at the parking exit. He goes south. You go north. Neither of you say good luck.
+Before you part, he tells you something useful: there's a weapons cache two floors up, left by whoever was here before the freeze. He found it but couldn't carry everything.
 
-You both know luck isn't the variable here.`,
-    xp: 20,
-    choices: [{ label: 'Head back to the street', next: 'street_return' }],
+You find it. He wasn't wrong.`,
+    xp: 50,
+    rewards: [{ itemKey:'knife', qty:1 }, { itemKey:'energy_drink', qty:1 }],
+    choices: [{ label: 'Head to the street', next: 'street_return' }],
   },
 
   search_attack: {
     id: 'search_attack', type: 'story',
-    text: `It's fast. Efficient. Brutal in the way that only things that are over quickly can be.
+    text: `It's fast. Efficient. He doesn't fight back. That's the worst part.
 
-He doesn't fight back. That's the worst part.
-
-His bag has a half-eaten energy bar, some scrap metal, and a note with an address on it. You take the metal. You leave the note.
+His bag has a medkit and some scrap metal. You take everything.
 
 The System registers it before you've even stood up.
 
 REPUTATION SHIFT: RED.
 
 You don't feel different. That might be the scariest thing.`,
-    xp: 15,
-    rewards: [{ itemKey: 'scrap_metal', qty: 2 }, { itemKey: 'energy_drink', qty: 1 }],
+    xp: 30,
+    rewards: [{ itemKey:'medkit', qty:1 }, { itemKey:'scrap_metal', qty:2 }],
     choices: [{ label: 'Return to the street', next: 'street_return' }],
   },
 
@@ -149,19 +196,18 @@ You don't feel different. That might be the scariest thing.`,
     id: 'search_observe', type: 'story',
     text: `You don't stop walking. You don't look back.
 
-But you keep thinking about what he said.
+But you keep thinking about what he said. "I just want to know what the rules are."
 
-"I just want to know what the rules are."
+You don't know them either. Maybe that's the whole point.
 
-You don't know them either. You're not sure anyone does yet. Maybe that's the whole point.
-
-The parking structure opens back onto the street. The city is still frozen around you, patient and still, waiting to see what kind of player you'll become.`,
-    xp: 12,
+The parking structure opens back onto the street. On your way out, you find a cache tucked behind a pillar — left by whoever was here before. A knife wrapped in cloth. Still sharp.`,
+    xp: 40,
+    rewards: [{ itemKey:'jacket', qty:1 }],
     choices: [{ label: 'Continue into the street', next: 'street_return' }],
   },
 
   // ═══════════════════════════════════════
-  // PATH B — STREET (main approach)
+  // PATH B — STREET
   // ═══════════════════════════════════════
   street_approach: {
     id: 'street_approach', type: 'story',
@@ -171,165 +217,387 @@ The frozen world is eerie at walking pace — people mid-stride, pigeons suspend
 
 Then it shifts.
 
-Three blocks ahead, something moves. Someone. They're running — sprinting — cutting between the frozen pedestrians like a slalom course. Behind them, two others in pursuit. One of them has something in their hand that glints.
+Three blocks ahead, something moves. Someone is running — sprinting — cutting between frozen pedestrians. Behind them, two others in pursuit.
 
-Your interface pings. Three player signals, converging fast.`,
+Your interface pings. Three player signals, converging fast.
+
+But also — something else. Two glowing creatures crouched on a car hood nearby. They notice you at the same time you notice them.
+
+SYSTEM SPAWN: FLICKER HOUNDS — HP 35 each, ATK 5`,
     sysMsg: '⚠ Multiple players detected — conflict in progress',
     choices: [
-      { label: 'Get closer and watch',       sub: 'Observe from cover first',           next: 'street_watch' },
-      { label: 'Step in and break it up',    sub: 'Risky — but shows who you are',      next: 'street_intervene' },
-      { label: 'Cut through the side alley', sub: 'Avoid the conflict entirely',        next: 'street_alley' },
+      { label: 'Fight the Flicker Hounds first', sub: 'Clear the threat — gain XP', next: 'fight_hounds', variant: 'danger' },
+      { label: 'Get closer and watch the players', sub: 'Observe the conflict', next: 'street_watch' },
+      { label: 'Cut through the side alley',       sub: 'Avoid everything',        next: 'street_alley' },
     ],
+  },
+
+  fight_hounds: {
+    id: 'fight_hounds', type: 'combat',
+    text: `They move in sync — circling left and right. Faster than the rat. Smarter too. Your interface marks them both.`,
+    enemy: { name:'Flicker Hound', icon:'🐕', hp:70, atk:5, xp:75, loot:[{itemKey:'scrap_metal', qty:2}] },
+    onWin: 'street_watch',
+    onLose: 'street_alley',
+    onEscape: 'street_alley',
   },
 
   street_watch: {
     id: 'street_watch', type: 'story',
     text: `You duck behind a frozen delivery truck and watch.
 
-The runner is fast but flagging. They dart into a shop doorway. The two pursuers slow, circling. You can see their badges now — both RED. The runner's badge is NEUTRAL.
+The runner is fast but flagging. They dart into a shop doorway. The two pursuers slow, circling. Red badges — both of them. The runner's badge is NEUTRAL.
 
-One of the red-badge players pulls out a scrap blade. Not much — but enough.
+One draws a scrap blade. Not much — but enough.
 
-The runner looks up from the doorway and sees you watching. Their eyes go wide. Not asking for help exactly. Just — acknowledging that someone is there. That they're not invisible.
+The runner looks up and sees you watching. Not asking for help exactly. Just acknowledging someone is there.
 
-You have maybe ten seconds before it escalates.`,
-    xp: 10,
+You have about ten seconds before it escalates.`,
+    xp: 25,
     choices: [
-      { label: 'Step in — draw their attention', sub: 'Help the runner escape',         next: 'street_rescue', variant: 'danger' },
-      { label: 'Stay hidden',                    sub: 'Watch what happens next',         next: 'street_watch2' },
+      { label: 'Step in — draw their attention', sub: 'Help the runner escape', next: 'street_rescue', variant: 'danger' },
+      { label: 'Stay hidden and watch',           sub: 'See what happens',      next: 'street_watch2' },
     ],
   },
 
   street_rescue: {
     id: 'street_rescue', type: 'story',
-    text: `You step out from behind the truck.
+    text: `You step out. "Hey."
 
-"Hey."
+Both red-badge players turn. The runner bolts from the doorway and disappears.
 
-Both red-badge players turn. A split second of confusion is all it takes — the runner bolts from the doorway, disappearing around a corner.
+The two look at each other. Then at you. They decide you're not worth the trouble — but one throws a punch as they leave. It connects.
 
-The two players look at each other. Then at you. They decide you're not worth the trouble and move on, muttering.
+Worth it.
 
-The runner is gone. But as you turn back to the road, you notice something on the ground where they were standing — a folded piece of paper. Torn from a notebook. It reads:
-
-LEVEL 2 CACHE — parking garage off 5th, beneath the blue car.
-
-A gift from a stranger. You find the spot. They weren't wrong.`,
-    xp: 25,
-    rewards: [{ itemKey: 'jacket', qty:1 }, { itemKey: 'scrap_metal', qty:2 }],
+The runner left something on the ground — a folded note. LEVEL 2 CACHE — parking garage off 5th, beneath the blue car. You find it. They weren't wrong.`,
+    hpLoss: 10, xp: 60,
+    rewards: [{ itemKey:'jacket', qty:1 }, { itemKey:'energy_drink', qty:1 }],
     choices: [{ label: 'Continue forward', next: 'street_midpoint' }],
   },
 
   street_watch2: {
     id: 'street_watch2', type: 'story',
-    text: `You stay hidden.
+    text: `You stay hidden. The runner escapes on their own — throws something, creates noise, slips away.
 
-The encounter resolves quickly. The runner escapes on their own — throws something at the pursuers, creates enough noise to slip away. Smart. Experienced.
+The red-badge players argue briefly, then separate.
 
-The red-badge players argue briefly, then separate. The street goes quiet again.
+You emerge with a better understanding of how other players move. What they prioritize. How aggression works here.
 
-You emerge from cover with a better understanding of how other players move. What they prioritize. How aggression works here.
-
-It cost you nothing. It taught you something.`,
-    xp: 18,
+On the ground where the runner stood — a dropped energy drink. Still cold.`,
+    xp: 40,
+    rewards: [{ itemKey:'energy_drink', qty:1 }],
     choices: [{ label: 'Move on', next: 'street_midpoint' }],
-  },
-
-  street_intervene: {
-    id: 'street_intervene', type: 'story',
-    text: `You walk straight into the middle of it.
-
-"Stop."
-
-It's a stupid move by every metric. You have no weapon, no backup, and no idea what the System will do if you die in the first chapter.
-
-But it works.
-
-The two red-badge players are so surprised that someone would just — stand there — that they actually do stop. Three seconds of silence. The runner uses those three seconds to disappear.
-
-One of the hunters shoves you. You stumble. They leave.
-
-You're standing in the middle of the road with bruised ribs and the knowledge that sometimes the dumb move lands.`,
-    hpLoss: 15, xp: 30,
-    choices: [{ label: 'Keep moving', next: 'street_midpoint' }],
   },
 
   street_alley: {
     id: 'street_alley', type: 'story',
-    text: `You cut down a side alley between two restaurants. The smell of frozen food hits you — a kitchen caught mid-service, steam hanging motionless above a wok.
+    text: `You cut down a side alley. Cool and quiet — the chaos muffles behind you.
 
-The alley is quiet. No players. No signals on your radar.
+Halfway through, three glowing shapes drop from a fire escape above you. Small. Quick. Hungry-looking.
 
-Behind a dumpster you find a bag someone dropped mid-run. Inside: an energy drink, still cold somehow. A roll of bandage. A folded piece of paper with a hand-drawn map of this block.
+SYSTEM SPAWN: STATIC CRAWLERS — HP 15 each, ATK 4
 
-You study the map. There's an X marked at the far end of the alley, below the words "BEFORE THE BOSS — STOCK UP."
+Behind a dumpster you also spot a dropped bag. First things first.`,
+    choices: [
+      { label: 'Fight the crawlers', sub: 'Clear them — then loot', next: 'fight_crawlers' },
+      { label: 'Grab the bag and run', sub: 'Skip the fight', next: 'alley_loot' },
+    ],
+  },
+
+  fight_crawlers: {
+    id: 'fight_crawlers', type: 'combat',
+    text: `Three of them — they move like static, flickering between positions. Hard to track. But fragile.`,
+    enemy: { name:'Static Crawlers', icon:'🦎', hp:45, atk:4, xp:65, loot:[{itemKey:'scrap_metal', qty:1}] },
+    onWin: 'alley_loot',
+    onLose: 'alley_loot',
+    onEscape: 'alley_loot',
+  },
+
+  alley_loot: {
+    id: 'alley_loot', type: 'story',
+    text: `Behind the dumpster: an energy drink, still cold. A roll of bandage. A hand-drawn map with an X marked at the far end of the alley — "BEFORE THE BOSS — STOCK UP."
 
 Someone was here before you. They wanted to help.
 
-You follow the X. You find a small cache tucked under a loose step. Modest but real.`,
-    rewards: [{ itemKey:'energy_drink', qty:1 }, { itemKey:'scrap_metal', qty:2 }, { itemKey:'scrap_blade', qty:1 }],
-    xp: 15,
+You follow the X. A small cache under a loose step. Modest but real.`,
+    xp: 30,
+    rewards: [{ itemKey:'energy_drink', qty:1 }, { itemKey:'scrap_metal', qty:2 }, { itemKey:'jacket', qty:1 }],
     choices: [{ label: 'Exit the alley', next: 'street_midpoint' }],
   },
 
   street_return: {
     id: 'street_return', type: 'story',
-    text: `You emerge from the parking structure back onto the main road.
+    text: `You emerge back onto the main road.
 
-The city looks different now that you've spent time in it. Not less strange — more. Every frozen face a question. Every suspended object a reminder that physics itself has been suspended.
+The city looks different now. Not less strange — more. Every frozen face a question.
 
-Your interface pings softly.
+Your interface pings softly. CHAPTER PROGRESS: 40%
 
-CHAPTER PROGRESS: 40%
+As you walk, two more System spawns cross your path — smaller this time, testing you. You dispatch them without breaking stride.
 
-There's more ahead. You can feel it before you see it — a change in the air, a heaviness, like the atmosphere itself has thickened.
-
-Something is coming.`,
+Something is coming. You can feel it before you see it.`,
+    xp: 40,
+    rewards: [{ itemKey:'scrap_metal', qty:1 }],
     choices: [{ label: 'Press forward', next: 'street_midpoint' }],
   },
 
+  // ═══════════════════════════════════════
+  // PATH C — SYSTEM
+  // ═══════════════════════════════════════
+  system: {
+    id: 'system', type: 'story',
+    text: `You focus on the interface and let everything else fall away.
+
+It expands — Stats. Inventory. A radar map pulsing with soft signals. And a notification at the edge: TUTORIAL AVAILABLE.
+
+You tap it. The tutorial is brief, clinical, written like a legal document:
+
+1. Players gain XP by surviving encounters and exploring.
+2. XP accumulates to raise your level. Each level increases ATK, DEF, and max HP.
+3. System Entities will spawn throughout the chapter. Defeat them for XP.
+4. A High-Tier Entity awaits at the chapter's end.
+5. The System observes everything.
+
+There is no point 6.
+
+You close it. The radar shows six signals nearby — and three non-player entities. Glowing. Moving slowly. Waiting to be found.`,
+    xp: 25,
+    sysMsg: '⚠ Scanning… Multiple players and entities detected.',
+    choices: [
+      { label: 'Hunt the nearby entities', sub: 'Grind XP before going further',    next: 'sys_hunt' },
+      { label: 'Track the closest player', sub: 'Engage — first-strike advantage',  next: 'sys_track' },
+      { label: 'Stay hidden and observe',  sub: 'Learn before acting',              next: 'sys_observe' },
+    ],
+  },
+
+  sys_hunt: {
+    id: 'sys_hunt', type: 'story',
+    text: `You use the radar to track them one by one.
+
+The first is alone in a frozen café — a PIXEL DRONE, hovering between suspended coffee cups.
+
+PIXEL DRONE — HP 40, ATK 6
+
+It turns when you enter. Your interface marks it red.`,
+    choices: [{ label: 'Engage the Pixel Drone', next: 'fight_drone_1' }],
+  },
+
+  fight_drone_1: {
+    id: 'fight_drone_1', type: 'combat',
+    text: `It moves in unpredictable bursts — left, up, diagonal. But it's predictable in one way: it always attacks from the front.`,
+    enemy: { name:'Pixel Drone', icon:'🤖', hp:40, atk:6, xp:70, loot:[{itemKey:'scrap_metal', qty:2}] },
+    onWin: 'sys_hunt_2',
+    onLose: 'sys_observe',
+    onEscape: 'sys_observe',
+  },
+
+  sys_hunt_2: {
+    id: 'sys_hunt_2', type: 'story',
+    text: `It dissolves. Clean. Your stats tick upward.
+
+The radar shows two more. One in the parking garage to the north. One in the alley market to the east.
+
+CORRUPTED SENTRY — HP 55, ATK 7
+These are bigger. Designed to test you before the chapter boss.
+
+Which do you take?`,
+    xp: 20,
+    choices: [
+      { label: 'Parking garage — the Corrupted Sentry', next: 'fight_sentry' },
+      { label: 'Head to the plaza instead',             sub: 'Skip the second grind', next: 'street_midpoint' },
+    ],
+  },
+
+  fight_sentry: {
+    id: 'fight_sentry', type: 'combat',
+    text: `The garage is dark. The Sentry stands in the center of the second level — a humanoid shape made of broken geometry, edges that don't quite meet.
+
+It doesn't move until you step inside.`,
+    enemy: { name:'Corrupted Sentry', icon:'👾', hp:55, atk:7, xp:90, loot:[{itemKey:'medkit', qty:1}] },
+    onWin: 'sys_hunt_complete',
+    onLose: 'street_midpoint',
+    onEscape: 'street_midpoint',
+  },
+
+  sys_hunt_complete: {
+    id: 'sys_hunt_complete', type: 'story',
+    text: `It falls apart like a puzzle in reverse — pieces scattering, then vanishing.
+
+Your interface pulses with a new notification:
+
+SYSTEM ENTITIES CLEARED — BONUS XP AWARDED
+"You are prepared. Proceed to the plaza."
+
+You feel it. Real and undeniable. Stronger. Faster. More.
+
+The plaza is ahead. Something waits there.`,
+    xp: 50,
+    choices: [{ label: 'Head to the plaza', next: 'street_midpoint' }],
+  },
+
+  sys_track: {
+    id: 'sys_track', type: 'story',
+    text: `You move silently, radar as guide.
+
+You find them crouched behind a car — studying their own interface. They don't hear you coming.
+
+"I heard your footsteps three blocks back," they say without turning. "I was waiting to see what you'd do."
+
+They turn. Badge: NEUTRAL. Expression: amused. Name: Kai.
+
+"Former data analyst," they say. "Already figured out the System runs on behavior patterns. The boss at the end of this chapter — it'll know your tendencies before you do."
+
+They share a location pin. A supply stash and a spawn point where System entities are clustered together. Easy XP if you move now.`,
+    xp: 35,
+    choices: [
+      { label: 'Hit the spawn point with Kai', sub: 'Team hunt — bonus XP',         next: 'fight_with_kai' },
+      { label: 'Go to the plaza now',          sub: 'Skip the extra grind',          next: 'street_midpoint' },
+    ],
+  },
+
+  fight_with_kai: {
+    id: 'fight_with_kai', type: 'combat',
+    text: `Kai fights differently than you — calculated, methodical. You take the front. They cover angles.
+
+A pair of FRACTURE WOLVES materializes from between frozen cars. Their howl sounds like dial-up.`,
+    enemy: { name:'Fracture Wolves', icon:'🐺', hp:80, atk:6, xp:100, loot:[{itemKey:'knife', qty:1}] },
+    onWin: 'sys_track_done',
+    onLose: 'street_midpoint',
+    onEscape: 'street_midpoint',
+  },
+
+  sys_track_done: {
+    id: 'sys_track_done', type: 'story',
+    text: `They dissolve together — one clean burst of light.
+
+Kai nods. "Good. You're ready for the plaza."
+
+They disappear into the city before you can ask anything else.
+
+You stand in the quiet aftermath. Your interface shows your stats climbing. You can feel the difference now — the way you hold your ground, the speed of your instincts.
+
+The chapter boss is ahead. But so are you.`,
+    xp: 40,
+    rewards: [{ itemKey:'energy_drink', qty:1 }],
+    choices: [{ label: 'Head to the plaza', next: 'street_midpoint' }],
+  },
+
+  sys_observe: {
+    id: 'sys_observe', type: 'story',
+    text: `You let the signals move without following them. Just watch — the radar's dots shifting and drifting.
+
+Two signals merge. Then separate quickly.
+
+One goes dark.
+
+Your own position must look the same to anyone watching. A stationary dot. Patient. Unreadable.
+
+You move toward the plaza, but slowly — picking off two small System spawns on the way. Nothing dramatic. Just preparation.`,
+    xp: 55,
+    rewards: [{ itemKey:'scrap_metal', qty:2 }],
+    choices: [{ label: 'Move toward the plaza', next: 'street_midpoint' }],
+  },
+
+  // ═══════════════════════════════════════
+  // CONVERGE — ALL PATHS MEET HERE
+  // ═══════════════════════════════════════
   street_midpoint: {
     id: 'street_midpoint', type: 'story',
     text: `You reach the center of the city.
 
-It's a wide plaza — fountains frozen mid-arc, pigeons hovering at impossible angles. Beautiful and wrong in equal measure.
+A wide plaza — fountains frozen mid-arc, pigeons hovering at impossible angles. Beautiful and wrong in equal measure.
 
-And then you see it.
+A player sits on the edge of a fountain. Green badge. Exhausted face. They look up when you approach.
 
-Another player, sitting on the edge of a fountain. Not frozen. Just sitting. They look up when you approach. Their badge is GREEN. Their face is exhausted.
-
-"I've been here since it started," they say. "Counting. There are at least forty players in this district alone."
+"I've been here since it started," they say. "Counting. There are at least forty players in this district."
 
 Forty. The number lands.
 
-"What happens when they all meet?" you ask.
+"And something else," they add. "Something bigger than players. The System has been seeding the city with creatures — testing us. Getting us ready."
 
-They look at the sky. "I think we're about to find out."`,
+"Ready for what?"
+
+They look at the sky. "I think we're about to find out."
+
+Your interface pulses. CHAPTER PROGRESS: 70%`,
     choices: [{ label: 'Ask them what they know', next: 'plaza_talk' }],
   },
 
   plaza_talk: {
     id: 'plaza_talk', type: 'story',
-    text: `The green-badge player — they say their name is Yara — has been building a picture from everything she's seen.
+    text: `The green-badge player — Yara — has been building a picture from everything she's seen.
 
-"The System rewards survival. It tracks behavior. And somewhere" — she points up — "something is watching all of it."
+"The System rewards survival and combat. Every creature you defeat makes you stronger. Every choice you make gets recorded."
 
-As if on cue, your interface flickers. A new alert, one you haven't seen before:
+She pulls up her own stats. Level 3. She's been fighting.
+
+"There's one more cluster of entities before the boss," she says, pointing toward the north end of the plaza. "I cleared mine. Have you cleared yours?"
+
+As if on cue, your interface flickers:
 
 WARNING: HIGH-TIER ENTITY APPROACHING THIS ZONE.
+SYSTEM RECOMMENDATION: REACH LEVEL 3 BEFORE ENGAGING.
 
-PLAYER ADVICE: PREPARE.
+Yara looks at you. "How are your stats?"`,
+    sysMsg: '⚠ High-tier entity inbound. Recommend Level 3 before engagement.',
+    choices: [
+      { label: 'I am ready — let it come',           sub: 'Engage The Watcher now',         next: 'pre_boss_check' },
+      { label: 'Hit the north plaza spawn first',    sub: 'More XP before the boss fight',  next: 'plaza_grind' },
+    ],
+  },
 
-Yara reads it from her own screen at the same time. She looks at you. You look at her.
+  plaza_grind: {
+    id: 'plaza_grind', type: 'story',
+    text: `The north end of the plaza is dense with them — SYSTEM FRAGMENTS, crystallized errors in the fabric of the paused world. They swarm in groups. They're not smart. But they're many.
+
+SYSTEM FRAGMENT CLUSTER — HP 90 total, ATK 5
+
+Yara watches from a distance. "I'll cover your flank," she says.`,
+    choices: [{ label: 'Fight the Fragment Cluster', next: 'fight_plaza_spawn' }],
+  },
+
+  fight_plaza_spawn: {
+    id: 'fight_plaza_spawn', type: 'combat',
+    text: `They move like broken code — stuttering, overlapping, reforming. Yara is true to her word. You take the front.`,
+    enemy: { name:'Fragment Cluster', icon:'💠', hp:90, atk:5, xp:110, loot:[{itemKey:'medkit', qty:1}] },
+    onWin: 'plaza_grind_done',
+    onLose: 'pre_boss_check',
+    onEscape: 'pre_boss_check',
+  },
+
+  plaza_grind_done: {
+    id: 'plaza_grind_done', type: 'story',
+    text: `They dissolve in waves. The plaza goes quiet.
+
+Yara walks over. Looks at your interface. Nods slowly.
+
+"Now you're ready."
+
+Your stats reflect it. Every fight has built toward this moment. You can feel the difference — the weight of your decisions, the sharpness of your instincts, the certainty that you are not the same player who stepped into this frozen city at the start.
+
+The sky begins to change.`,
+    xp: 50,
+    choices: [{ label: 'Face what comes next', next: 'pre_boss_check' }],
+  },
+
+  pre_boss_check: {
+    id: 'pre_boss_check', type: 'story',
+    text: `The fountain at the center of the plaza begins to vibrate. The water — still frozen mid-arc — starts to crack.
+
+Yara steps back. Her interface is pinging rapidly.
+
+"Ninety seconds," she says. "Make your call."
+
+She looks at you with the expression of someone who has been waiting a long time for something worth fighting.
 
 "Together?" she asks.
 
 You have about ninety seconds to decide.`,
-    sysMsg: '⚠ High-tier entity inbound. Prepare for engagement.',
+    sysMsg: '⚠ Boss entity countdown initiated. 90 seconds.',
     choices: [
-      { label: 'Ask Yara to fight beside you', sub: 'A green ally — shared XP',             next: 'pre_boss_team' },
-      { label: 'Tell her to run — you will handle it', sub: 'Face it alone. Your choice.',  next: 'pre_boss_solo' },
-      { label: 'Use her as bait and prepare an ambush', sub: 'Cold. Effective. Dangerous.',  next: 'pre_boss_betray', variant: 'danger' },
+      { label: 'Fight together',                     sub: 'A green ally — shared damage',    next: 'pre_boss_team' },
+      { label: 'Tell her to run — you handle it',   sub: 'Face it alone. Your choice.',     next: 'pre_boss_solo' },
+      { label: 'Use her as bait and set an ambush', sub: 'Cold. Effective. Dangerous.',     next: 'pre_boss_betray', variant: 'danger' },
     ],
   },
 
@@ -351,7 +619,7 @@ At zero, the sky cracks open.`,
 
 She looks at you for a long moment. Then: "Don't die being stubborn."
 
-She leaves at a run. You stand alone in the plaza. The fountains begin to tremble. The air goes cold.
+She leaves at a run. You stand alone in the plaza. The fountains begin to tremble.
 
 Your interface counts down. You breathe. You wait.
 
@@ -361,7 +629,7 @@ At zero, the sky splits.`,
 
   pre_boss_betray: {
     id: 'pre_boss_betray', type: 'story',
-    text: `You keep your voice calm. "Stay center. It'll come from above — you'll see it first from there."
+    text: `"Stay center," you tell her calmly. "It'll come from above — you'll see it first from there."
 
 She believes you. Moves to the middle of the plaza.
 
@@ -376,123 +644,7 @@ As if it's been watching you all along.`,
   },
 
   // ═══════════════════════════════════════
-  // PATH C — SYSTEM
-  // ═══════════════════════════════════════
-  system: {
-    id: 'system', type: 'story',
-    text: `You focus on the interface and let everything else fall away.
-
-It responds to your attention — expanding, deepening. New panels slide open. A stats breakdown. An inventory grid, empty for now. A radar map pulsing with soft signals.
-
-You study them. Six signals within two hundred meters. Three are stationary. Two are moving slowly. One is moving fast — too fast, like someone running.
-
-The interface also shows something else. A notification you almost miss at the edge of the screen:
-
-TUTORIAL AVAILABLE: TAP TO BEGIN.
-
-You tap it.`,
-    xp: 10,
-    sysMsg: '⚠ Scanning… Multiple players detected nearby.',
-    choices: [
-      { label: 'Read the tutorial',          sub: 'Learn the System mechanics',         next: 'sys_tutorial' },
-      { label: 'Track the running signal',   sub: 'First-strike advantage',             next: 'sys_track' },
-      { label: 'Close it and stay hidden',   sub: 'Observe before engaging',            next: 'sys_observe' },
-    ],
-  },
-
-  sys_tutorial: {
-    id: 'sys_tutorial', type: 'story',
-    text: `The tutorial is brief. Clinical. Written like a legal document.
-
-SUPERSEDE SYSTEM — PLAYER BRIEFING:
-
-1. All persons within the affected zone are now designated Players.
-2. Players may interact freely. Outcomes are recorded.
-3. XP is awarded for survival, engagement, and behavioral consistency.
-4. Reputation is permanent and visible to all Players.
-5. Chapter progression unlocks additional zones and entities.
-6. High-tier entities will test Player performance at chapter intervals.
-7. Death results in a penalty phase, not elimination.
-8. The System observes everything.
-
-There is no point 9.
-
-You close the tutorial. You feel like you've read a lease agreement for a building you're already living in. The terms feel non-negotiable.
-
-Your interface pings. The fast-moving signal has stopped.`,
-    xp: 15,
-    choices: [
-      { label: 'Track the stopped signal',   sub: 'Investigate',    next: 'sys_track' },
-      { label: 'Stay off the radar',         sub: 'Lie low',        next: 'sys_observe' },
-    ],
-  },
-
-  sys_track: {
-    id: 'sys_track', type: 'story',
-    text: `You move silently, using the radar as a guide. Left at the fountain. Right past the frozen florist. Through a gap between two stopped buses.
-
-You find them crouched behind a car — a player, maybe mid-twenties, studying their own interface. They don't know you're standing behind them.
-
-You could announce yourself. You could attack. You could just watch.
-
-For ten full seconds you stand there. Then your shadow falls across their screen. They freeze.
-
-"I heard your footsteps three blocks back," they say without turning around. "I was waiting to see what you'd do."
-
-They turn. Their badge: NEUTRAL. Their expression: amused.`,
-    xp: 18,
-    choices: [
-      { label: 'Laugh — admit they caught you', sub: 'An honest moment',               next: 'sys_track_meet' },
-      { label: 'Stay silent and walk away',     sub: 'Keep them guessing',             next: 'sys_track_leave' },
-    ],
-  },
-
-  sys_track_meet: {
-    id: 'sys_track_meet', type: 'story',
-    text: `They introduce themselves as Kai. Former data analyst. Already figured out that the System runs on behavior patterns.
-
-"It's not watching what you do," they say. "It's watching why you do it. Pattern recognition. The entity at the end of this chapter — it'll know your tendencies before you do."
-
-They share a location pin — a supply stash two blocks over. You share your flashlight reading. Both of you are better for the exchange.
-
-You part as something that isn't quite friends but might become it, given time.`,
-    xp: 20,
-    rewards: [{ itemKey: 'medkit', qty: 1 }],
-    choices: [{ label: 'Head toward the plaza', next: 'street_midpoint' }],
-  },
-
-  sys_track_leave: {
-    id: 'sys_track_leave', type: 'story',
-    text: `You say nothing. Just hold their gaze for a moment, then turn and walk away.
-
-You hear them exhale behind you. Not frightened. Thoughtful.
-
-Your interface logs the interaction as NEUTRAL ENCOUNTER — DISENGAGED.
-
-You're not sure if that's good or bad. The System doesn't clarify.
-
-You carry on toward the center of the city.`,
-    xp: 12,
-    choices: [{ label: 'Head toward the plaza', next: 'street_midpoint' }],
-  },
-
-  sys_observe: {
-    id: 'sys_observe', type: 'story',
-    text: `You let the signals move without following them. Just watch from your position — the radar's pulsing dots shifting and drifting.
-
-Two signals merge. Then separate quickly. A fight, maybe. Or just proximity.
-
-One signal goes dark. Not moving anymore, just — absent. You log it. No idea what it means yet.
-
-Your own position on the radar must look the same to anyone watching you. A stationary dot. Patient. Unreadable.
-
-You decide that's fine. In a game being watched, sometimes stillness is the loudest signal of all.`,
-    xp: 14,
-    choices: [{ label: 'Move toward the plaza', next: 'street_midpoint' }],
-  },
-
-  // ═══════════════════════════════════════
-  // BOSS + END
+  // BOSS
   // ═══════════════════════════════════════
   boss: {
     id:'boss', type:'boss',
@@ -502,8 +654,6 @@ Not a metaphor. Not a symbol. An actual eye, the size of a building, suspended i
 
 It blinks once — slowly, deliberately — and every player in the district feels it. A pressure behind the eyes. A sudden awareness of being seen.
 
-The System announces it with a single line of text:
-
 THE WATCHER.
 
 The air vibrates at a frequency just below hearing. The frozen people around the plaza begin to tremble, as if even suspended physics recognizes something ancient and wrong has arrived.
@@ -511,14 +661,17 @@ The air vibrates at a frequency just below hearing. The frozen people around the
 It looks at you.
 
 It already knows everything.`,
-    enemy: { name:'The Watcher', icon:'👁', hp:200, atk:18, xp:80, loot:[{itemKey:'core_fragment',qty:1}] },
+    enemy: { name:'The Watcher', icon:'👁', hp:200, atk:18, xp:150, loot:[{itemKey:'core_fragment',qty:1}] },
   },
 
+  // ═══════════════════════════════════════
+  // END
+  // ═══════════════════════════════════════
   chapter_end: {
     id:'chapter_end', type:'end',
     text:`The Watcher shatters.
 
-Not with violence — with silence. Like a mirror falling in a dream, breaking without sound. The eye closes. The crack in the sky seals, stitching itself shut with threads of pale light.
+Not with violence — with silence. Like a mirror falling in a dream, breaking without sound. The eye closes. The crack in the sky seals itself with threads of pale light.
 
 The plaza is still.
 
@@ -545,6 +698,9 @@ Chapter 2 is waiting.`,
   },
 }
 
+// ── Constants ────────────────────────────────────
+const XP_PER_LEVEL = 100 // XP needed per level = level * XP_PER_LEVEL
+
 // ── App state ────────────────────────────────────
 let player   = await renderNav('nav')
 if (!player) throw new Error('no player')
@@ -556,8 +712,35 @@ let nodeId    = (player.current_node || '').startsWith('ch1_')
 let bossMode  = 'solo'
 let outcome   = null
 
-// If saved node doesn't exist in NODES, reset to opening
 if (!NODES[nodeId]) nodeId = 'opening'
+
+// ── Level up logic ───────────────────────────────
+// Called after every XP gain — levels up player if threshold crossed
+async function checkLevelUp(oldXp, newXp, oldLevel) {
+  let level  = oldLevel
+  let xp     = newXp
+  let leveled = false
+
+  // Keep leveling while XP threshold is crossed
+  while (xp >= level * XP_PER_LEVEL) {
+    xp    -= level * XP_PER_LEVEL
+    level += 1
+    leveled = true
+  }
+
+  if (!leveled) return null
+
+  // Stat gains per level
+  const newAtk    = (player.atk || 1)    + (level - oldLevel) * 2
+  const newDef    = (player.def || 0)    + (level - oldLevel) * 1
+  const newMaxHp  = (player.max_hp || 100) + (level - oldLevel) * 20
+  const newHp     = Math.min(currentHp + 30, newMaxHp) // partial heal on level up
+
+  showToast('LEVEL UP! Now Level ' + level + ' — ATK+2 DEF+1 HP+20')
+  currentHp = newHp
+
+  return { level, atk: newAtk, def: newDef, max_hp: newMaxHp, hp: newHp }
+}
 
 // ── HUD ──────────────────────────────────────────
 function renderHUD() {
@@ -565,20 +748,20 @@ function renderHUD() {
   const mhp = player.max_hp || 100
   const xp  = player.xp || 0
   const lvl = player.level || 1
-  const BADGE_COLORS = { neutral:'#c8b96e', red:'#e05555', green:'#5ec45e', elite:'#a07de0', unknown:'#666' }
-  const BADGE_SEALS  = { neutral:'🟡', red:'🔴', green:'🟢', elite:'🟣', unknown:'⚫' }
-  const bc  = BADGE_COLORS[player.badge] || '#c8b96e'
-  const bs  = BADGE_SEALS[player.badge]  || '🟡'
+  const BC  = { neutral:'#c8b96e', red:'#e05555', green:'#5ec45e', elite:'#a07de0', unknown:'#666' }
+  const BS  = { neutral:'🟡', red:'🔴', green:'🟢', elite:'🟣', unknown:'⚫' }
+  const bc  = BC[player.badge] || '#c8b96e'
+  const bs  = BS[player.badge] || '🟡'
   const hpPct  = Math.max(0, Math.round(hp / mhp * 100))
   const hpCol  = hpPct > 60 ? '#5ec45e' : hpPct > 30 ? '#c8b96e' : '#e05555'
-  const xpNext = lvl * 100
+  const xpNext = lvl * XP_PER_LEVEL
   const xpPct  = Math.min(100, Math.round((xp % xpNext) / xpNext * 100))
   document.getElementById('hud').innerHTML = `
     <div class="hud-badge-row">
       <span class="hud-seal">${bs}</span>
       <div>
         <p class="hud-seal-label" style="color:${bc}">${(player.badge||'neutral')[0].toUpperCase()+(player.badge||'neutral').slice(1)}</p>
-        <p class="hud-chapter">Chapter ${player.current_chapter||1}</p>
+        <p class="hud-chapter">Chapter ${player.current_chapter||1} · Lvl ${lvl}</p>
       </div>
     </div>
     <div class="stat-row">
@@ -589,7 +772,7 @@ function renderHUD() {
     <div class="stat-row">
       <span class="stat-key">XP</span>
       <div class="stat-bar-wrap"><div class="stat-bar" style="width:${xpPct}%;background:#a07de0;transition:width .4s"></div></div>
-      <span class="stat-val">Lvl ${lvl}</span>
+      <span class="stat-val">→ Lvl ${lvl+1}</span>
     </div>
     <div class="stat-grid">
       <div class="stat-box"><span class="stat-box-key">ATK</span><span class="stat-box-val">${player.atk||1}</span></div>
@@ -601,13 +784,13 @@ function renderHUD() {
 
 function updateHpBar(hp) {
   currentHp = hp
-  const mhp  = player.max_hp || 100
-  const pct  = Math.max(0, Math.round(hp / mhp * 100))
-  const col  = pct > 60 ? '#5ec45e' : pct > 30 ? '#c8b96e' : '#e05555'
-  const bar  = document.getElementById('hp-bar')
-  const val  = document.getElementById('hp-val')
-  if (bar) { bar.style.width = pct + '%'; bar.style.background = col }
-  if (val) val.textContent = hp + '/' + mhp
+  const mhp = player.max_hp || 100
+  const pct = Math.max(0, Math.round(hp / mhp * 100))
+  const col = pct > 60 ? '#5ec45e' : pct > 30 ? '#c8b96e' : '#e05555'
+  const bar = document.getElementById('hp-bar')
+  const val = document.getElementById('hp-val')
+  if (bar) { bar.style.width = pct+'%'; bar.style.background = col }
+  if (val) val.textContent = hp+'/' + ''+(player.max_hp||100)
 }
 
 // ── Save ─────────────────────────────────────────
@@ -641,13 +824,23 @@ async function addItem(itemKey, qty = 1) {
 async function goTo(nextId, choice = {}) {
   if (!NODES[nextId]) return
   const cur = NODES[nodeId]
+  const oldXp  = player.xp || 0
+  const oldLvl = player.level || 1
+
   const updates = { current_node: 'ch1_' + nextId }
-  if (cur?.xp)     updates.xp = (player.xp||0) + cur.xp
+  if (cur?.xp)     updates.xp = oldXp + cur.xp
   if (cur?.hpLoss) { currentHp = Math.max(1, currentHp - cur.hpLoss); updates.hp = currentHp }
   if (choice.outcome === 'attack') { updates.reputation = 'red'; updates.badge = 'red' }
   if (choice.bossMode) bossMode = choice.bossMode
   if (choice.outcome)  outcome  = choice.outcome
   if (cur?.rewards) for (const r of cur.rewards) await addItem(r.itemKey, r.qty)
+
+  // Check for level up before saving
+  if (updates.xp) {
+    const lvlUpdates = await checkLevelUp(oldXp, updates.xp, oldLvl)
+    if (lvlUpdates) Object.assign(updates, lvlUpdates)
+  }
+
   await save(updates)
 
   const lp = document.getElementById('left-page')
@@ -672,25 +865,43 @@ function render() {
   }
   if (node.sysMsg) showSysOverlay(node.sysMsg)
 
-  // Left page — story text
   const stEl = document.getElementById('story-text')
   stEl.textContent = node.text || ''
   stEl.className   = nodeId === 'opening' ? 'story-text drop-cap' : 'story-text'
 
-  // Outcome flavour text
+  // Watcher image — teaser on pre_boss nodes, full on boss node
+  const watcherNodes = ['pre_boss_team','pre_boss_solo','pre_boss_betray','pre_boss_check','boss']
+  const watcherImg   = document.getElementById('watcher-img')
+  if (watcherNodes.includes(nodeId)) {
+    if (!watcherImg) {
+      const img = document.createElement('img')
+      img.id    = 'watcher-img'
+      img.src   = '../assets/the_watcher.png'
+      img.alt   = 'The Watcher'
+      img.style.cssText = 'width:100%;max-width:320px;display:block;margin:1.5rem auto 0;border-radius:4px;opacity:0;transition:opacity 1s;filter:' + (nodeId==='boss'?'none':'brightness(.7) saturate(0.6)')
+      document.getElementById('story-text').insertAdjacentElement('afterend', img)
+      setTimeout(() => img.style.opacity = '1', 100)
+    } else {
+      watcherImg.style.filter = nodeId==='boss' ? 'none' : 'brightness(.7) saturate(0.6)'
+      watcherImg.style.opacity = '1'
+    }
+  } else {
+    if (watcherImg) watcherImg.remove()
+  }
+
   const ob = document.getElementById('outcome-box')
   if (outcome && nodeId === 'search_deeper') {
     ob.style.display = 'block'
-    ob.textContent   = outcome==='team' ? 'You made a choice to be human first.'
+    ob.textContent   = outcome==='team'   ? 'You made a choice to be human first.'
       : outcome==='attack' ? 'The System recorded it. Reputation: Red.'
       : 'You watched. You learned. You moved on.'
   } else { ob.style.display = 'none' }
 
-  // Right page
   const panel = document.getElementById('right-panel')
-  if      (node.type === 'boss') renderCombat(panel, node)
-  else if (node.type === 'end')  renderEnd(panel, node)
-  else                           renderChoices(panel, node)
+  if      (node.type === 'boss')   renderBoss(panel, node)
+  else if (node.type === 'combat') renderCombat(panel, node)
+  else if (node.type === 'end')    renderEnd(panel, node)
+  else                              renderChoices(panel, node)
 }
 
 // ── Choices ──────────────────────────────────────
@@ -721,7 +932,6 @@ function renderChoices(panel, node) {
 
 // ── End screen ───────────────────────────────────
 function renderEnd(panel, node) {
-  // Also set left page text
   document.getElementById('story-text').textContent = node.text || ''
   panel.innerHTML = `
     <div class="end-box">
@@ -743,12 +953,26 @@ function renderEnd(panel, node) {
   })
 }
 
-// ── Combat ───────────────────────────────────────
+// ── Generic combat (for story encounters) ────────
 function renderCombat(panel, node) {
-  const enemy = { ...node.enemy }
-  if (bossMode === 'solo')   enemy.hp = 140
-  if (bossMode === 'betray') enemy.hp = 220
+  buildCombatUI(panel, node.enemy, node.onWin, node.onLose, node.onEscape, false)
+}
 
+// ── Boss combat ───────────────────────────────────
+function renderBoss(panel, node) {
+  // Scale Watcher to player level — always a real challenge
+  const lvl    = player.level || 1
+  const enemy  = { ...node.enemy }
+  if (bossMode === 'solo')   enemy.hp = 120 + lvl * 20
+  if (bossMode === 'team')   enemy.hp = 160 + lvl * 20
+  if (bossMode === 'betray') enemy.hp = 180 + lvl * 25
+  // Also scale atk slightly to level
+  enemy.atk = node.enemy.atk + Math.floor(lvl * 1.5)
+  buildCombatUI(panel, enemy, 'chapter_end', 'pre_boss_check', 'pre_boss_check', true)
+}
+
+// ── Shared combat UI builder ──────────────────────
+function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
   let enemyHp      = enemy.hp
   const maxEnemyHp  = enemy.hp
   const maxPlayerHp = player.max_hp || 100
@@ -757,7 +981,9 @@ function renderCombat(panel, node) {
   panel.innerHTML = `
     <div class="combat-panel" id="combat-wrap">
       <div class="combat-enemy-row">
-        <span class="combat-enemy-icon">${enemy.icon}</span>
+        ${isBoss
+          ? '<img src=\'../assets/the_watcher.png\' alt=\'The Watcher\' style=\'width:72px;height:72px;object-fit:cover;border-radius:50%;border:2px solid #00ffe7;box-shadow:0 0 16px #00ffe740;flex-shrink:0\'>'
+          : '<span class="combat-enemy-icon">'+enemy.icon+'</span>'}
         <div style="flex:1">
           <p class="combat-enemy-name">${enemy.name}</p>
           <div class="stat-bar-wrap">
@@ -766,7 +992,7 @@ function renderCombat(panel, node) {
           <p id="e-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435;margin-top:2px">${enemyHp} / ${maxEnemyHp} HP</p>
         </div>
       </div>
-      <div class="combat-log" id="combat-log">The eye opens. It sees everything.</div>
+      <div class="combat-log" id="combat-log">${isBoss ? 'The eye opens. It sees everything.' : 'The encounter begins.'}</div>
       <div class="stat-row" style="margin-bottom:1rem">
         <span class="stat-key" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435">YOUR HP</span>
         <div class="stat-bar-wrap">
@@ -785,7 +1011,7 @@ function renderCombat(panel, node) {
   `
 
   function syncBars() {
-    const ePct = Math.max(0, Math.round(enemyHp / maxEnemyHp * 100))
+    const ePct = Math.max(0, Math.round(enemyHp  / maxEnemyHp  * 100))
     const pPct = Math.max(0, Math.round(currentHp / maxPlayerHp * 100))
     const eBar = document.getElementById('e-bar')
     const eHp  = document.getElementById('e-hp')
@@ -807,61 +1033,71 @@ function renderCombat(panel, node) {
     setTimeout(()=>w.classList.remove('animate-shake'),400)
   }
 
-  async function endCombat(won) {
+  async function endCombat(result) {
     if (over) return
     over = true
     const actions = document.getElementById('combat-actions')
     const overEl  = document.getElementById('combat-over')
     if (actions) actions.style.display = 'none'
-    if (overEl)  { overEl.style.display='block'; overEl.textContent = won?'✦ Victory ✦':'✦ Defeated ✦' }
-    if (won) {
-      const unlocked = player.chapters_unlocked || [1]
-      await save({
-        xp: (player.xp||0) + (enemy.xp||80),
-        hp: currentHp,
-        chapters_unlocked: unlocked.includes(2) ? unlocked : [...unlocked, 2]
-      })
+    if (overEl)  {
+      overEl.style.display='block'
+      overEl.textContent = result==='win' ? '✦ Victory ✦' : result==='escape' ? '✦ Escaped ✦' : '✦ Defeated ✦'
+    }
+
+    const oldXp  = player.xp || 0
+    const oldLvl = player.level || 1
+
+    if (result === 'win') {
+      const newXp     = oldXp + (enemy.xp || 50)
+      const updates   = { xp: newXp, hp: currentHp }
+      const lvlUp     = await checkLevelUp(oldXp, newXp, oldLvl)
+      if (lvlUp) Object.assign(updates, lvlUp)
+      if (isBoss) {
+        const unlocked = player.chapters_unlocked || [1]
+        if (!unlocked.includes(2)) updates.chapters_unlocked = [...unlocked, 2]
+      }
+      await save(updates)
       if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
-      setTimeout(() => goTo('chapter_end'), 1200)
+      setTimeout(() => goTo(onWin), 1200)
     } else {
       await save({ hp: Math.max(1, currentHp) })
-      setTimeout(() => goTo('pre_boss_solo'), 1200)
+      setTimeout(() => goTo(result==='escape' ? onEscape : onLose), 1200)
     }
   }
 
   document.getElementById('btn-attack').addEventListener('click', () => {
     if (over) return
-    const atk     = (player.atk||1) + Math.floor(Math.random()*8) + 2
-    const eDmg    = Math.max(0, enemy.atk + Math.floor(Math.random()*6) - (player.def||0))
+    const atk  = (player.atk||1) + Math.floor(Math.random()*6) + 1
+    const eDmg = Math.max(0, enemy.atk + Math.floor(Math.random()*4) - (player.def||0))
     enemyHp   = Math.max(0, enemyHp   - atk)
     currentHp = Math.max(0, currentHp - eDmg)
     shake()
     log('You strike for '+atk+'. '+enemy.name+' retaliates for '+eDmg+'.')
     syncBars()
-    if (enemyHp  <= 0) { log(enemy.name+' has fallen.'); endCombat(true);  return }
-    if (currentHp <= 0) { log('You collapse…');           endCombat(false); return }
+    if (enemyHp  <= 0) { log(enemy.name+' has fallen.'); endCombat('win');    return }
+    if (currentHp <= 0) { log('You collapse…');           endCombat('defeat'); return }
   })
 
   document.getElementById('btn-defend').addEventListener('click', () => {
     if (over) return
-    const dmg = Math.max(0, Math.floor(enemy.atk*0.4) - (player.def||0))
+    const dmg = Math.max(0, Math.floor(enemy.atk*0.35) - (player.def||0))
     currentHp = Math.max(0, currentHp - dmg)
     log('You brace. '+(dmg>0?'Took '+dmg+' damage.':'Blocked completely.'))
     syncBars()
-    if (currentHp <= 0) endCombat(false)
+    if (currentHp <= 0) endCombat('defeat')
   })
 
   document.getElementById('btn-escape').addEventListener('click', () => {
     if (over) return
     if (Math.random() > 0.4) {
-      log('You slip away into the shadows…')
-      endCombat(false)
+      log('You slip away…')
+      endCombat('escape')
     } else {
       const dmg = Math.max(0, enemy.atk - (player.def||0))
       currentHp = Math.max(0, currentHp - dmg)
       log('No escape — took '+dmg+' damage.')
       syncBars()
-      if (currentHp <= 0) endCombat(false)
+      if (currentHp <= 0) endCombat('defeat')
     }
   })
 
