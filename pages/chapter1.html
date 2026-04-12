@@ -853,6 +853,65 @@ async function save(updates) {
 }
 
 // ── Add item ─────────────────────────────────────
+// ── Loot drop queue — collect drops then show summary window ──
+let _lootQueue = []
+let _lootTimerId = null
+
+function queueLoot(name, qty, img) {
+  _lootQueue.push({ name, qty, img })
+  clearTimeout(_lootTimerId)
+  _lootTimerId = setTimeout(showLootWindow, 400)
+}
+
+function showLootWindow() {
+  if (!_lootQueue.length) return
+  const drops = [..._lootQueue]
+  _lootQueue = []
+
+  // Remove existing loot window if any
+  document.getElementById('loot-window')?.remove()
+
+  const win = document.createElement('div')
+  win.id = 'loot-window'
+  win.style.cssText = `
+    position:fixed;bottom:80px;right:20px;z-index:500;
+    background:#0f0d08;border:1px solid rgba(200,184,128,.5);
+    border-radius:6px;padding:0;min-width:220px;max-width:280px;
+    box-shadow:0 8px 40px rgba(0,0,0,.8);animation:fadeIn .3s ease;
+    font-family:'Share Tech Mono',monospace;
+  `
+  win.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid rgba(200,184,128,.2)">
+      <span style="font-size:.62rem;letter-spacing:.1em;color:#c8b880">ITEMS OBTAINED</span>
+      <button onclick="document.getElementById('loot-window').remove()" style="background:none;border:none;color:#7a6435;cursor:pointer;font-size:1rem;line-height:1;padding:0 2px">✕</button>
+    </div>
+    <div style="padding:6px 0;max-height:280px;overflow-y:auto">
+      ${drops.map(d => `
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:.5px solid rgba(200,184,128,.1)">
+          ${d.img ? `<img src="${d.img}" style="width:28px;height:28px;object-fit:contain;border-radius:3px;flex-shrink:0">` : `<span style="font-size:1.1rem;flex-shrink:0">📦</span>`}
+          <span style="font-size:.68rem;color:#e8d8a8;flex:1">${d.name}</span>
+          ${d.qty > 1 ? `<span style="font-size:.58rem;color:#7a6435">×${d.qty}</span>` : ''}
+          <button onclick="declineDrop('${d.name}',this)" style="background:none;border:.5px solid rgba(224,85,85,.3);color:#e05555;cursor:pointer;font-size:.55rem;padding:1px 5px;border-radius:2px;font-family:'Share Tech Mono',monospace">skip</button>
+        </div>
+      `).join('')}
+    </div>
+    <div style="padding:8px 12px;display:flex;justify-content:flex-end">
+      <button onclick="document.getElementById('loot-window').remove()" style="font-family:'Cinzel',serif;font-size:.68rem;color:#1a1208;background:rgba(200,184,128,.5);border:1px solid rgba(139,106,32,.6);padding:4px 14px;border-radius:2px;cursor:pointer">Keep All</button>
+    </div>
+  `
+  document.body.appendChild(win)
+
+  // Auto-dismiss after 8 seconds
+  setTimeout(() => win.remove?.(), 8000)
+}
+
+window.declineDrop = async function(itemName, btn) {
+  // Find item in inventory by name and delete it
+  const { data } = await supabase.from('inventory').select('id').eq('player_id', player.id).eq('name', itemName).order('obtained_at',{ascending:false}).limit(1)
+  if (data?.[0]) await supabase.from('inventory').delete().eq('id', data[0].id)
+  btn.closest('div[style]').remove()
+}
+
 const SOCKET_RULES = {
   common:   {chance:0.20,max:1}, uncommon:{chance:0.35,max:2},
   rare:     {chance:0.50,max:3}, epic:    {chance:0.65,max:4},
@@ -951,7 +1010,7 @@ async function addItem(itemKey, qty = 1) {
         special_effect:m.special_effect||null, sockets_total:0, sockets_used:0, socketed_runes:[]
       })
     }
-    showToast('+ ' + m.name)
+    queueLoot(m.name, qty, getItemImg(m.item_key))
     return
   }
   const socketsRolled = rollSockets(m.rarity, m.item_type)
@@ -965,12 +1024,11 @@ async function addItem(itemKey, qty = 1) {
     special_effect:m.special_effect||null,
     sockets_total:socketsRolled, sockets_used:0, socketed_runes:[]
   })
-  const socketMsg = socketsRolled > 0 ? ` [${socketsRolled} socket${socketsRolled>1?'s':''}!]` : ''
-  showToast('+ ' + m.name + socketMsg)
+  queueLoot(m.name + (socketsRolled > 0 ? ` [${socketsRolled} socket${socketsRolled>1?'s':''}!]` : ''), 1, getItemImg(m.item_key))
 }
 
 // ── Navigate ─────────────────────────────────────
-async function goTo(nextId, choice = {}) {
+window.goTo = async function goTo(nextId, choice = {}) {
   if (!NODES[nextId]) return
   const cur = NODES[nodeId]
   const oldXp  = player.xp || 0
@@ -1080,7 +1138,7 @@ function renderLocationHub(panel, node) {
         </div>`
       }).join('')}
     </div>
-    <button class="choice" onclick="goTo('${node.returnNode}')" style="width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
+    <button class="choice" onclick="goTo('plaza_talk')" style="width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
       <span class="choice-arrow">→</span>
       <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:1rem;color:#3a2e15">Return to main story</span>
     </button>
@@ -1144,7 +1202,7 @@ function renderFarmZone(panel, loc) {
         <span class="choice-arrow">←</span>
         <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#3a2e15">Back to zones</span>
       </button>
-      <button class="choice" onclick="goTo('${window._farmingReturnNode||'plaza_talk'}')" style="flex:1;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
+      <button class="choice" onclick="goTo('plaza_talk')" style="flex:1;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
         <span class="choice-arrow">→</span>
         <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#3a2e15">Return to story</span>
       </button>
