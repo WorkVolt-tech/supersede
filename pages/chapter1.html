@@ -1226,13 +1226,13 @@ function renderFarmZone(panel, loc) {
       }).join('')}
     </div>
     <div style="display:flex;gap:6px">
-      <button class="choice" onclick="enterLocation('${loc.id}')" style="flex:1;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
+      <button class="choice" onclick="returnToZoneHub()" style="flex:1;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
         <span class="choice-arrow">←</span>
-        <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#3a2e15">Back to zones</span>
+        <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#1a1208">Back to zones</span>
       </button>
       <button class="choice" onclick="goTo('plaza_talk')" style="flex:1;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
         <span class="choice-arrow">→</span>
-        <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#3a2e15">Return to story</span>
+        <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#1a1208">Return to story</span>
       </button>
     </div>
   `
