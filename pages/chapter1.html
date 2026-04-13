@@ -1404,52 +1404,41 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
     const oldLvl = player.level || 1
 
     if (result === 'win') {
+      const newXp     = oldXp + (enemy.xp || 50)
+      const updates   = { xp: newXp, hp: currentHp }
+      const lvlUp     = await checkLevelUp(oldXp, newXp, oldLvl)
+      if (lvlUp) Object.assign(updates, lvlUp)
+      if (isBoss) {
+        const unlocked = player.chapters_unlocked || [1]
+        if (!unlocked.includes(2)) updates.chapters_unlocked = [...unlocked, 2]
+      }
+      await save(updates)
+      if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
+
+      // ── Rune drops ──────────────────────────────────
+      // Common enemies: 20% chance to drop ignis/aqua/terra/aero
+      // Hard enemies:   35% chance, can also drop umbra/lux
+      // Boss:           guaranteed rune drop, rare runes included
+      const RUNE_POOL_COMMON = ['rune_ignis','rune_aqua','rune_terra','rune_aero']
+      const RUNE_POOL_RARE   = ['rune_ignis','rune_aqua','rune_terra','rune_aero','rune_umbra','rune_lux']
+      const isHardEnemy      = (enemy.hp||0) > 60
+      const runeChance       = isBoss ? 1.0 : isHardEnemy ? 0.35 : 0.20
+      const runePool         = (isBoss || isHardEnemy) ? RUNE_POOL_RARE : RUNE_POOL_COMMON
+      if (Math.random() < runeChance) {
+        const rune = runePool[Math.floor(Math.random()*runePool.length)]
+        await addItem(rune, 1)
+      }
+      // Farm win — process drops immediately then re-render zone (no delay)
       if (onWin === '__farm_win__') {
-        // ── Farm win — render zone FIRST, save everything in background ──
+        if (farmLoc && farmLoc.enemies[farmIdx]) {
+          for (const drop of farmLoc.enemies[farmIdx].loot) {
+            if (Math.random() < drop.chance) await addItem(drop.itemKey, 1)
+          }
+        }
         const p = document.getElementById('right-panel')
         if (farmLoc && p) renderFarmZone(p, farmLoc)
         else if (p) renderLocationHub(p, NODES['farming_hub'])
-
-        // All DB work fires without blocking the UI
-        const newXp   = oldXp + (enemy.xp || 50)
-        const updates = { xp: newXp, hp: currentHp }
-        checkLevelUp(oldXp, newXp, oldLvl).then(lvlUp => {
-          if (lvlUp) Object.assign(updates, lvlUp)
-          save(updates)
-        })
-        if (enemy.loot) for (const l of enemy.loot) addItem(l.itemKey, l.qty)
-        const RUNE_POOL_COMMON = ['rune_ignis','rune_aqua','rune_terra','rune_aero']
-        const RUNE_POOL_RARE   = ['rune_ignis','rune_aqua','rune_terra','rune_aero','rune_umbra','rune_lux']
-        const isHardEnemy      = (enemy.hp||0) > 60
-        const runePool         = isHardEnemy ? RUNE_POOL_RARE : RUNE_POOL_COMMON
-        const runeChance       = isHardEnemy ? 0.35 : 0.20
-        if (Math.random() < runeChance) addItem(runePool[Math.floor(Math.random()*runePool.length)], 1)
-        if (farmLoc && farmLoc.enemies[farmIdx]) {
-          for (const drop of farmLoc.enemies[farmIdx].loot) {
-            if (Math.random() < drop.chance) addItem(drop.itemKey, 1)
-          }
-        }
       } else {
-        // ── Story/boss win — await everything then navigate ──
-        const newXp     = oldXp + (enemy.xp || 50)
-        const updates   = { xp: newXp, hp: currentHp }
-        const lvlUp     = await checkLevelUp(oldXp, newXp, oldLvl)
-        if (lvlUp) Object.assign(updates, lvlUp)
-        if (isBoss) {
-          const unlocked = player.chapters_unlocked || [1]
-          if (!unlocked.includes(2)) updates.chapters_unlocked = [...unlocked, 2]
-        }
-        await save(updates)
-        if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
-        const RUNE_POOL_COMMON = ['rune_ignis','rune_aqua','rune_terra','rune_aero']
-        const RUNE_POOL_RARE   = ['rune_ignis','rune_aqua','rune_terra','rune_aero','rune_umbra','rune_lux']
-        const isHardEnemy      = (enemy.hp||0) > 60
-        const runeChance       = isBoss ? 1.0 : isHardEnemy ? 0.35 : 0.20
-        const runePool         = (isBoss || isHardEnemy) ? RUNE_POOL_RARE : RUNE_POOL_COMMON
-        if (Math.random() < runeChance) {
-          const rune = runePool[Math.floor(Math.random()*runePool.length)]
-          await addItem(rune, 1)
-        }
         setTimeout(() => goTo(onWin), 1200)
       }
     } else {
