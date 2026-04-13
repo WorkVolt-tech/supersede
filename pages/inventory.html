@@ -214,13 +214,28 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     const unequippedCount = items.filter(i=>!i.equipped_slot).length
     document.getElementById('bag-count').textContent = unequippedCount + ' items'
     document.getElementById('item-grid').innerHTML = filtered.map(item => `
-      <div class="item-card${selectedId===item.id?' selected':''}" data-id="${item.id}">
-        ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="item-icon" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display=\'none\'">'):'<span class="item-icon">'+(item.icon||'📦')+'</span>';})()}
-        <p class="item-name" style="color:${RARITY[item.rarity]||'#c8c0a0'}">${item.name}</p>
-        <p class="item-type">${item.subtype||item.item_type}</p>
-        ${item.quantity>1?`<span class="item-qty">×${item.quantity}</span>`:''}
-        ${item.equipped_slot?`<span class="item-eq">EQ</span>`:''}
-        ${(item.sockets_total||0)>0?`<span style="position:absolute;bottom:4px;left:4px;font-size:.45rem;color:#a07de0;font-family:'Share Tech Mono',monospace">${item.sockets_used||0}/${item.sockets_total}◈</span>`:''} 
+      <div class="item-card${selectedId===item.id?' selected':''}" data-id="${item.id}" style="display:flex;align-items:flex-start;gap:6px;min-height:72px">
+        ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="item-icon" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">'):'<span class="item-icon">'+(item.icon||'📦')+'</span>';})()}
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <p class="item-name" style="color:${RARITY[item.rarity]||'#c8c0a0'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px">${item.name}</p>
+          <p class="item-type" style="margin-bottom:1px">${item.subtype||item.item_type}${item.quantity>1?' ×'+item.quantity:''}</p>
+          ${(()=>{
+            const bonuses = [
+              item.atk_bonus>0?'ATK+'+item.atk_bonus:'',
+              item.def_bonus>0?'DEF+'+item.def_bonus:'',
+              (item.power_bonus||0)>0?'PWR+'+item.power_bonus:'',
+              (item.guard_bonus||0)>0?'GRD+'+item.guard_bonus:'',
+              (item.speed_bonus||0)>0?'SPD+'+item.speed_bonus:'',
+              (item.control_bonus||0)>0?'CTR+'+item.control_bonus:'',
+              (item.insight_bonus||0)>0?'INS+'+item.insight_bonus:'',
+              (item.luck_bonus||0)>0?'LCK+'+item.luck_bonus:'',
+              item.hp_restore>0?'+'+item.hp_restore+'HP':'',
+            ].filter(Boolean).join(' ')
+            return bonuses ? '<p style="font-family:monospace;font-size:.44rem;color:#a8c0a0;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+bonuses+'</p>' : ''
+          })()}
+          ${(item.sockets_total||0)>0?'<p style="font-family:monospace;font-size:.44rem;color:'+(item.runeword_name?'#a07de0':'#7a6090')+';margin:0">'+(item.runeword_name?'✦ '+item.runeword_name:''+(item.sockets_used||0)+'/'+(item.sockets_total)+'◈')+'</p>':''}
+        </div>
+        ${item.equipped_slot?'<span class="item-eq" style="position:absolute;top:3px;right:3px">EQ</span>':''} 
       </div>
     `).join('') || `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#3a2008;grid-column:span 3">Nothing here.</p>`
 
