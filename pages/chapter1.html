@@ -995,14 +995,20 @@ async function addItem(itemKey, qty = 1) {
   if (!m) return
   const stackable = ['consumable','material','key']
   if (stackable.includes(m.item_type)) {
-    // Always stack by item_key — find any existing stack regardless of equipped state
-    const { data: ex } = await supabase.from('inventory').select('*')
-      .eq('player_id', player.id).eq('item_key', itemKey).maybeSingle()
+    // Find existing stack first (synchronous — no race condition)
+    const { data: ex } = await supabase
+      .from('inventory').select('id,quantity')
+      .eq('player_id', player.id).eq('item_key', itemKey)
+      .maybeSingle()
+
     if (ex) {
-      await supabase.from('inventory').update({ quantity:(ex.quantity||1)+qty }).eq('id',ex.id)
-      queueLoot(m.name, qty, getItemImg(m.item_key))
+      // Stack onto existing row
+      await supabase.from('inventory')
+        .update({ quantity: (ex.quantity || 1) + qty })
+        .eq('id', ex.id)
     } else {
-      await supabase.from('inventory').insert({
+      // Insert new stack — use upsert with onConflict to prevent race duplicates
+      await supabase.from('inventory').upsert({
         player_id:player.id, item_key:m.item_key, name:m.name, item_type:m.item_type,
         subtype:m.subtype, rarity:m.rarity, atk_bonus:m.atk_bonus||0, def_bonus:m.def_bonus||0,
         hp_restore:m.hp_restore||0, two_handed:m.two_handed||false, icon:m.icon, quantity:qty,
@@ -1010,9 +1016,9 @@ async function addItem(itemKey, qty = 1) {
         guard_bonus:m.guard_bonus||0, speed_bonus:m.speed_bonus||0,
         insight_bonus:m.insight_bonus||0, luck_bonus:m.luck_bonus||0,
         special_effect:m.special_effect||null, sockets_total:0, sockets_used:0, socketed_runes:[]
-      })
-      queueLoot(m.name, qty, getItemImg(m.item_key))
+      }, { onConflict: 'player_id,item_key', ignoreDuplicates: false })
     }
+    queueLoot(m.name, qty, getItemImg(m.item_key))
     return
   }
   const socketsRolled = rollSockets(m.rarity, m.item_type)
@@ -1540,7 +1546,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
       return
     }
 
-    const RC = {common:'#888',uncommon:'#5ec45e',rare:'#5eaee0',epic:'#a07de0',legendary:'#c8b96e'}
+    const RC = {common:'#c8c0a0',uncommon:'#5ec45e',rare:'#5eaee0',epic:'#c090ff',legendary:'#f0d060',mythic:'#ff88ff'}
 
     list.innerHTML = usable.map(item => `
       <div onclick="combatUseItem('${item.id}','${item.name}',${item.hp_restore||0},${item.quantity||1},'${item.special_effect||''}')"
