@@ -162,12 +162,25 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
       const _socketsUsed  = item ? (item.sockets_used||0)  : 0
       const _runeword     = item ? item.runeword_name : null
       return `<div class="equip-slot${selectedId?' clickable':''}" data-slot="${s.key}" title="${item?item.name+' — click to manage':s.label}">
-        ${(()=>{if(!item)return '<span class="slot-icon">'+s.icon+'</span>';const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="slot-icon" style="width:28px;height:28px;object-fit:contain" onerror="this.style.display=\'none\'">'):'<span class="slot-icon">'+item.icon+'</span>';})()}
+        ${(()=>{if(!item)return '<span class="slot-icon">'+s.icon+'</span>';const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="slot-icon" style="width:28px;height:28px;object-fit:contain;flex-shrink:0" onerror="this.style.display=\'none\'">'):'<span class="slot-icon" style="flex-shrink:0">'+item.icon+'</span>';})()}
         <div style="flex:1;min-width:0;overflow:hidden">
-          <span class="slot-label" style="color:${item ? (RARITY[item.rarity]||'#1a1208') : '#1a1208'};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item ? item.name : s.label}</span>
-          ${item && _socketsTotal > 0 ? '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.46rem;color:'+(_runeword?'#5020b0':'#1a1208')+'">' + (_runeword ? '✦ '+_runeword : _socketsUsed+'/'+_socketsTotal+' sockets') + '</span>' : ''}
+          <span class="slot-label" style="color:${item ? (RARITY[item.rarity]||'#1a1208') : '#1a1208'};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.82rem">${item ? item.name : s.label}</span>
+          ${item ? (()=>{
+            const bonuses = [
+              item.atk_bonus>0?'ATK +'+item.atk_bonus:'',
+              item.def_bonus>0?'DEF +'+item.def_bonus:'',
+              (item.power_bonus||0)>0?'PWR +'+item.power_bonus:'',
+              (item.guard_bonus||0)>0?'GRD +'+item.guard_bonus:'',
+              (item.speed_bonus||0)>0?'SPD +'+item.speed_bonus:'',
+              (item.control_bonus||0)>0?'CTR +'+item.control_bonus:'',
+              (item.insight_bonus||0)>0?'INS +'+item.insight_bonus:'',
+              (item.luck_bonus||0)>0?'LCK +'+item.luck_bonus:'',
+            ].filter(Boolean).join(' ')
+            const rwLine = _runeword ? '✦ '+_runeword : (_socketsTotal>0?_socketsUsed+'/'+_socketsTotal+' sockets':'')
+            return '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.44rem;color:#1a1208;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+bonuses+'</span>'
+              + (rwLine?'<span style="font-family:\'Share Tech Mono\',monospace;font-size:.44rem;color:'+(_runeword?'#5020b0':'#1a1208')+'">'+rwLine+'</span>':'')
+          })() : ''}
         </div>
-        ${item ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.46rem;color:${elColor}">${item.element && item.element!=='none' ? item.element.toUpperCase() : 'EQ'}</span>` : ''}
       </div>`
     }).join('')
 
