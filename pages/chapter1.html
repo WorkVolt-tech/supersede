@@ -766,29 +766,33 @@ if (!NODES[nodeId]) nodeId = 'opening'
 // ── Level up logic ───────────────────────────────
 // Called after every XP gain — levels up player if threshold crossed
 async function checkLevelUp(oldXp, newXp, oldLevel) {
-  let level  = oldLevel
-  let xp     = newXp
+  let level   = oldLevel
+  let xp      = newXp
   let leveled = false
+  let levelsGained = 0
 
-  // Keep leveling while XP threshold crossed — exponential curve
   while (xp >= xpForLevel(level)) {
-    xp    -= xpForLevel(level)
+    xp -= xpForLevel(level)
     level += 1
     leveled = true
+    levelsGained++
   }
 
   if (!leveled) return null
 
-  // Stat gains per level
-  const newAtk    = (player.atk || 1)    + (level - oldLevel) * 2
-  const newDef    = (player.def || 0)    + (level - oldLevel) * 1
-  const newMaxHp  = (player.max_hp || 100) + (level - oldLevel) * 20
-  const newHp     = Math.min(currentHp + 30, newMaxHp) // partial heal on level up
+  const newMaxHp    = (player.max_hp || 100) + levelsGained * 20
+  const newHp       = newMaxHp  // FULL HP restore on level up
+  const statPtsGained = levelsGained * 3
+  const newStatPts  = (player.stat_points || 0) + statPtsGained
 
-  showToast('LEVEL UP! Now Level ' + level + ' — ATK+2 DEF+1 HP+20')
   currentHp = newHp
+  player.max_hp = newMaxHp
+  player.stat_points = newStatPts
 
-  return { level, atk: newAtk, def: newDef, max_hp: newMaxHp, hp: newHp }
+  showToast('LEVEL UP! Lvl ' + level + ' — Full HP restored! +' + statPtsGained + ' stat points to spend!')
+  renderHUD()
+
+  return { level, max_hp: newMaxHp, hp: newHp, stat_points: newStatPts }
 }
 
 // ── HUD ──────────────────────────────────────────
@@ -824,9 +828,10 @@ function renderHUD() {
       <div class="stat-bar-wrap"><div class="stat-bar" style="width:${xpPct}%;background:#a07de0;transition:width .4s"></div></div>
       <span class="stat-val">→ Lvl ${lvl+1}</span>
     </div>
+    ${(player.stat_points||0)>0?`<div onclick="openStatModal()" style="background:rgba(200,184,128,.25);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:4px 8px;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;cursor:pointer;text-align:center">⬆ ${player.stat_points} STAT POINTS — tap to spend</div>`:''}
     <div class="stat-grid">
-      <div class="stat-box"><span class="stat-box-key">ATK</span><span class="stat-box-val">${player.atk||1}</span></div>
-      <div class="stat-box"><span class="stat-box-key">DEF</span><span class="stat-box-val">${player.def||0}</span></div>
+      <div class="stat-box"><span class="stat-box-key">ATK</span><span class="stat-box-val">${calcATK()}</span></div>
+      <div class="stat-box"><span class="stat-box-key">DEF</span><span class="stat-box-val">${calcDEF()}</span></div>
       <div class="stat-box"><span class="stat-box-key">GOLD</span><span class="stat-box-val" style="color:#c8b96e">${player.gold||0}</span></div>
     </div>
   `
@@ -1054,6 +1059,98 @@ window.returnToZoneHub = function() {
 window.returnToStory = function() {
   document.getElementById('loot-window')?.remove()
   goTo('plaza_talk')
+}
+
+// ── Derived stat calculations ────────────────────────────────
+function calcATK() {
+  const pwr = player.power   || 0
+  const spd = player.speed   || 0
+  const eqA = getEquippedBonus('atk_bonus')
+  return Math.max(1, Math.round((player.atk||1) + pwr*0.6 + spd*0.2 + eqA))
+}
+function calcDEF() {
+  const grd = player.guard   || 0
+  const ctr = player.control || 0
+  const eqD = getEquippedBonus('def_bonus')
+  return Math.round((player.def||0) + grd*0.6 + ctr*0.2 + eqD)
+}
+function calcSPD() {
+  const spd = player.speed   || 0
+  const ins = player.insight || 0
+  return Math.round(spd + ins*0.1 + getEquippedBonus('speed_bonus'))
+}
+function getEquippedBonus(stat) {
+  // Sum bonus from all equipped items — pulled from window._equipped cache
+  return (window._equippedItems||[]).reduce((s,i)=>s+(i[stat]||0),0)
+}
+
+// ── Stat allocation modal ─────────────────────────────────────
+window.openStatModal = function() {
+  document.getElementById('stat-modal')?.remove()
+  const pts = player.stat_points || 0
+  if (pts <= 0) { showToast('No stat points to spend'); return }
+
+  const STATS = [
+    {key:'power',   label:'Power',   desc:'Boosts ATK damage'},
+    {key:'control', label:'Control', desc:'Boosts DEF & retry chance'},
+    {key:'guard',   label:'Guard',   desc:'Boosts DEF & damage reduction'},
+    {key:'speed',   label:'Speed',   desc:'Boosts ATK & turn order'},
+    {key:'insight', label:'Insight', desc:'Boosts SPD & luck scaling'},
+    {key:'luck',    label:'Luck',    desc:'Improves crit & loot chance'},
+  ]
+
+  const modal = document.createElement('div')
+  modal.id = 'stat-modal'
+  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7)'
+  modal.innerHTML = `
+    <div style="background:#c4b070;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:300px;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">Allocate Stats</p>
+        <button onclick="document.getElementById('stat-modal').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#1a1208">✕</button>
+      </div>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;margin-bottom:.75rem">Points available: <strong id="pts-left">${pts}</strong></p>
+      ${STATS.map(s => `
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+          <div style="flex:1">
+            <p style="font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;margin:0">${s.label} <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#3a2008">${player[s.key]||0}</span></p>
+            <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.65rem;color:#3a2008;margin:0">${s.desc}</p>
+          </div>
+          <button onclick="spendStat('${s.key}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:3px 10px;cursor:pointer">+ Spend</button>
+        </div>
+      `).join('')}
+      <button onclick="saveStats()" style="width:100%;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.5);border:1px solid rgba(139,106,32,.6);border-radius:3px;padding:.45rem;cursor:pointer;margin-top:.5rem">Save</button>
+    </div>
+  `
+  modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
+  document.body.appendChild(modal)
+}
+
+let _pendingStats = {}
+window.spendStat = function(key) {
+  const pts = (player.stat_points||0) - Object.values(_pendingStats).reduce((a,b)=>a+b,0)
+  if (pts <= 0) { showToast('No points left'); return }
+  _pendingStats[key] = (_pendingStats[key]||0) + 1
+  player[key] = (player[key]||0) + 1
+  const left = (player.stat_points||0) - Object.values(_pendingStats).reduce((a,b)=>a+b,0)
+  document.getElementById('pts-left').textContent = left
+  // Refresh modal labels
+  document.getElementById('stat-modal').querySelectorAll('span[style*="Mono"]').forEach((el,i) => {
+    const keys = ['power','control','guard','speed','insight','luck']
+    if (keys[i] !== undefined) el.textContent = player[keys[i]]||0
+  })
+}
+window.saveStats = async function() {
+  const spent = Object.values(_pendingStats).reduce((a,b)=>a+b,0)
+  if (spent === 0) { document.getElementById('stat-modal').remove(); return }
+  const newPts = Math.max(0, (player.stat_points||0) - spent)
+  const updates = { stat_points: newPts }
+  Object.entries(_pendingStats).forEach(([k,v]) => { updates[k] = player[k] })
+  player.stat_points = newPts
+  _pendingStats = {}
+  await supabase.from('players').update(updates).eq('id', player.id)
+  document.getElementById('stat-modal').remove()
+  renderHUD()
+  showToast('Stats saved!')
 }
 
 window.goTo = async function goTo(nextId, choice = {}) {
@@ -1335,6 +1432,13 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
   const maxPlayerHp = player.max_hp || 100
   let over = false
 
+  // Cache equipped items for derived stat calculations
+  ;(async () => {
+    const { data } = await supabase.from('inventory').select('*')
+      .eq('player_id', player.id).not('equipped_slot', 'is', null)
+    window._equippedItems = data || []
+  })()
+
   panel.innerHTML = `
     <div class="combat-panel" id="combat-wrap">
       <div class="combat-enemy-row">
@@ -1371,11 +1475,16 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
         </div>
         <span id="c-player-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#4a3c22;min-width:50px;text-align:right">${currentHp}/${maxPlayerHp}</span>
       </div>
-      <div class="combat-actions" id="combat-actions">
-        <button class="combat-btn" id="btn-attack">⚔ Attack</button>
-        <button class="combat-btn" id="btn-defend">🛡 Defend</button>
-        <button class="combat-btn" id="btn-items" style="color:#5eaee0">🎒 Items</button>
-        <button class="combat-btn" id="btn-escape">💨 Escape</button>
+      <div id="combat-actions">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:.4rem">CHOOSE YOUR ACTION</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          <button class="combat-btn" id="btn-strike" title="Fast attack. Always goes first.">⚔ Strike</button>
+          <button class="combat-btn" id="btn-heavy" title="Heavy blow. High damage, slower.">💥 Heavy Strike</button>
+          <button class="combat-btn" id="btn-defend" title="Reduce incoming damage this turn.">🛡 Defend</button>
+          <button class="combat-btn" id="btn-items" style="color:#5eaee0" title="Use a consumable item.">🎒 Items</button>
+          <button class="combat-btn" id="btn-element" style="color:#888;grid-column:span 1" title="Unlock in Chapter 2" disabled>✨ Element (Ch.2)</button>
+          <button class="combat-btn" id="btn-escape" title="Attempt to flee.">💨 Flee</button>
+        </div>
       </div>
       <div id="items-panel" style="display:none;margin-top:.5rem;border:.5px solid rgba(94,174,224,.3);border-radius:4px;padding:.6rem;background:rgba(0,0,0,.05);animation:fadeIn .2s ease">
         <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#5eaee0;letter-spacing:.06em;margin-bottom:.4rem">⚡ USE ITEM</p>
@@ -1499,19 +1608,93 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
 
   // Speed bonus: if speed >= 3, player always goes first (already do by acting on click)
   // Luck: adds to random range
-  document.getElementById('btn-attack').addEventListener('click', async () => {
+  // ── Turn-based combat engine ─────────────────────────────
+  let defending = false
+
+  function playerATK()  { return calcATK() }
+  function playerDEF()  { return calcDEF() }
+  function playerSPD()  { return calcSPD() }
+  function enemySPD()   { return enemy.spd || Math.floor((enemy.atk||5) * 0.6) }
+
+  function setButtons(enabled) {
+    ['btn-strike','btn-heavy','btn-defend','btn-items','btn-escape'].forEach(id => {
+      const b = document.getElementById(id)
+      if (b) b.disabled = !enabled
+    })
+  }
+
+  async function doTurn(playerAction) {
     if (over) return
-    const luckBonus = Math.floor(eqLuck / 2)
-    const roll  = window._forceMaxHit ? (6 + luckBonus) : Math.floor(Math.random()*(6+luckBonus))
-    window._forceMaxHit = false
-    const atk  = (player.atk||1) + eqPower + roll + 1
-    const eDmg = Math.max(0, enemy.atk + Math.floor(Math.random()*4) - (player.def||0) - eqGuard)
-    enemyHp   = Math.max(0, enemyHp   - atk)
-    currentHp = Math.max(0, currentHp - eDmg)
+    setButtons(false)
+    defending = false
+    const luckBonus  = Math.floor(eqLuck / 2)
+    const pSPD = playerSPD()
+    const eSPD = enemySPD()
+
+    // ── Determine turn order ──────────────────────────
+    // Strike always goes first. Heavy goes first only if playerSPD >= 8
+    const playerFirst =
+      playerAction === 'strike' ? true :
+      playerAction === 'defend' ? true :  // defend resolves before enemy hits
+      playerAction === 'heavy'  ? pSPD >= 8 :
+      false
+
+    let messages = []
+
+    // ── Player action ─────────────────────────────────
+    function resolvePlayerAction() {
+      if (playerAction === 'strike') {
+        const roll = window._forceMaxHit ? (6+luckBonus) : Math.floor(Math.random()*(6+luckBonus))+1
+        window._forceMaxHit = false
+        const dmg  = Math.max(1, playerATK() + roll)
+        enemyHp    = Math.max(0, enemyHp - dmg)
+        messages.push('You strike for <strong>'+dmg+'</strong> damage.')
+      } else if (playerAction === 'heavy') {
+        const roll = window._forceMaxHit ? (10+luckBonus) : Math.floor(Math.random()*(10+luckBonus))+3
+        window._forceMaxHit = false
+        const dmg  = Math.max(1, Math.round(playerATK() * 1.6) + roll)
+        enemyHp    = Math.max(0, enemyHp - dmg)
+        messages.push('Heavy strike lands for <strong>'+dmg+'</strong> damage!')
+      } else if (playerAction === 'defend') {
+        defending = true
+        messages.push('You brace for impact — defense doubled this turn.')
+      }
+    }
+
+    // ── Enemy action ──────────────────────────────────
+    function resolveEnemyAction() {
+      if (enemyHp <= 0) return
+      const defMult = defending ? 0.25 : 1
+      const eDmg    = Math.max(0, Math.round((enemy.atk + Math.floor(Math.random()*4) - playerDEF()) * defMult))
+      currentHp     = Math.max(0, currentHp - eDmg)
+      if (defending && eDmg === 0) {
+        messages.push(enemy.name + ' attacks — completely blocked!')
+      } else if (defending) {
+        messages.push(enemy.name + ' attacks for <strong>'+eDmg+'</strong> (reduced by defense).')
+      } else {
+        messages.push(enemy.name + ' retaliates for <strong>'+eDmg+'</strong>.')
+      }
+    }
+
+    if (playerFirst) {
+      resolvePlayerAction()
+      resolveEnemyAction()
+    } else {
+      resolveEnemyAction()
+      resolvePlayerAction()
+    }
+
+    // ── Log results ───────────────────────────────────
     shake()
-    log('You strike for '+atk+'. '+enemy.name+' retaliates for '+eDmg+'.')
+    log(messages.join(' '))
     syncBars()
-    if (enemyHp  <= 0) { log(enemy.name+' has fallen.'); endCombat('win');    return }
+
+    // ── Check win/loss ────────────────────────────────
+    if (enemyHp <= 0) {
+      log(enemy.name + ' has fallen.')
+      endCombat('win')
+      return
+    }
     if (currentHp <= 0) {
       if (window._hasRevive) {
         window._hasRevive = false
@@ -1520,32 +1703,30 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
         await supabase.from('players').update({ hp: 20 }).eq('id', player.id)
         player.hp = 20
         log('Phoenix Feather activates — you rise at 20 HP!')
+        setButtons(true)
       } else {
         log('You collapse…')
         endCombat('defeat')
       }
       return
     }
-  })
+    setButtons(true)
+  }
 
-  document.getElementById('btn-defend').addEventListener('click', async () => {
-    if (over) return
-    const dmg = Math.max(0, Math.floor(enemy.atk*0.35) - (player.def||0) - eqGuard)
-    currentHp = Math.max(0, currentHp - dmg)
-    log('You brace. '+(dmg>0?'Took '+dmg+' damage.':'Blocked completely.'))
-    syncBars()
-    if (currentHp <= 0) endCombat('defeat')
-  })
+  document.getElementById('btn-strike').addEventListener('click', () => doTurn('strike'))
+  document.getElementById('btn-heavy').addEventListener('click',  () => doTurn('heavy'))
+  document.getElementById('btn-defend').addEventListener('click', () => doTurn('defend'))
 
   document.getElementById('btn-escape').addEventListener('click', async () => {
     if (over) return
-    if (Math.random() > 0.4) {
+    const escChance = 0.3 + (playerSPD() - enemySPD()) * 0.05
+    if (Math.random() < Math.max(0.1, Math.min(0.8, escChance))) {
       log('You slip away…')
       endCombat('escape')
     } else {
-      const dmg = Math.max(0, enemy.atk - (player.def||0))
+      const dmg = Math.max(0, enemy.atk - playerDEF())
       currentHp = Math.max(0, currentHp - dmg)
-      log('No escape — took '+dmg+' damage.')
+      log('Failed to flee — took ' + dmg + ' damage.')
       syncBars()
       if (currentHp <= 0) endCombat('defeat')
     }
