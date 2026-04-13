@@ -797,7 +797,7 @@ function renderHUD() {
   const mhp = player.max_hp || 100
   const xp  = player.xp || 0
   const lvl = player.level || 1
-  const BC  = { neutral:'#c8b96e', red:'#e05555', green:'#5ec45e', elite:'#a07de0', unknown:'#666' }
+  const BC  = { neutral:'#c8b96e', red:'#e05555', green:'#5ec45e', elite:'#a07de0', unknown:'#b0b0b0' }
   const BS  = { neutral:'🟡', red:'🔴', green:'🟢', elite:'🟣', unknown:'⚫' }
   const bc  = BC[player.badge] || '#c8b96e'
   const bs  = BS[player.badge] || '🟡'
@@ -1362,7 +1362,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
         <div id="items-list"></div>
         <button onclick="document.getElementById('items-panel').style.display='none'" style="font-family:'IM Fell English',serif;font-size:.78rem;color:#7a6435;background:none;border:none;cursor:pointer;margin-top:.4rem;padding:0">✕ Close</button>
       </div>
-      <p id="combat-over" style="display:none;text-align:center;font-family:'Cinzel',serif;font-size:1rem;color:#8b6a20;letter-spacing:.1em;padding:.5rem"></p>
+      <p id="combat-over" style="display:none;text-align:center;font-family:'Cinzel',serif;font-size:1.1rem;font-weight:600;color:#1a1208;letter-spacing:.1em;padding:.5rem"></p>
     </div>
   `
 
