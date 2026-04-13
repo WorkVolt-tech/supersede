@@ -725,6 +725,11 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
 
     selectedId = itemId
     await load()
+
+    // Re-open rune picker if sockets still available and no runeword triggered
+    if (newUsed < sockets && !rw) {
+      setTimeout(() => openRunePicker(itemId, itemType), 200)
+    }
   }
 
   // ── Remove all runes from an item ───────────────
