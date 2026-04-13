@@ -1052,8 +1052,9 @@ window.returnToBoss = function() {
 }
 window.returnToZone = function() {
   document.getElementById('loot-window')?.remove()
-  const p = document.getElementById('right-panel')
-  if (farmLoc && p) renderFarmZone(p, farmLoc)
+  const p   = document.getElementById('right-panel')
+  const loc = window._currentFarmLoc
+  if (loc && p) renderFarmZone(p, loc)
   else if (p) renderLocationHub(p, NODES['farming_hub'])
 }
 window.returnToZoneHub = function() {
@@ -1514,7 +1515,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         <div id="items-list"></div>
         <button onclick="document.getElementById('items-panel').style.display='none'" style="font-family:'IM Fell English',serif;font-size:.78rem;color:#7a6435;background:none;border:none;cursor:pointer;margin-top:.4rem;padding:0">✕ Close</button>
       </div>
-      <p id="combat-over" style="display:none;text-align:center;font-family:'Cinzel',serif;font-size:1.1rem;font-weight:600;color:#1a1208;letter-spacing:.1em;padding:.5rem"></p>
+      <div id="combat-over" style="display:none;text-align:center;padding:.5rem"></div>
     </div>
   `
 
