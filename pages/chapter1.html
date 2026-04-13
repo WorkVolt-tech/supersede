@@ -1626,6 +1626,8 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       }
     } else {
       await save({ hp: Math.max(1, currentHp) })
+      // Boss fights: buttons handle navigation — don't auto-navigate
+      if (isBoss) return
       setTimeout(() => {
         const dest = result==='escape' ? onEscape : onLose
         if (dest === '__farm_zone__') {
