@@ -1045,6 +1045,11 @@ async function addItem(itemKey, qty = 1) {
 }
 
 // ── Navigate ─────────────────────────────────────
+window.returnToBoss = function() {
+  document.getElementById('loot-window')?.remove()
+  const p = document.getElementById('right-panel')
+  if (p) goTo('pre_boss_check')
+}
 window.returnToZone = function() {
   document.getElementById('loot-window')?.remove()
   const p = document.getElementById('right-panel')
@@ -1420,13 +1425,23 @@ function renderBoss(panel, node) {
   if (bossMode === 'solo')   enemy.hp = 120 + lvl * 20
   if (bossMode === 'team')   enemy.hp = 160 + lvl * 20
   if (bossMode === 'betray') enemy.hp = 180 + lvl * 25
-  // Also scale atk slightly to level
   enemy.atk = node.enemy.atk + Math.floor(lvl * 1.5)
-  buildCombatUI(panel, enemy, 'chapter_end', 'pre_boss_check', 'pre_boss_check', true)
+
+  // Yara joins as NPC ally in team mode
+  const yara = bossMode === 'team' ? {
+    name: 'Yara',
+    hp: 80 + lvl * 10,
+    maxHp: 80 + lvl * 10,
+    atk: 6 + Math.floor(lvl * 0.8),
+    def: 4 + Math.floor(lvl * 0.5),
+    alive: true
+  } : null
+
+  buildCombatUI(panel, enemy, 'chapter_end', 'pre_boss_check', 'pre_boss_check', true, yara)
 }
 
 // ── Shared combat UI builder ──────────────────────
-function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
+function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = null) {
   let enemyHp      = enemy.hp
   const maxEnemyHp  = enemy.hp
   const maxPlayerHp = player.max_hp || 100
@@ -1468,13 +1483,21 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
         </div>
       </div>
       <div class="combat-log" id="combat-log">${isBoss ? 'The eye opens. It sees everything.' : 'The encounter begins.'}</div>
-      <div class="stat-row" style="margin-bottom:1rem">
-        <span class="stat-key" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435">YOUR HP</span>
+      <div class="stat-row" style="margin-bottom:.4rem">
+        <span class="stat-key" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#1a1208">YOUR HP</span>
         <div class="stat-bar-wrap">
           <div class="stat-bar" id="c-player-bar" style="background:#5ec45e;width:100%;transition:width .4s,background .4s"></div>
         </div>
-        <span id="c-player-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#4a3c22;min-width:50px;text-align:right">${currentHp}/${maxPlayerHp}</span>
+        <span id="c-player-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#1a1208;min-width:50px;text-align:right">${currentHp}/${maxPlayerHp}</span>
       </div>
+      ${yara ? `
+      <div class="stat-row" style="margin-bottom:1rem">
+        <span class="stat-key" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#5ec45e">YARA</span>
+        <div class="stat-bar-wrap">
+          <div class="stat-bar" id="c-yara-bar" style="background:#5eaee0;width:100%;transition:width .4s,background .4s"></div>
+        </div>
+        <span id="c-yara-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#5eaee0;min-width:50px;text-align:right">${yara.hp}/${yara.maxHp}</span>
+      </div>` : '<div style="margin-bottom:1rem"></div>'}
       <div id="combat-actions">
         <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:.4rem">CHOOSE YOUR ACTION</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
@@ -1507,6 +1530,13 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
     if (pBar) { pBar.style.width = pPct+'%'; pBar.style.background = pPct>60?'#5ec45e':pPct>30?'#c8b96e':'#e05555' }
     if (pHp)  pHp.textContent = currentHp+'/'+maxPlayerHp
     updateHpBar(currentHp)
+    if (yara) {
+      const yPct  = Math.max(0, Math.round(yara.hp / yara.maxHp * 100))
+      const yBar  = document.getElementById('c-yara-bar')
+      const yHpEl = document.getElementById('c-yara-hp')
+      if (yBar)  { yBar.style.width = yPct+'%'; yBar.style.background = yPct>50?'#5eaee0':'#c8b96e' }
+      if (yHpEl) yHpEl.textContent = yara.hp+'/'+yara.maxHp
+    }
   }
 
   function log(msg) { const el=document.getElementById('combat-log'); if(el) el.textContent=msg }
@@ -1541,7 +1571,17 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
           '<button onclick="returnToStory()" style="' + btnStyle + ';background:rgba(200,184,128,.12)">↩ Return to Story</button>' +
           '</div>'
       } else {
-        overEl.textContent = resultLabel
+        // Boss or story fight — show navigation buttons
+        const btnStyle = "font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;border-radius:3px;padding:.45rem 1rem;cursor:pointer;width:100%;border:1px solid rgba(139,106,32,.5);margin-bottom:4px"
+        overEl.innerHTML =
+          '<p style="font-family:Cinzel,serif;font-size:1.1rem;font-weight:600;color:#1a1208;letter-spacing:.1em;margin-bottom:.6rem">' + resultLabel + '</p>' +
+          '<div style="display:flex;flex-direction:column;gap:4px">' +
+          (result === 'win' ? '' :
+            '<button onclick="returnToBoss()" style="' + btnStyle + ';background:rgba(200,184,128,.45)">⚔ Try Again</button>' +
+            '<button onclick="returnToZoneHub()" style="' + btnStyle + ';background:rgba(200,184,128,.25)">⚔ Go Farm XP</button>'
+          ) +
+          '<button onclick="returnToStory()" style="' + btnStyle + ';background:rgba(200,184,128,.12)">↩ Return to Story</button>' +
+          '</div>'
       }
     }
 
@@ -1682,6 +1722,25 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
     } else {
       resolveEnemyAction()
       resolvePlayerAction()
+    }
+
+    // ── Yara attacks (if alive, team mode only) ─────────
+    if (yara && yara.alive && enemyHp > 0) {
+      const yaraDmg = Math.max(1, yara.atk + Math.floor(Math.random()*4))
+      enemyHp = Math.max(0, enemyHp - yaraDmg)
+      // Watcher retaliates against Yara 40% of the time
+      if (Math.random() < 0.4) {
+        const yaraHit = Math.max(0, Math.floor(enemy.atk * 0.5) - yara.def)
+        yara.hp = Math.max(0, yara.hp - yaraHit)
+        if (yara.hp <= 0) {
+          yara.alive = false
+          messages.push('Yara strikes for ' + yaraDmg + ' — then takes ' + yaraHit + ' and falls!')
+        } else {
+          messages.push('Yara strikes for ' + yaraDmg + ' (takes ' + yaraHit + ' retaliation, ' + yara.hp + ' HP left).')
+        }
+      } else {
+        messages.push('Yara strikes for ' + yaraDmg + '.')
+      }
     }
 
     // ── Log results ───────────────────────────────────
