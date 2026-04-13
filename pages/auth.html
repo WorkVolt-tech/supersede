@@ -126,10 +126,25 @@
       if (userId) {
         const finalName = username || ('Player_' + Math.random().toString(36).slice(2,7).toUpperCase())
         const { error: pErr } = await supabase.from('players').upsert(
-          { id: userId, username: finalName },
-          { onConflict: 'id' }
+          {
+            user_id:           userId,
+            username:          finalName,
+            level:             1,
+            xp:                0,
+            hp:                100,
+            max_hp:            100,
+            gold:              0,
+            badge:             'neutral',
+            reputation:        'neutral',
+            chapters_unlocked: [1]
+          },
+          { onConflict: 'user_id' }
         )
-        if (pErr) console.warn('Player row error:', pErr.message)
+        if (pErr) {
+          console.warn('Player row error:', pErr.message)
+          errorEl.textContent = 'Account created but profile setup failed: ' + pErr.message
+          return
+        }
       }
 
       // Sign in immediately so they don't have to verify email
