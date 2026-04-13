@@ -1599,9 +1599,16 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       if (isFarm) {
         // Farm: fire all DB saves in background — buttons already visible
         const newXp = oldXp + (enemy.xp || 50)
+        // Gold drop: 0-100 gold scaled by enemy difficulty
+        const goldMin  = Math.floor((enemy.hp || 20) * 0.1)
+        const goldMax  = Math.floor((enemy.hp || 20) * 0.8)
+        const goldDrop = Math.floor(Math.random() * (goldMax - goldMin + 1)) + goldMin
+        const newGold  = (player.gold || 0) + goldDrop
+        player.gold = newGold
         checkLevelUp(oldXp, newXp, oldLvl).then(lvlUp => {
-          save({ xp: newXp, hp: currentHp, ...(lvlUp||{}) })
+          save({ xp: newXp, hp: currentHp, gold: newGold, ...(lvlUp||{}) })
         })
+        if (goldDrop > 0) queueLoot('◈ ' + goldDrop + ' Gold', 1, null)
         if (enemy.loot) for (const l of enemy.loot) addItem(l.itemKey, l.qty)
         if (runeKey) addItem(runeKey, 1)
         if (farmLoc && farmLoc.enemies[farmIdx]) {
@@ -1619,15 +1626,27 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
           const unlocked = player.chapters_unlocked || [1]
           if (!unlocked.includes(2)) updates.chapters_unlocked = [...unlocked, 2]
         }
+        // Gold drop for story fights
+        const sGoldDrop = Math.floor(Math.random() * 40) + 5
+        updates.gold = (player.gold || 0) + sGoldDrop
+        player.gold = updates.gold
         await save(updates)
+        if (goldDrop > 0) queueLoot('◈ ' + sGoldDrop + ' Gold', 1, null)
         if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
         if (runeKey) await addItem(runeKey, 1)
         setTimeout(() => goTo(onWin), 1200)
       }
     } else {
+      if (isBoss) {
+        // On boss defeat: fully restore HP and reset node so player isn't stuck
+        const fullHp = player.max_hp || 100
+        currentHp = fullHp
+        await save({ hp: fullHp, current_node: 'ch1_pre_boss_check' })
+        player.current_node = 'ch1_pre_boss_check'
+        renderHUD()
+        return
+      }
       await save({ hp: Math.max(1, currentHp) })
-      // Boss fights: buttons handle navigation — don't auto-navigate
-      if (isBoss) return
       setTimeout(() => {
         const dest = result==='escape' ? onEscape : onLose
         if (dest === '__farm_zone__') {
