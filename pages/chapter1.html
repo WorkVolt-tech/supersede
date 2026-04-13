@@ -929,15 +929,23 @@ window.declineDrop = async function(itemName, btn) {
 }
 
 const SOCKET_RULES = {
-  common:   {chance:0.20,max:1}, uncommon:{chance:0.35,max:2},
-  rare:     {chance:0.50,max:3}, epic:    {chance:0.65,max:4},
-  legendary:{chance:0.80,max:5}, mythic:  {chance:1.00,max:6},
+  // Chapter 1 cap: max 3 sockets. 3 sockets are very rare.
+  // 4-6 sockets unlock in later chapters.
+  common:   {chance:0.15, max:1},
+  uncommon: {chance:0.25, max:2},
+  rare:     {chance:0.35, max:3},
+  epic:     {chance:0.40, max:3},
+  legendary:{chance:0.50, max:3},
+  mythic:   {chance:0.60, max:3},
 }
 function rollSockets(rarity, itemType) {
   if (!['weapon','armor'].includes(itemType)) return 0
-  const rule = SOCKET_RULES[rarity] || {chance:0.2,max:1}
+  const rule = SOCKET_RULES[rarity] || {chance:0.15, max:1}
   if (Math.random() > rule.chance) return 0
-  return Math.floor(Math.random() * rule.max) + 1
+  const roll = Math.floor(Math.random() * rule.max) + 1
+  // 3 sockets: only kept 30% of the time it rolls max
+  if (roll === rule.max && rule.max === 3 && Math.random() > 0.30) return 2
+  return roll
 }
 
 
