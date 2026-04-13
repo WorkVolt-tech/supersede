@@ -15,11 +15,11 @@
       <div class="page-inner">
         <p class="chapter-label">Equipment</p>
         <h1 class="page-title">Loadout</h1>
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#7a6435;margin-bottom:.5rem" id="equip-hint">Select an item from the right, then click a slot.</p>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#3a2008;margin-bottom:.5rem" id="equip-hint">Select an item from the right, then click a slot.</p>
         <hr class="ink-divider">
         <div id="equip-slots"></div>
         <hr class="ink-divider">
-        <div id="total-stats" style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#7a6435;display:flex;gap:1.5rem;letter-spacing:.06em"></div>
+        <div id="total-stats" style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#3a2008;display:flex;gap:1.5rem;letter-spacing:.06em"></div>
       </div>
     </div>
 
@@ -178,7 +178,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
         ${item.equipped_slot?`<span class="item-eq">EQ</span>`:''}
         ${(item.sockets_total||0)>0?`<span style="position:absolute;bottom:4px;left:4px;font-size:.45rem;color:#a07de0;font-family:'Share Tech Mono',monospace">${item.sockets_used||0}/${item.sockets_total}◈</span>`:''} 
       </div>
-    `).join('') || `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#7a6435;grid-column:span 3">Nothing here.</p>`
+    `).join('') || `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#3a2008;grid-column:span 3">Nothing here.</p>`
 
     document.querySelectorAll('.item-card').forEach(el => {
       el.addEventListener('click', () => {
@@ -222,14 +222,14 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" style="width:52px;height:52px;object-fit:contain;border-radius:6px" onerror="this.style.display=\'none\'">'):'<span style="font-size:1.6rem">'+(item.icon||'📦')+'</span>';})()}
           <div>
             <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${RARITY[item.rarity]||'#888'};margin:0 0 2px">${item.name}</p>
-            <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#7a6435;margin:0;letter-spacing:.06em">${item.rarity} · ${item.subtype||item.item_type}${item.two_handed?' · 2H':''}</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#3a2008;margin:0;letter-spacing:.06em">${item.rarity} · ${item.subtype||item.item_type}${item.two_handed?' · 2H':''}</p>
           </div>
         </div>
         <div style="display:flex;gap:.75rem;font-family:'Share Tech Mono',monospace;font-size:.65rem;margin-bottom:.6rem;flex-wrap:wrap">
           ${item.atk_bonus>0?`<span style="color:#e05555">ATK +${item.atk_bonus}</span>`:''}
           ${item.def_bonus>0?`<span style="color:#5ec45e">DEF +${item.def_bonus}</span>`:''}
           ${item.hp_restore>0?`<span style="color:#5eaee0">+${item.hp_restore} HP</span>`:''}
-          ${!item.atk_bonus&&!item.def_bonus&&!item.hp_restore?`<span style="color:#7a6435">Utility item</span>`:''}
+          ${!item.atk_bonus&&!item.def_bonus&&!item.hp_restore?`<span style="color:#3a2008">Utility item</span>`:''}
         </div>
         ${(item.sockets_total||0) > 0 ? `
           <div style="margin-bottom:.5rem">
@@ -245,7 +245,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
             </div>
             ${item.runeword_name ? '<p style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#a07de0;margin-top:2px">✦ '+item.runeword_name+'</p>' : ''}
             ${(item.sockets_used||0) < (item.sockets_total||0) ? '<button onclick="openRunePicker(\''+item.id+'\',\''+item.item_type+'\')" style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#a07de0;background:none;border:.5px solid #a07de060;border-radius:3px;padding:3px 10px;cursor:pointer;margin-top:4px">✦ Add Rune</button>' : ''}
-            ${(item.sockets_used||0) > 0 ? '<button onclick="removeRunes(\''+item.id+'\')" style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#7a6435;background:none;border:.5px solid rgba(139,106,32,.3);border-radius:3px;padding:3px 10px;cursor:pointer;margin-top:4px;margin-left:4px">Remove Runes</button>' : ''}
+            ${(item.sockets_used||0) > 0 ? '<button onclick="removeRunes(\''+item.id+'\')" style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#3a2008;background:none;border:.5px solid rgba(139,106,32,.3);border-radius:3px;padding:3px 10px;cursor:pointer;margin-top:4px;margin-left:4px">Remove Runes</button>' : ''}
             <div id="rune-picker-${item.id}" style="display:none;margin-top:6px;padding:6px;background:rgba(0,0,0,.08);border-radius:4px;border:.5px solid rgba(160,125,224,.3)"></div>
           </div>
         ` : ''}
@@ -340,14 +340,14 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     // Toggle
     if (picker.style.display !== 'none') { picker.style.display = 'none'; return }
     picker.style.display = 'block'
-    picker.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.58rem;color:#9a8050">Loading runes…</p>'
+    picker.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.58rem;color:#3a2008">Loading runes…</p>'
 
     // Load runes from inventory
     const { data: runeItems } = await supabase.from('inventory')
       .select('*').eq('player_id', player.id).like('item_key','rune_%').gt('quantity',0)
 
     if (!runeItems || !runeItems.length) {
-      picker.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#7a6435">No runes in inventory.<br>Farm enemies to find runes.</p>'
+      picker.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#3a2008">No runes in inventory.<br>Farm enemies to find runes.</p>'
       return
     }
 
@@ -365,7 +365,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           const name  = RUNE_NAMES[key]  || key
           return `<button onclick="socketRuneToItem('${itemId}','${r.id}','${key}','${itemType}')"
             style="display:flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:${color}">
-            <span>${icon}</span><span>${name}</span><span style="color:#7a6435;font-size:.5rem">×${r.quantity}</span>
+            <span>${icon}</span><span>${name}</span><span style="color:#3a2008;font-size:.5rem">×${r.quantity}</span>
           </button>`
         }).join('')}
       </div>
@@ -504,7 +504,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
 
   // Filter tabs
   document.getElementById('filter-tabs').innerHTML = FILTERS.map(f => `
-    <button onclick="setFilter('${f}')" id="ftab-${f}" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.07em;background:none;border:.5px solid rgba(139,106,32,.2);border-radius:20px;padding:2px 9px;cursor:pointer;color:#7a6435;transition:all .15s">${f}</button>
+    <button onclick="setFilter('${f}')" id="ftab-${f}" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.07em;background:none;border:.5px solid rgba(139,106,32,.2);border-radius:20px;padding:2px 9px;cursor:pointer;color:#3a2008;transition:all .15s">${f}</button>
   `).join('')
 
   window.setFilter = (f) => {
