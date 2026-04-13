@@ -3,936 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SuperSede — Chapter 1</title>
+  <title>SuperSede — Inventory</title>
   <link rel="stylesheet" href="../styles/main.css">
 </head>
 <body>
 <div class="book-wrap">
   <div id="nav"></div>
+
   <div class="book animate-in">
-    <div class="page-left parchment" id="left-page">
+    <div class="page-left parchment">
       <div class="page-inner">
-        <p class="chapter-label">Chapter 1 — System Initialization</p>
-        <p class="chapter-sub">The world stops. The game begins.</p>
+        <p class="chapter-label">Equipment</p>
+        <h1 class="page-title">Loadout</h1>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#3a2008;margin-bottom:.5rem" id="equip-hint">Select an item from the right, then click a slot.</p>
         <hr class="ink-divider">
-        <p class="story-text" id="story-text"></p>
-        <div class="notice-box animate-in" id="outcome-box" style="display:none"></div>
+        <div id="equip-slots"></div>
+        <hr class="ink-divider">
+        <div id="total-stats" style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#3a2008;display:flex;gap:1.5rem;letter-spacing:.06em"></div>
       </div>
     </div>
+
     <div class="spine"></div>
+
     <div class="page-right parchment">
       <div class="page-inner">
-        <div class="hud" id="hud"></div>
+        <p class="chapter-label">Item Bag</p>
+        <h2 class="page-title" id="bag-count">— items</h2>
         <hr class="ink-divider">
-        <div id="right-panel"></div>
+        <div style="display:flex;gap:3px;margin-bottom:.75rem;flex-wrap:wrap" id="filter-tabs"></div>
+        <div class="item-grid" id="item-grid"></div>
+        <div id="item-detail"></div>
       </div>
     </div>
   </div>
 </div>
 
 <script type="module">
-import { supabase } from '../supabase.js'
-import { renderNav, showToast, showSysOverlay } from '../components/nav.js'
-
-// ── Chapter data ─────────────────────────────────
-const META = {
-  number: 1,
-  title:  'System Initialization',
-  sub:    'The world stops. The game begins.',
-  unlocksChapter: 2,
-}
-
-const NODES = {
-
-  // ═══════════════════════════════════════
-  // OPENING
-  // ═══════════════════════════════════════
-  opening: {
-    id: 'opening', type: 'story',
-    text: `Everything freezes.
-
-Cars stop mid-motion. People halt mid-step. Even the wind disappears — as though the world has been pressed pause.
-
-Then a voice. Calm. Everywhere at once.
-
-"Welcome to SuperSede."
-
-A glowing interface materializes before your eyes — transparent, electric, impossibly clear. Your name floats in the center of it. Below that, a single word:
-
-OBJECTIVE: SURVIVE.
-
-You stand in the middle of a frozen street. Nobody moves. Nobody breathes. The whole city is a photograph.
-
-Somewhere in the distance, something cracks. Like ice. Like a bone.
-
-The game has started.`,
-    sysMsg: 'Players are now active. A player may appear at any time.',
-    choices: [
-      { id: 'go_search', label: 'Search your surroundings',     sub: 'Check nearby cars and bodies for supplies', next: 'search' },
-      { id: 'go_street', label: 'Move forward into the street', sub: 'See what is happening beyond',             next: 'street_approach' },
-      { id: 'go_system', label: 'Inspect the System interface',  sub: 'Study your stats and nearby signals',      next: 'system' },
-    ],
-  },
-
-  // ═══════════════════════════════════════
-  // PATH A — SEARCH
-  // ═══════════════════════════════════════
-  search: {
-    id: 'search', type: 'story',
-    text: `You move between frozen cars. A coffee cup hangs in mid-drip. A coin spins in the air, suspended at eye level, neither falling nor rising.
-
-Everything feels paused — yet alive, like held breath.
-
-You rummage quickly. A bag on the passenger seat. A jacket draped over a bicycle. Underneath a scooter, a cracked phone still showing a flashlight app, frozen mid-beam.
-
-You take what you can carry. Then something moves at the edge of your vision — not a frozen person. Something deliberate.
-
-A rat-sized creature skitters across the pavement. Except it glows faintly. And it has a health bar above its head.
-
-SYSTEM SPAWN: GLITCH RAT — HP 20, ATK 3
-
-Your interface pings: "Defeat enemies to gain XP and improve your stats."`,
-    rewards: [{ itemKey:'scrap_blade', qty:1 }, { itemKey:'flashlight', qty:1 }],
-    xp: 30,
-    choices: [
-      { label: 'Fight the Glitch Rat', sub: 'Easy fight — good XP to start', next: 'fight_rat_1' },
-      { label: 'Ignore it and keep searching', sub: 'Skip the fight', next: 'search_deeper' },
-    ],
-  },
-
-  fight_rat_1: {
-    id: 'fight_rat_1', type: 'combat',
-    text: `The creature turns toward you. Its eyes are static — like a broken screen. It hisses.
-
-Your interface confirms the engagement.`,
-    enemy: { name:'Glitch Rat', icon:'🐀', hp:20, atk:3, xp:40, loot:[] },
-    onWin: 'search_after_rat',
-    onLose: 'search_deeper',
-    onEscape: 'search_deeper',
-  },
-
-  search_after_rat: {
-    id: 'search_after_rat', type: 'story',
-    text: `The creature dissolves into pixels when it falls. A small burst of light — and then nothing.
-
-Your interface updates:
-
-COMBAT COMPLETE. XP GAINED. STATS IMPROVING.
-
-You feel it physically — a sharpness behind your eyes, a solidness in your limbs. The System is rewriting you in real time.
-
-Two more of the creatures skitter out from under a nearby van. Slightly larger. Slightly faster.
-
-GLITCH RAT x2 — HP 25 each, ATK 4`,
-    choices: [
-      { label: 'Fight them both', sub: 'More XP — higher risk', next: 'fight_rats_2', variant: 'danger' },
-      { label: 'Move on — you have enough', sub: 'Head deeper into the city', next: 'search_deeper' },
-    ],
-  },
-
-  fight_rats_2: {
-    id: 'fight_rats_2', type: 'combat',
-    text: `Two at once. You've done this before — or at least the System thinks you have.`,
-    enemy: { name:'Glitch Rats x2', icon:'🐀🐀', hp:50, atk:4, xp:60, loot:[{itemKey:'scrap_metal', qty:1}] },
-    onWin: 'search_deeper',
-    onLose: 'search_deeper',
-    onEscape: 'search_deeper',
-  },
-
-  search_deeper: {
-    id: 'search_deeper', type: 'story',
-    text: `You move further from the road, into a parking structure. The shadow is thick here.
-
-On the second level, you find a player. Not frozen. Sitting against a concrete pillar, knees pulled up, studying their interface screen.
-
-They look up. They can't be older than nineteen. Their badge reads NEUTRAL. Their hands are shaking.
-
-"I don't want to fight," they say before you've said anything. "I just want to know what the rules are."
-
-You don't have an answer for them.`,
-    sysMsg: '⚠ A player is nearby…',
-    choices: [
-      { id: 'enc_team',    label: 'Sit with them a moment',  sub: 'Listen — gain Awareness XP',        next: 'search_team',    outcome: 'team' },
-      { id: 'enc_attack',  label: 'Take their supplies',     sub: 'Easy loot. Reputation shifts red.',  next: 'search_attack',  outcome: 'attack', variant: 'danger' },
-      { id: 'enc_observe', label: 'Say nothing and move on', sub: 'Keep your distance — observe',       next: 'search_observe', outcome: 'observe' },
-    ],
-  },
-
-  search_team: {
-    id: 'search_team', type: 'story',
-    text: `You sit across from them. For a moment neither of you speaks.
-
-"My name was Marcus," they say eventually. "Don't know if that matters here."
-
-"It matters," you say.
-
-He nods. Shows you his interface — he's found a map overlay. Basic, glitchy, but real. He shares it with you. You share your flashlight.
-
-Before you part, he tells you something useful: there's a weapons cache two floors up, left by whoever was here before the freeze. He found it but couldn't carry everything.
-
-You find it. He wasn't wrong.`,
-    xp: 50,
-    rewards: [{ itemKey:'knife', qty:1 }, { itemKey:'energy_drink', qty:1 }],
-    choices: [{ label: 'Head to the street', next: 'street_return' }],
-  },
-
-  search_attack: {
-    id: 'search_attack', type: 'story',
-    text: `It's fast. Efficient. He doesn't fight back. That's the worst part.
-
-His bag has a medkit and some scrap metal. You take everything.
-
-The System registers it before you've even stood up.
-
-REPUTATION SHIFT: RED.
-
-You don't feel different. That might be the scariest thing.`,
-    xp: 30,
-    rewards: [{ itemKey:'medkit', qty:1 }, { itemKey:'scrap_metal', qty:2 }],
-    choices: [{ label: 'Return to the street', next: 'street_return' }],
-  },
-
-  search_observe: {
-    id: 'search_observe', type: 'story',
-    text: `You don't stop walking. You don't look back.
-
-But you keep thinking about what he said. "I just want to know what the rules are."
-
-You don't know them either. Maybe that's the whole point.
-
-The parking structure opens back onto the street. On your way out, you find a cache tucked behind a pillar — left by whoever was here before. A knife wrapped in cloth. Still sharp.`,
-    xp: 40,
-    rewards: [{ itemKey:'jacket', qty:1 }],
-    choices: [{ label: 'Continue into the street', next: 'street_return' }],
-  },
-
-  // ═══════════════════════════════════════
-  // PATH B — STREET
-  // ═══════════════════════════════════════
-  street_approach: {
-    id: 'street_approach', type: 'story',
-    text: `You push forward onto the main road.
-
-The frozen world is eerie at walking pace — people mid-stride, pigeons suspended in the air, a newspaper mid-unfolding caught in a wind that no longer exists.
-
-Then it shifts.
-
-Three blocks ahead, something moves. Someone is running — sprinting — cutting between frozen pedestrians. Behind them, two others in pursuit.
-
-Your interface pings. Three player signals, converging fast.
-
-But also — something else. Two glowing creatures crouched on a car hood nearby. They notice you at the same time you notice them.
-
-SYSTEM SPAWN: FLICKER HOUNDS — HP 35 each, ATK 5`,
-    sysMsg: '⚠ Multiple players detected — conflict in progress',
-    choices: [
-      { label: 'Fight the Flicker Hounds first', sub: 'Clear the threat — gain XP', next: 'fight_hounds', variant: 'danger' },
-      { label: 'Get closer and watch the players', sub: 'Observe the conflict', next: 'street_watch' },
-      { label: 'Cut through the side alley',       sub: 'Avoid everything',        next: 'street_alley' },
-    ],
-  },
-
-  fight_hounds: {
-    id: 'fight_hounds', type: 'combat',
-    text: `They move in sync — circling left and right. Faster than the rat. Smarter too. Your interface marks them both.`,
-    enemy: { name:'Flicker Hound', icon:'🐕', hp:70, atk:5, xp:75, loot:[{itemKey:'scrap_metal', qty:2}] },
-    onWin: 'street_watch',
-    onLose: 'street_alley',
-    onEscape: 'street_alley',
-  },
-
-  street_watch: {
-    id: 'street_watch', type: 'story',
-    text: `You duck behind a frozen delivery truck and watch.
-
-The runner is fast but flagging. They dart into a shop doorway. The two pursuers slow, circling. Red badges — both of them. The runner's badge is NEUTRAL.
-
-One draws a scrap blade. Not much — but enough.
-
-The runner looks up and sees you watching. Not asking for help exactly. Just acknowledging someone is there.
-
-You have about ten seconds before it escalates.`,
-    xp: 25,
-    choices: [
-      { label: 'Step in — draw their attention', sub: 'Help the runner escape', next: 'street_rescue', variant: 'danger' },
-      { label: 'Stay hidden and watch',           sub: 'See what happens',      next: 'street_watch2' },
-    ],
-  },
-
-  street_rescue: {
-    id: 'street_rescue', type: 'story',
-    text: `You step out. "Hey."
-
-Both red-badge players turn. The runner bolts from the doorway and disappears.
-
-The two look at each other. Then at you. They decide you're not worth the trouble — but one throws a punch as they leave. It connects.
-
-Worth it.
-
-The runner left something on the ground — a folded note. LEVEL 2 CACHE — parking garage off 5th, beneath the blue car. You find it. They weren't wrong.`,
-    hpLoss: 10, xp: 60,
-    rewards: [{ itemKey:'jacket', qty:1 }, { itemKey:'energy_drink', qty:1 }],
-    choices: [{ label: 'Continue forward', next: 'street_midpoint' }],
-  },
-
-  street_watch2: {
-    id: 'street_watch2', type: 'story',
-    text: `You stay hidden. The runner escapes on their own — throws something, creates noise, slips away.
-
-The red-badge players argue briefly, then separate.
-
-You emerge with a better understanding of how other players move. What they prioritize. How aggression works here.
-
-On the ground where the runner stood — a dropped energy drink. Still cold.`,
-    xp: 40,
-    rewards: [{ itemKey:'energy_drink', qty:1 }],
-    choices: [{ label: 'Move on', next: 'street_midpoint' }],
-  },
-
-  street_alley: {
-    id: 'street_alley', type: 'story',
-    text: `You cut down a side alley. Cool and quiet — the chaos muffles behind you.
-
-Halfway through, three glowing shapes drop from a fire escape above you. Small. Quick. Hungry-looking.
-
-SYSTEM SPAWN: STATIC CRAWLERS — HP 15 each, ATK 4
-
-Behind a dumpster you also spot a dropped bag. First things first.`,
-    choices: [
-      { label: 'Fight the crawlers', sub: 'Clear them — then loot', next: 'fight_crawlers' },
-      { label: 'Grab the bag and run', sub: 'Skip the fight', next: 'alley_loot' },
-    ],
-  },
-
-  fight_crawlers: {
-    id: 'fight_crawlers', type: 'combat',
-    text: `Three of them — they move like static, flickering between positions. Hard to track. But fragile.`,
-    enemy: { name:'Static Crawlers', icon:'🦎', hp:45, atk:4, xp:65, loot:[{itemKey:'scrap_metal', qty:1}] },
-    onWin: 'alley_loot',
-    onLose: 'alley_loot',
-    onEscape: 'alley_loot',
-  },
-
-  alley_loot: {
-    id: 'alley_loot', type: 'story',
-    text: `Behind the dumpster: an energy drink, still cold. A roll of bandage. A hand-drawn map with an X marked at the far end of the alley — "BEFORE THE BOSS — STOCK UP."
-
-Someone was here before you. They wanted to help.
-
-You follow the X. A small cache under a loose step. Modest but real.`,
-    xp: 30,
-    rewards: [{ itemKey:'energy_drink', qty:1 }, { itemKey:'scrap_metal', qty:2 }, { itemKey:'jacket', qty:1 }],
-    choices: [{ label: 'Exit the alley', next: 'street_midpoint' }],
-  },
-
-  street_return: {
-    id: 'street_return', type: 'story',
-    text: `You emerge back onto the main road.
-
-The city looks different now. Not less strange — more. Every frozen face a question.
-
-Your interface pings softly. CHAPTER PROGRESS: 40%
-
-As you walk, two more System spawns cross your path — smaller this time, testing you. You dispatch them without breaking stride.
-
-Something is coming. You can feel it before you see it.`,
-    xp: 40,
-    rewards: [{ itemKey:'scrap_metal', qty:1 }],
-    choices: [{ label: 'Press forward', next: 'street_midpoint' }],
-  },
-
-  // ═══════════════════════════════════════
-  // PATH C — SYSTEM
-  // ═══════════════════════════════════════
-  system: {
-    id: 'system', type: 'story',
-    text: `You focus on the interface and let everything else fall away.
-
-It expands — Stats. Inventory. A radar map pulsing with soft signals. And a notification at the edge: TUTORIAL AVAILABLE.
-
-You tap it. The tutorial is brief, clinical, written like a legal document:
-
-1. Players gain XP by surviving encounters and exploring.
-2. XP accumulates to raise your level. Each level increases ATK, DEF, and max HP.
-3. System Entities will spawn throughout the chapter. Defeat them for XP.
-4. A High-Tier Entity awaits at the chapter's end.
-5. The System observes everything.
-
-There is no point 6.
-
-You close it. The radar shows six signals nearby — and three non-player entities. Glowing. Moving slowly. Waiting to be found.`,
-    xp: 25,
-    sysMsg: '⚠ Scanning… Multiple players and entities detected.',
-    choices: [
-      { label: 'Hunt the nearby entities', sub: 'Grind XP before going further',    next: 'sys_hunt' },
-      { label: 'Track the closest player', sub: 'Engage — first-strike advantage',  next: 'sys_track' },
-      { label: 'Stay hidden and observe',  sub: 'Learn before acting',              next: 'sys_observe' },
-    ],
-  },
-
-  sys_hunt: {
-    id: 'sys_hunt', type: 'story',
-    text: `You use the radar to track them one by one.
-
-The first is alone in a frozen café — a PIXEL DRONE, hovering between suspended coffee cups.
-
-PIXEL DRONE — HP 40, ATK 6
-
-It turns when you enter. Your interface marks it red.`,
-    choices: [{ label: 'Engage the Pixel Drone', next: 'fight_drone_1' }],
-  },
-
-  fight_drone_1: {
-    id: 'fight_drone_1', type: 'combat',
-    text: `It moves in unpredictable bursts — left, up, diagonal. But it's predictable in one way: it always attacks from the front.`,
-    enemy: { name:'Pixel Drone', icon:'🤖', hp:40, atk:6, xp:70, loot:[{itemKey:'scrap_metal', qty:2}] },
-    onWin: 'sys_hunt_2',
-    onLose: 'sys_observe',
-    onEscape: 'sys_observe',
-  },
-
-  sys_hunt_2: {
-    id: 'sys_hunt_2', type: 'story',
-    text: `It dissolves. Clean. Your stats tick upward.
-
-The radar shows two more. One in the parking garage to the north. One in the alley market to the east.
-
-CORRUPTED SENTRY — HP 55, ATK 7
-These are bigger. Designed to test you before the chapter boss.
-
-Which do you take?`,
-    xp: 20,
-    choices: [
-      { label: 'Parking garage — the Corrupted Sentry', next: 'fight_sentry' },
-      { label: 'Head to the plaza instead',             sub: 'Skip the second grind', next: 'street_midpoint' },
-    ],
-  },
-
-  fight_sentry: {
-    id: 'fight_sentry', type: 'combat',
-    text: `The garage is dark. The Sentry stands in the center of the second level — a humanoid shape made of broken geometry, edges that don't quite meet.
-
-It doesn't move until you step inside.`,
-    enemy: { name:'Corrupted Sentry', icon:'👾', hp:55, atk:7, xp:90, loot:[{itemKey:'medkit', qty:1}] },
-    onWin: 'sys_hunt_complete',
-    onLose: 'street_midpoint',
-    onEscape: 'street_midpoint',
-  },
-
-  sys_hunt_complete: {
-    id: 'sys_hunt_complete', type: 'story',
-    text: `It falls apart like a puzzle in reverse — pieces scattering, then vanishing.
-
-Your interface pulses with a new notification:
-
-SYSTEM ENTITIES CLEARED — BONUS XP AWARDED
-"You are prepared. Proceed to the plaza."
-
-You feel it. Real and undeniable. Stronger. Faster. More.
-
-The plaza is ahead. Something waits there.`,
-    xp: 50,
-    choices: [{ label: 'Head to the plaza', next: 'street_midpoint' }],
-  },
-
-  sys_track: {
-    id: 'sys_track', type: 'story',
-    text: `You move silently, radar as guide.
-
-You find them crouched behind a car — studying their own interface. They don't hear you coming.
-
-"I heard your footsteps three blocks back," they say without turning. "I was waiting to see what you'd do."
-
-They turn. Badge: NEUTRAL. Expression: amused. Name: Kai.
-
-"Former data analyst," they say. "Already figured out the System runs on behavior patterns. The boss at the end of this chapter — it'll know your tendencies before you do."
-
-They share a location pin. A supply stash and a spawn point where System entities are clustered together. Easy XP if you move now.`,
-    xp: 35,
-    choices: [
-      { label: 'Hit the spawn point with Kai', sub: 'Team hunt — bonus XP',         next: 'fight_with_kai' },
-      { label: 'Go to the plaza now',          sub: 'Skip the extra grind',          next: 'street_midpoint' },
-    ],
-  },
-
-  fight_with_kai: {
-    id: 'fight_with_kai', type: 'combat',
-    text: `Kai fights differently than you — calculated, methodical. You take the front. They cover angles.
-
-A pair of FRACTURE WOLVES materializes from between frozen cars. Their howl sounds like dial-up.`,
-    enemy: { name:'Fracture Wolves', icon:'🐺', hp:80, atk:6, xp:100, loot:[{itemKey:'knife', qty:1}] },
-    onWin: 'sys_track_done',
-    onLose: 'street_midpoint',
-    onEscape: 'street_midpoint',
-  },
-
-  sys_track_done: {
-    id: 'sys_track_done', type: 'story',
-    text: `They dissolve together — one clean burst of light.
-
-Kai nods. "Good. You're ready for the plaza."
-
-They disappear into the city before you can ask anything else.
-
-You stand in the quiet aftermath. Your interface shows your stats climbing. You can feel the difference now — the way you hold your ground, the speed of your instincts.
-
-The chapter boss is ahead. But so are you.`,
-    xp: 40,
-    rewards: [{ itemKey:'energy_drink', qty:1 }],
-    choices: [{ label: 'Head to the plaza', next: 'street_midpoint' }],
-  },
-
-  sys_observe: {
-    id: 'sys_observe', type: 'story',
-    text: `You let the signals move without following them. Just watch — the radar's dots shifting and drifting.
-
-Two signals merge. Then separate quickly.
-
-One goes dark.
-
-Your own position must look the same to anyone watching. A stationary dot. Patient. Unreadable.
-
-You move toward the plaza, but slowly — picking off two small System spawns on the way. Nothing dramatic. Just preparation.`,
-    xp: 55,
-    rewards: [{ itemKey:'scrap_metal', qty:2 }],
-    choices: [{ label: 'Move toward the plaza', next: 'street_midpoint' }],
-  },
-
-  // ═══════════════════════════════════════
-  // CONVERGE — ALL PATHS MEET HERE
-  // ═══════════════════════════════════════
-  street_midpoint: {
-    id: 'street_midpoint', type: 'story',
-    text: `You reach the center of the city.
-
-A wide plaza — fountains frozen mid-arc, pigeons hovering at impossible angles. Beautiful and wrong in equal measure.
-
-A player sits on the edge of a fountain. Green badge. Exhausted face. They look up when you approach.
-
-"I've been here since it started," they say. "Counting. There are at least forty players in this district."
-
-Forty. The number lands.
-
-"And something else," they add. "Something bigger than players. The System has been seeding the city with creatures — testing us. Getting us ready."
-
-"Ready for what?"
-
-They look at the sky. "I think we're about to find out."
-
-Your interface pulses. CHAPTER PROGRESS: 70%`,
-    choices: [
-      { label: 'Ask them what they know', next: 'plaza_talk' },
-      { label: 'Explore the district',    sub: 'Farm enemies across 3 locations', next: 'farming_hub', icon: '🗺' },
-    ],
-  },
-
-  plaza_talk: {
-    id: 'plaza_talk', type: 'story',
-    text: `The green-badge player — Yara — has been building a picture from everything she's seen.
-
-"The System rewards survival and combat. Every creature you defeat makes you stronger. Every choice you make gets recorded."
-
-She pulls up her own stats. Level 3. She's been fighting.
-
-"There's one more cluster of entities before the boss," she says, pointing toward the north end of the plaza. "I cleared mine. Have you cleared yours?"
-
-As if on cue, your interface flickers:
-
-WARNING: HIGH-TIER ENTITY APPROACHING THIS ZONE.
-SYSTEM RECOMMENDATION: REACH LEVEL 3 BEFORE ENGAGING.
-
-Yara looks at you. "How are your stats?"`,
-    sysMsg: '⚠ High-tier entity inbound. Recommend Level 3 before engagement.',
-    choices: [
-      { label: 'I am ready — let it come',           sub: 'Engage The Watcher now',              next: 'pre_boss_check' },
-      { label: 'Hit the north plaza spawn first',    sub: 'More XP before the boss fight',       next: 'plaza_grind' },
-      { label: 'Explore the district',               sub: 'Farm 3 zones — XP, runes, and gear',  next: 'farming_hub', icon: '🗺' },
-    ],
-  },
-
-  plaza_grind: {
-    id: 'plaza_grind', type: 'story',
-    text: `The north end of the plaza is dense with them — SYSTEM FRAGMENTS, crystallized errors in the fabric of the paused world. They swarm in groups. They're not smart. But they're many.
-
-SYSTEM FRAGMENT CLUSTER — HP 90 total, ATK 5
-
-Yara watches from a distance. "I'll cover your flank," she says.`,
-    choices: [{ label: 'Fight the Fragment Cluster', next: 'fight_plaza_spawn' }],
-  },
-
-  fight_plaza_spawn: {
-    id: 'fight_plaza_spawn', type: 'combat',
-    text: `They move like broken code — stuttering, overlapping, reforming. Yara is true to her word. You take the front.`,
-    enemy: { name:'Fragment Cluster', icon:'💠', hp:90, atk:5, xp:110, loot:[{itemKey:'medkit', qty:1}] },
-    onWin: 'plaza_grind_done',
-    onLose: 'pre_boss_check',
-    onEscape: 'pre_boss_check',
-  },
-
-  plaza_grind_done: {
-    id: 'plaza_grind_done', type: 'story',
-    text: `They dissolve in waves. The plaza goes quiet.
-
-Yara walks over. Looks at your interface. Nods slowly.
-
-"Now you're ready."
-
-Your stats reflect it. Every fight has built toward this moment. You can feel the difference — the weight of your decisions, the sharpness of your instincts, the certainty that you are not the same player who stepped into this frozen city at the start.
-
-The sky begins to change.`,
-    xp: 50,
-    choices: [{ label: 'Face what comes next', next: 'pre_boss_check' }],
-  },
-
-  pre_boss_check: {
-    id: 'pre_boss_check', type: 'story',
-    text: `The fountain at the center of the plaza begins to vibrate. The water — still frozen mid-arc — starts to crack.
-
-Yara steps back. Her interface is pinging rapidly.
-
-"Ninety seconds," she says. "Make your call."
-
-She looks at you with the expression of someone who has been waiting a long time for something worth fighting.
-
-"Together?" she asks.
-
-You have about ninety seconds to decide.`,
-    sysMsg: '⚠ Boss entity countdown initiated. 90 seconds.',
-    choices: [
-      { label: 'Fight together',                     sub: 'A green ally — shared damage',    next: 'pre_boss_team' },
-      { label: 'Tell her to run — you handle it',   sub: 'Face it alone. Your choice.',     next: 'pre_boss_solo' },
-      { label: 'Use her as bait and set an ambush', sub: 'Cold. Effective. Dangerous.',     next: 'pre_boss_betray', variant: 'danger' },
-    ],
-  },
-
-  pre_boss_team: {
-    id: 'pre_boss_team', type: 'story',
-    text: `She nods once. Stands up. Rolls her shoulders.
-
-"I've been waiting for something worth fighting," she says.
-
-You position yourselves back to back at the center of the plaza. Your interface counts down from ten. The fountains begin to vibrate.
-
-At zero, the sky cracks open.`,
-    choices: [{ label: 'Face The Watcher', next: 'boss', bossMode: 'team' }],
-  },
-
-  pre_boss_solo: {
-    id: 'pre_boss_solo', type: 'story',
-    text: `"You should go," you tell her. "This one is mine."
-
-She looks at you for a long moment. Then: "Don't die being stubborn."
-
-She leaves at a run. You stand alone in the plaza. The fountains begin to tremble.
-
-Your interface counts down. You breathe. You wait.
-
-At zero, the sky splits.`,
-    choices: [{ label: 'Face The Watcher', next: 'boss', bossMode: 'solo' }],
-  },
-
-  pre_boss_betray: {
-    id: 'pre_boss_betray', type: 'story',
-    text: `"Stay center," you tell her calmly. "It'll come from above — you'll see it first from there."
-
-She believes you. Moves to the middle of the plaza.
-
-You take position behind a frozen news kiosk. Thirty meters back. Clear sightline.
-
-The countdown hits zero. The sky tears open. The eye descends.
-
-It looks directly at Yara first — then past her, to you. As if it already knows.
-
-As if it's been watching you all along.`,
-    choices: [{ label: 'Face The Watcher', next: 'boss', bossMode: 'betray' }],
-  },
-
-  // ═══════════════════════════════════════
-  // BOSS
-  // ═══════════════════════════════════════
-  boss: {
-    id:'boss', type:'boss',
-    text:`The eye opens fully.
-
-Not a metaphor. Not a symbol. An actual eye, the size of a building, suspended in the torn sky above the plaza.
-
-It blinks once — slowly, deliberately — and every player in the district feels it. A pressure behind the eyes. A sudden awareness of being seen.
-
-THE WATCHER.
-
-The air vibrates at a frequency just below hearing. The frozen people around the plaza begin to tremble, as if even suspended physics recognizes something ancient and wrong has arrived.
-
-It looks at you.
-
-It already knows everything.`,
-    enemy: { name:'The Watcher', icon:'👁', hp:200, atk:18, xp:150, loot:[{itemKey:'core_fragment',qty:1}] },
-  },
-
-  // ═══════════════════════════════════════
-  // FARMING LOCATIONS
-  // ═══════════════════════════════════════
-  farming_hub: {
-    id: 'farming_hub', type: 'location_hub',
-    text: `Your interface opens a tactical overlay of the district.
-
-Three zones pulse with System entity activity — each with different threats and loot. Fight as many times as you want. Return to the story when you are ready.`,
-    sysMsg: '⚠ Farming zones active — entities respawn indefinitely.',
-    locations: [
-      {
-        id: 'loc_garage', name: 'Parking Garage', icon: '🅿️', level: 'Easy', color: '#5ec45e',
-        desc: 'Weak spawns. Good for early runes and consumables.',
-        enemies: [
-          { name:'Glitch Rat',     icon:'🐀', hp:20,  atk:3,  agility:3, xp:25,  loot:[{itemKey:'rune_ignis',   chance:.25},{itemKey:'energy_drink', chance:.4},{itemKey:'scrap_metal',chance:.6}] },
-          { name:'Static Crawler', icon:'🦎', hp:30,  atk:4,  agility:4, xp:35,  loot:[{itemKey:'rune_aqua',    chance:.25},{itemKey:'scrap_blade',  chance:.3},{itemKey:'scrap_metal',chance:.5}] },
-          { name:'Pixel Shard',    icon:'💠', hp:15,  atk:2,  agility:5, xp:20,  loot:[{itemKey:'rune_terra',   chance:.2}, {itemKey:'energy_drink', chance:.5},{itemKey:'flashlight', chance:.2}] },
-        ],
-      },
-      {
-        id: 'loc_market', name: 'Frozen Market', icon: '🏪', level: 'Medium', color: '#c8b96e',
-        desc: 'Mid-tier entities. Better gear and rare rune drops.',
-        enemies: [
-          { name:'Flicker Hound',  icon:'🐕', hp:55,  atk:6,  agility:6, xp:60,  loot:[{itemKey:'rune_aero',    chance:.3}, {itemKey:'jacket',        chance:.25},{itemKey:'knife',      chance:.2}] },
-          { name:'Pixel Drone',    icon:'🤖', hp:45,  atk:7,  agility:5, xp:65,  loot:[{itemKey:'rune_ignis',   chance:.35},{itemKey:'scrap_metal',   chance:.6}, {itemKey:'medkit',     chance:.15}] },
-          { name:'Fracture Wolf',  icon:'🐺', hp:70,  atk:7,  agility:7, xp:75,  loot:[{itemKey:'rune_umbra',   chance:.2}, {itemKey:'leather_gloves',chance:.2}, {itemKey:'worn_boots', chance:.2}] },
-        ],
-      },
-      {
-        id: 'loc_tower', name: 'Glass Tower', icon: '🏢', level: 'Hard', color: '#e05555',
-        desc: 'Elite entities. Rare and epic loot, high XP.',
-        enemies: [
-          { name:'Corrupted Sentry',icon:'👾', hp:90,  atk:10, agility:6, xp:100, loot:[{itemKey:'rune_lux',     chance:.3}, {itemKey:'iron_sword',    chance:.15},{itemKey:'riot_vest',  chance:.1}] },
-          { name:'Void Sentinel',  icon:'⚫', hp:110, atk:12, agility:7, xp:120, loot:[{itemKey:'rune_umbra',   chance:.4}, {itemKey:'iron_helm',     chance:.15},{itemKey:'medkit',     chance:.25}] },
-          { name:'System Enforcer',icon:'🔴', hp:130, atk:14, agility:8, xp:150, loot:[{itemKey:'rune_lux',     chance:.35},{itemKey:'iron_shield',   chance:.1}, {itemKey:'iron_ring',  chance:.1}] },
-        ],
-      },
-    ],
-    returnNode: 'plaza_talk',
-  },
-
-  // ═══════════════════════════════════════
-  // END
-  // ═══════════════════════════════════════
-  chapter_end: {
-    id:'chapter_end', type:'end',
-    text:`The Watcher shatters.
-
-Not with violence — with silence. Like a mirror falling in a dream, breaking without sound. The eye closes. The crack in the sky seals itself with threads of pale light.
-
-The plaza is still.
-
-Then, slowly, the frozen world begins to move again. One car. One pedestrian. A pigeon completes its flight. The wind returns.
-
-People stumble, confused. They don't know what happened. To them, no time passed.
-
-To you, everything has changed.
-
-Your interface pulses once. A message appears in letters that feel less like text and more like something carved:
-
-CHAPTER 1 COMPLETE.
-BEHAVIOR RECORDED.
-
-Below that, quieter, almost intimate:
-
-Your evolution is being calculated.
-
-You look at your hands. Same hands. Different player.
-
-Chapter 2 is waiting.`,
-    sysMsg: 'Core Fragment obtained. Chapter 2 unlocked.',
-    unlocksChapter: 2,
-  },
-}
-
-// ── Constants ────────────────────────────────────
-// XP needed to reach next level — exponential curve
-// Level 1→2: 100, 2→3: 150, 3→4: 225, 4→5: 337, 5→6: 506, 6→7: 759...
-function xpForLevel(level) {
-  return Math.floor(100 * Math.pow(1.5, level - 1))
-}
-
-// ── App state ────────────────────────────────────
-let player   = await renderNav('nav')
-if (!player) throw new Error('no player')
-
-let currentHp = player.hp || 100
-let nodeId    = (player.current_node || '').startsWith('ch1_')
-  ? player.current_node.replace('ch1_', '')
-  : 'opening'
-let bossMode  = 'solo'
-let outcome   = null
-
-if (!NODES[nodeId]) nodeId = 'opening'
-
-// ── Level up logic ───────────────────────────────
-// Called after every XP gain — levels up player if threshold crossed
-async function checkLevelUp(oldXp, newXp, oldLevel) {
-  let level   = oldLevel
-  let xp      = newXp
-  let leveled = false
-  let levelsGained = 0
-
-  while (xp >= xpForLevel(level)) {
-    xp -= xpForLevel(level)
-    level += 1
-    leveled = true
-    levelsGained++
-  }
-
-  if (!leveled) return null
-
-  const newMaxHp    = (player.max_hp || 100) + levelsGained * 20
-  const newHp       = newMaxHp  // FULL HP restore on level up
-  const statPtsGained = levelsGained * 3
-  const newStatPts  = (player.stat_points || 0) + statPtsGained
-
-  currentHp = newHp
-  player.max_hp = newMaxHp
-  player.stat_points = newStatPts
-
-  showToast('LEVEL UP! Lvl ' + level + ' — Full HP restored! +' + statPtsGained + ' stat points to spend!')
-  renderHUD()
-
-  return { level, max_hp: newMaxHp, hp: newHp, stat_points: newStatPts }
-}
-
-// ── HUD ──────────────────────────────────────────
-function renderHUD() {
-  const hp  = currentHp
-  const mhp = player.max_hp || 100
-  const xp  = player.xp || 0
-  const lvl = player.level || 1
-  const BC  = { neutral:'#c8b96e', red:'#e05555', green:'#5ec45e', elite:'#a07de0', unknown:'#b0b0b0' }
-  const BS  = { neutral:'🟡', red:'🔴', green:'🟢', elite:'🟣', unknown:'⚫' }
-  const bc  = BC[player.badge] || '#c8b96e'
-  const bs  = BS[player.badge] || '🟡'
-  const hpPct  = Math.max(0, Math.round(hp / mhp * 100))
-  const hpCol  = hpPct > 60 ? '#5ec45e' : hpPct > 30 ? '#c8b96e' : '#e05555'
-  const xpNext = xpForLevel(lvl)
-  // xp here is the raw accumulated XP — calculate progress within current level
-  const xpPct  = Math.min(100, Math.round((xp % xpNext) / xpNext * 100))
-  document.getElementById('hud').innerHTML = `
-    <div class="hud-badge-row">
-      <span class="hud-seal">${bs}</span>
-      <div>
-        <p class="hud-seal-label" style="color:${bc}">${(player.badge||'neutral')[0].toUpperCase()+(player.badge||'neutral').slice(1)}</p>
-        <p class="hud-chapter">Chapter ${player.current_chapter||1} · Lvl ${lvl}</p>
-      </div>
-    </div>
-    <div class="stat-row">
-      <span class="stat-key">HP</span>
-      <div class="stat-bar-wrap"><div class="stat-bar" id="hp-bar" style="width:${hpPct}%;background:${hpCol};transition:width .4s,background .4s"></div></div>
-      <span class="stat-val" id="hp-val">${hp}/${mhp}</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-key">XP</span>
-      <div class="stat-bar-wrap"><div class="stat-bar" style="width:${xpPct}%;background:#a07de0;transition:width .4s"></div></div>
-      <span class="stat-val">→ Lvl ${lvl+1}</span>
-    </div>
-    ${(player.stat_points||0)>0?`<div onclick="openStatModal()" style="background:rgba(200,184,128,.25);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:4px 8px;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;cursor:pointer;text-align:center">⬆ ${player.stat_points} STAT POINTS — tap to spend</div>`:''}
-    <div class="stat-grid">
-      <div class="stat-box"><span class="stat-box-key">ATK</span><span class="stat-box-val">${calcATK()}</span></div>
-      <div class="stat-box"><span class="stat-box-key">DEF</span><span class="stat-box-val">${calcDEF()}</span></div>
-      <div class="stat-box"><span class="stat-box-key">GOLD</span><span class="stat-box-val" style="color:#c8b96e">${player.gold||0}</span></div>
-    </div>
-  `
-}
-
-function updateHpBar(hp) {
-  currentHp = hp
-  const mhp = player.max_hp || 100
-  const pct = Math.max(0, Math.round(hp / mhp * 100))
-  const col = pct > 60 ? '#5ec45e' : pct > 30 ? '#c8b96e' : '#e05555'
-  const bar = document.getElementById('hp-bar')
-  const val = document.getElementById('hp-val')
-  if (bar) { bar.style.width = pct+'%'; bar.style.background = col }
-  if (val) val.textContent = hp+'/' + ''+(player.max_hp||100)
-}
-
-// ── Save ─────────────────────────────────────────
-async function save(updates) {
-  const { data } = await supabase
-    .from('players').update({ ...updates, last_seen_at: new Date().toISOString() })
-    .eq('id', player.id).select().single()
-  if (data) { player = data; currentHp = data.hp }
-  renderHUD()
-}
-
-// ── Add item ─────────────────────────────────────
-// ── Loot drop queue — collect drops then show summary window ──
-let _lootQueue = []
-let _lootTimerId = null
-let _lootSuppressed = false  // suppress mid-sequence flashes
-
-function queueLoot(name, qty, img) {
-  _lootQueue.push({ name, qty, img })
-  clearTimeout(_lootTimerId)
-  _lootTimerId = setTimeout(showLootWindow, 800)
-}
-
-function suppressLoot() { _lootSuppressed = true }
-function unsuppressLoot() { _lootSuppressed = false }
-
-function showLootWindow() {
-  if (_lootSuppressed || !_lootQueue.length) return
-  const drops = [..._lootQueue]
-  _lootQueue = []
-
-  // Remove existing loot window if any
-  document.getElementById('loot-window')?.remove()
-
-  const win = document.createElement('div')
-  win.id = 'loot-window'
-  win.style.cssText = `
-    position:fixed;bottom:80px;right:20px;z-index:500;
-    background:#0f0d08;border:1px solid rgba(200,184,128,.5);
-    border-radius:6px;padding:0;min-width:220px;max-width:280px;
-    box-shadow:0 8px 40px rgba(0,0,0,.8);animation:fadeIn .3s ease;
-    font-family:'Share Tech Mono',monospace;
-  `
-  win.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid rgba(200,184,128,.2)">
-      <span style="font-size:.62rem;letter-spacing:.1em;color:#c8b880">ITEMS OBTAINED</span>
-      <button onclick="document.getElementById('loot-window').remove()" style="background:none;border:none;color:#7a6435;cursor:pointer;font-size:1rem;line-height:1;padding:0 2px">✕</button>
-    </div>
-    <div style="padding:6px 0;max-height:280px;overflow-y:auto">
-      ${drops.map(d => `
-        <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:.5px solid rgba(200,184,128,.1)">
-          ${d.img ? `<img src="${d.img}" style="width:28px;height:28px;object-fit:contain;border-radius:3px;flex-shrink:0">` : `<span style="font-size:1.1rem;flex-shrink:0">📦</span>`}
-          <span style="font-size:.68rem;color:#e8d8a8;flex:1">${d.name}</span>
-          ${d.qty > 1 ? `<span style="font-size:.58rem;color:#7a6435">×${d.qty}</span>` : ''}
-          <button onclick="declineDrop('${d.name}',this)" style="background:none;border:.5px solid rgba(224,85,85,.3);color:#e05555;cursor:pointer;font-size:.55rem;padding:1px 5px;border-radius:2px;font-family:'Share Tech Mono',monospace">skip</button>
-        </div>
-      `).join('')}
-    </div>
-    <div style="padding:8px 12px;display:flex;justify-content:flex-end">
-      <button onclick="document.getElementById('loot-window').remove()" style="font-family:'Cinzel',serif;font-size:.68rem;color:#1a1208;background:rgba(200,184,128,.5);border:1px solid rgba(139,106,32,.6);padding:4px 14px;border-radius:2px;cursor:pointer">Keep All</button>
-    </div>
-  `
-  document.body.appendChild(win)
-
-  // Auto-dismiss after 8 seconds
-  setTimeout(() => win.remove?.(), 8000)
-}
-
-window.declineDrop = async function(itemName, btn) {
-  // Find item in inventory by name and delete it
-  const { data } = await supabase.from('inventory').select('id').eq('player_id', player.id).eq('name', itemName).order('obtained_at',{ascending:false}).limit(1)
-  if (data?.[0]) await supabase.from('inventory').delete().eq('id', data[0].id)
-  btn.closest('div[style]').remove()
-}
-
-const SOCKET_RULES = {
-  common:   {chance:0.20,max:1}, uncommon:{chance:0.35,max:2},
-  rare:     {chance:0.50,max:3}, epic:    {chance:0.65,max:4},
-  legendary:{chance:0.80,max:5}, mythic:  {chance:1.00,max:6},
-}
-function rollSockets(rarity, itemType) {
-  if (!['weapon','armor'].includes(itemType)) return 0
-  const rule = SOCKET_RULES[rarity] || {chance:0.2,max:1}
-  if (Math.random() > rule.chance) return 0
-  return Math.floor(Math.random() * rule.max) + 1
-}
-
+  import { supabase }           from '../supabase.js'
+  import { renderNav, showToast } from '../components/nav.js'
 
 const ITEM_IMAGES = {
   'ember_blade':'../assets/weapon/fire/ember_blade.png',
@@ -996,849 +104,558 @@ const ITEM_IMAGES = {
   'rune_aero':'../assets/runes/rune_aero.png',
   'rune_umbra':'../assets/runes/rune_umbra.png',
   'rune_lux':'../assets/runes/rune_lux.png',
+  // Base items
+  'scrap_blade':    '../assets/weapon/scrap_blade.png',
+  'knife':          '../assets/weapon/knife.png',
+  'jacket':         '../assets/armor/jacket.png',
+  'worn_boots':     '../assets/armor/worn_boots.png',
+  'riot_vest':      '../assets/armor/riot_vest.png',
+  'iron_ring':      '../assets/armor/iron_ring.png',
+  'energy_drink':   '../assets/items/energy_drink.png',
+  'medkit':         '../assets/items/medkit.png',
+  'scrap_metal':    '../assets/items/scrap_metal.png',
+  'flashlight':     '../assets/items/flashlight.png',
+  'core_fragment':  '../assets/items/core_fragment.png',
 }
 function getItemImg(k) { return ITEM_IMAGES[k] || null }
 
-async function addItem(itemKey, qty = 1) {
-  const { data: m } = await supabase.from('items').select('*').eq('item_key', itemKey).single()
-  if (!m) return
-  const stackable = ['consumable','material','key']
-  if (stackable.includes(m.item_type)) {
-    // Find existing stack first (synchronous — no race condition)
-    const { data: ex } = await supabase
-      .from('inventory').select('id,quantity')
-      .eq('player_id', player.id).eq('item_key', itemKey)
-      .maybeSingle()
 
-    if (ex) {
-      // Stack onto existing row
-      await supabase.from('inventory')
-        .update({ quantity: (ex.quantity || 1) + qty })
-        .eq('id', ex.id)
-    } else {
-      // Insert new stack — use upsert with onConflict to prevent race duplicates
-      await supabase.from('inventory').upsert({
-        player_id:player.id, item_key:m.item_key, name:m.name, item_type:m.item_type,
-        subtype:m.subtype, rarity:m.rarity, atk_bonus:m.atk_bonus||0, def_bonus:m.def_bonus||0,
-        hp_restore:m.hp_restore||0, two_handed:m.two_handed||false, icon:m.icon, quantity:qty,
-        element:m.element||'none', power_bonus:m.power_bonus||0, control_bonus:m.control_bonus||0,
-        guard_bonus:m.guard_bonus||0, speed_bonus:m.speed_bonus||0,
-        insight_bonus:m.insight_bonus||0, luck_bonus:m.luck_bonus||0,
-        special_effect:m.special_effect||null, sockets_total:0, sockets_used:0, socketed_runes:[]
-      }, { onConflict: 'player_id,item_key', ignoreDuplicates: false })
-    }
-    queueLoot(m.name, qty, getItemImg(m.item_key))
-    return
-  }
-  const socketsRolled = rollSockets(m.rarity, m.item_type)
-  await supabase.from('inventory').insert({
-    player_id:player.id, item_key:m.item_key, name:m.name, item_type:m.item_type,
-    subtype:m.subtype, rarity:m.rarity, atk_bonus:m.atk_bonus||0, def_bonus:m.def_bonus||0,
-    hp_restore:m.hp_restore||0, two_handed:m.two_handed||false, icon:m.icon, quantity:1,
-    element:m.element||'none', power_bonus:m.power_bonus||0, control_bonus:m.control_bonus||0,
-    guard_bonus:m.guard_bonus||0, speed_bonus:m.speed_bonus||0,
-    insight_bonus:m.insight_bonus||0, luck_bonus:m.luck_bonus||0,
-    special_effect:m.special_effect||null,
-    sockets_total:socketsRolled, sockets_used:0, socketed_runes:[]
-  })
-  queueLoot(m.name + (socketsRolled > 0 ? ` [${socketsRolled} socket${socketsRolled>1?'s':''}!]` : ''), 1, getItemImg(m.item_key))
-}
-
-// ── Navigate ─────────────────────────────────────
-window.returnToZone = function() {
-  document.getElementById('loot-window')?.remove()
-  const p = document.getElementById('right-panel')
-  if (farmLoc && p) renderFarmZone(p, farmLoc)
-  else if (p) renderLocationHub(p, NODES['farming_hub'])
-}
-window.returnToZoneHub = function() {
-  document.getElementById('loot-window')?.remove()
-  const p = document.getElementById('right-panel')
-  if (p) renderLocationHub(p, NODES['farming_hub'])
-}
-window.returnToStory = function() {
-  document.getElementById('loot-window')?.remove()
-  goTo('plaza_talk')
-}
-
-// ── Derived stat calculations ────────────────────────────────
-function calcATK() {
-  const pwr = player.power   || 0
-  const spd = player.speed   || 0
-  const eqA = getEquippedBonus('atk_bonus')
-  return Math.max(1, Math.round((player.atk||1) + pwr*0.6 + spd*0.2 + eqA))
-}
-function calcDEF() {
-  const grd = player.guard   || 0
-  const ctr = player.control || 0
-  const eqD = getEquippedBonus('def_bonus')
-  return Math.round((player.def||0) + grd*0.6 + ctr*0.2 + eqD)
-}
-function calcSPD() {
-  const spd = player.speed   || 0
-  const ins = player.insight || 0
-  return Math.round(spd + ins*0.1 + getEquippedBonus('speed_bonus'))
-}
-function getEquippedBonus(stat) {
-  // Sum bonus from all equipped items — pulled from window._equipped cache
-  return (window._equippedItems||[]).reduce((s,i)=>s+(i[stat]||0),0)
-}
-
-// ── Stat allocation modal ─────────────────────────────────────
-window.openStatModal = function() {
-  document.getElementById('stat-modal')?.remove()
-  const pts = player.stat_points || 0
-  if (pts <= 0) { showToast('No stat points to spend'); return }
-
-  const STATS = [
-    {key:'power',   label:'Power',   desc:'Boosts ATK damage'},
-    {key:'control', label:'Control', desc:'Boosts DEF & retry chance'},
-    {key:'guard',   label:'Guard',   desc:'Boosts DEF & damage reduction'},
-    {key:'speed',   label:'Speed',   desc:'Boosts ATK & turn order'},
-    {key:'insight', label:'Insight', desc:'Boosts SPD & luck scaling'},
-    {key:'luck',    label:'Luck',    desc:'Improves crit & loot chance'},
+  const SLOTS = [
+    { key:'helmet',     label:'Helmet',      icon:'⛑',  accepts:['helmet'] },
+    { key:'chest',      label:'Chest',       icon:'🦺', accepts:['chest'] },
+    { key:'gloves',     label:'Gloves',      icon:'🧤', accepts:['gloves'] },
+    { key:'boots',      label:'Boots',       icon:'👢', accepts:['boots'] },
+    { key:'accessory1', label:'Accessory 1', icon:'💍', accepts:['accessory'] },
+    { key:'accessory2', label:'Accessory 2', icon:'📿', accepts:['accessory'] },
+    { key:'mainhand',   label:'Weapon',      icon:'🗡',  accepts:['sword','dagger','staff','bow','spear','shield'] },
+    { key:'offhand',    label:'Off-hand',    icon:'🛡',  accepts:['shield','dagger','tome','sword'] },
   ]
 
-  const modal = document.createElement('div')
-  modal.id = 'stat-modal'
-  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7)'
-  modal.innerHTML = `
-    <div style="background:#c4b070;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:300px;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">Allocate Stats</p>
-        <button onclick="document.getElementById('stat-modal').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#1a1208">✕</button>
-      </div>
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;margin-bottom:.75rem">Points available: <strong id="pts-left">${pts}</strong></p>
-      ${STATS.map(s => `
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
-          <div style="flex:1">
-            <p style="font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;margin:0">${s.label} <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#3a2008">${player[s.key]||0}</span></p>
-            <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.65rem;color:#3a2008;margin:0">${s.desc}</p>
-          </div>
-          <button onclick="spendStat('${s.key}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:3px 10px;cursor:pointer">+ Spend</button>
-        </div>
-      `).join('')}
-      <button onclick="saveStats()" style="width:100%;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.5);border:1px solid rgba(139,106,32,.6);border-radius:3px;padding:.45rem;cursor:pointer;margin-top:.5rem">Save</button>
-    </div>
-  `
-  modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
-  document.body.appendChild(modal)
-}
+  const RARITY = { common:'#c8c0a0', uncommon:'#5ec45e', rare:'#5eaee0', epic:'#c090ff', legendary:'#f0d060', mythic:'#ff88ff' }
+  const FILTERS = ['all','weapon','armor','consumable','material','key']
 
-let _pendingStats = {}
-window.spendStat = function(key) {
-  const pts = (player.stat_points||0) - Object.values(_pendingStats).reduce((a,b)=>a+b,0)
-  if (pts <= 0) { showToast('No points left'); return }
-  _pendingStats[key] = (_pendingStats[key]||0) + 1
-  player[key] = (player[key]||0) + 1
-  const left = (player.stat_points||0) - Object.values(_pendingStats).reduce((a,b)=>a+b,0)
-  document.getElementById('pts-left').textContent = left
-  // Refresh modal labels
-  document.getElementById('stat-modal').querySelectorAll('span[style*="Mono"]').forEach((el,i) => {
-    const keys = ['power','control','guard','speed','insight','luck']
-    if (keys[i] !== undefined) el.textContent = player[keys[i]]||0
-  })
-}
-window.saveStats = async function() {
-  const spent = Object.values(_pendingStats).reduce((a,b)=>a+b,0)
-  if (spent === 0) { document.getElementById('stat-modal').remove(); return }
-  const newPts = Math.max(0, (player.stat_points||0) - spent)
-  const updates = { stat_points: newPts }
-  Object.entries(_pendingStats).forEach(([k,v]) => { updates[k] = player[k] })
-  player.stat_points = newPts
-  _pendingStats = {}
-  await supabase.from('players').update(updates).eq('id', player.id)
-  document.getElementById('stat-modal').remove()
-  renderHUD()
-  showToast('Stats saved!')
-}
+  let player = await renderNav('nav')
+  if (!player) throw new Error('no player')
 
-window.goTo = async function goTo(nextId, choice = {}) {
-  if (!NODES[nextId]) return
-  const cur = NODES[nodeId]
-  const oldXp  = player.xp || 0
-  const oldLvl = player.level || 1
+  let items = [], selectedId = null, filter = 'all'
 
-  const updates = { current_node: 'ch1_' + nextId }
-  if (cur?.xp)     updates.xp = oldXp + cur.xp
-  if (cur?.hpLoss) { currentHp = Math.max(1, currentHp - cur.hpLoss); updates.hp = currentHp }
-  if (choice.outcome === 'attack') { updates.reputation = 'red'; updates.badge = 'red' }
-  if (choice.bossMode) bossMode = choice.bossMode
-  if (choice.outcome)  outcome  = choice.outcome
-  if (cur?.rewards) for (const r of cur.rewards) await addItem(r.itemKey, r.qty)
-
-  // Check for level up before saving
-  if (updates.xp) {
-    const lvlUpdates = await checkLevelUp(oldXp, updates.xp, oldLvl)
-    if (lvlUpdates) Object.assign(updates, lvlUpdates)
-  }
-
-  await save(updates)
-
-  const lp = document.getElementById('left-page')
-  lp.style.transition = 'opacity .3s,transform .3s'
-  lp.style.opacity    = '0'
-  lp.style.transform  = 'translateX(-8px)'
-  setTimeout(() => {
-    nodeId = nextId
+  async function load() {
+    const { data } = await supabase.from('inventory').select('*').eq('player_id', player.id).order('obtained_at',{ascending:false})
+    items = data || []
     render()
-    lp.style.opacity   = '1'
-    lp.style.transform = 'translateX(0)'
-    window.scrollTo({ top:0, behavior:'smooth' })
-  }, 320)
-}
-
-// ── Render ───────────────────────────────────────
-function render() {
-  const node = NODES[nodeId]
-  if (!node) {
-    document.getElementById('story-text').textContent = 'Error: node "' + nodeId + '" not found.'
-    return
-  }
-  if (node.sysMsg) showSysOverlay(node.sysMsg)
-
-  const stEl = document.getElementById('story-text')
-  stEl.textContent = node.text || ''
-  stEl.className   = nodeId === 'opening' ? 'story-text drop-cap' : 'story-text'
-
-  // Watcher image — teaser on pre_boss nodes, full on boss node
-  const watcherNodes = ['pre_boss_team','pre_boss_solo','pre_boss_betray','pre_boss_check','boss']
-  const watcherImg   = document.getElementById('watcher-img')
-  if (watcherNodes.includes(nodeId)) {
-    if (!watcherImg) {
-      const img = document.createElement('img')
-      img.id    = 'watcher-img'
-      img.src   = '../assets/boss/the_watcher.png'
-      img.alt   = 'The Watcher'
-      img.style.cssText = 'width:100%;max-width:320px;display:block;margin:1.5rem auto 0;border-radius:4px;opacity:0;transition:opacity 1s;filter:' + (nodeId==='boss'?'none':'brightness(.7) saturate(0.6)')
-      document.getElementById('story-text').insertAdjacentElement('afterend', img)
-      setTimeout(() => img.style.opacity = '1', 100)
-    } else {
-      watcherImg.style.filter = nodeId==='boss' ? 'none' : 'brightness(.7) saturate(0.6)'
-      watcherImg.style.opacity = '1'
-    }
-  } else {
-    if (watcherImg) watcherImg.remove()
   }
 
-  const ob = document.getElementById('outcome-box')
-  if (outcome && nodeId === 'search_deeper') {
-    ob.style.display = 'block'
-    ob.textContent   = outcome==='team'   ? 'You made a choice to be human first.'
-      : outcome==='attack' ? 'The System recorded it. Reputation: Red.'
-      : 'You watched. You learned. You moved on.'
-  } else { ob.style.display = 'none' }
-
-  const panel = document.getElementById('right-panel')
-  if      (node.type === 'boss')         renderBoss(panel, node)
-  else if (node.type === 'combat')       renderCombat(panel, node)
-  else if (node.type === 'end')          renderEnd(panel, node)
-  else if (node.type === 'location_hub') renderLocationHub(panel, node)
-  else                                   renderChoices(panel, node)
-}
-
-// ── Location hub ─────────────────────────────────
-function renderLocationHub(panel, node) {
-  window._farmingLocations = node.locations
-  window._farmingReturnNode = node.returnNode
-
-  panel.innerHTML = `
-    <p class="choices-label">Choose a Zone</p>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem">
-      ${node.locations.map(loc => {
-        const zMap = {'loc_garage':'../assets/zones/zone_parking_garage.png','loc_market':'../assets/zones/zone_frozen_market.png','loc_tower':'../assets/zones/zone_glass_tower.png'}
-        const zImg = zMap[loc.id]
-        return `
-        <div onclick="enterLocation('${loc.id}')"
-          style="border:.5px solid ${loc.color}50;border-radius:5px;overflow:hidden;cursor:pointer;transition:all .2s;background:${loc.color}10">
-          ${zImg ? `<div style="width:100%;height:80px;background:url('${zImg}') center/cover;opacity:.8"></div>` : ''}
-          <div style="padding:.65rem .75rem">
-            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:3px">
-              <span style="font-size:1rem">${loc.icon}</span>
-              <span style="font-family:'Cinzel',serif;font-size:.85rem;color:#1a1208;font-weight:500">${loc.name}</span>
-              <span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:${loc.color};border:.5px solid ${loc.color}50;padding:1px 6px;border-radius:12px;margin-left:auto">${loc.level}</span>
-            </div>
-            <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#7a6435;margin:0">${loc.desc}</p>
-          </div>
-        </div>`
-      }).join('')}
-    </div>
-    <button class="choice" onclick="goTo('plaza_talk')" style="width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
-      <span class="choice-arrow">→</span>
-      <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:1rem;color:#3a2e15">Return to main story</span>
-    </button>
-  `
-}
-
-window.enterLocation = function(locId) {
-  const loc = (window._farmingLocations||[]).find(l => l.id === locId)
-  if (!loc) return
-  window._currentFarmLoc = loc
-  renderFarmZone(document.getElementById('right-panel'), loc)
-}
-
-function renderFarmZone(panel, loc) {
-  const zoneImgs = {
-    'loc_garage': '../assets/zones/zone_parking_garage.png',
-    'loc_market': '../assets/zones/zone_frozen_market.png',
-    'loc_tower':  '../assets/zones/zone_glass_tower.png',
+  function render() {
+    renderSlots()
+    renderGrid()
+    renderStats()
   }
-  const zoneImg = zoneImgs[loc.id]
 
-  panel.innerHTML = `
-    ${zoneImg ? `<div style="width:100%;height:110px;background:url('${zoneImg}') center/cover;border-radius:6px;margin-bottom:.75rem;opacity:.85;border:.5px solid rgba(139,106,32,.3)"></div>` : ''}
-    <p class="choices-label">${loc.icon} ${loc.name} — <span style="color:${loc.color}">${loc.level}</span></p>
-    <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#7a6435;margin-bottom:.75rem">
-      Enemies respawn indefinitely. Fight as many times as you need.
-    </p>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:1rem">
-      ${loc.enemies.map((e,i) => {
-        const drops = e.loot.map(l => {
-          const pct = Math.round(l.chance * 100)
-          const label = l.itemKey.replace('rune_','').replace(/_/g,' ')
-          return `<span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#9a8050">${label} ${pct}%</span>`
-        }).join(' · ')
-        const eImgs = {
-          'Glitch Rat':'../assets/enemy/enemy_glitch_rat.png',
-          'Static Crawler':'../assets/enemy/enemy_static_crawler.png',
-          'Pixel Shard':'../assets/enemy/enemy_pixel_shard.png',
-          'Flicker Hound':'../assets/enemy/enemy_flicker_hound.png',
-          'Pixel Drone':'../assets/enemy/enemy_pixel_drone.png',
-          'Fracture Wolf':'../assets/enemy/enemy_fracture_wolf.png',
-          'Corrupted Sentry':'../assets/enemy/enemy_corrupted_sentry.png',
-          'Void Sentinel':'../assets/enemy/enemy_void_sentinel.png',
-          'System Enforcer':'../assets/enemy/enemy_system_enforcer.png',
-        }
-        const eImg = eImgs[e.name]
-        return `<div onclick="fightFarmEnemy(${i})"
-          style="border:.5px solid rgba(139,106,32,.25);border-radius:4px;padding:.6rem .75rem;cursor:pointer;transition:all .15s;background:rgba(0,0,0,.04)"
-          onmouseover="this.style.background='rgba(200,184,128,.1)'" onmouseout="this.style.background='rgba(0,0,0,.04)'">
-          <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:3px">
-            ${eImg ? `<img src="${eImg}" style="width:36px;height:36px;object-fit:contain;border-radius:4px;flex-shrink:0;filter:drop-shadow(0 0 4px rgba(0,0,0,.5))">` : `<span style="font-size:1.1rem">${e.icon}</span>`}
-            <span style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208">${e.name}</span>
-            <span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#7a6435;margin-left:auto">HP ${e.hp} · ATK ${e.atk} · ${e.xp} XP</span>
-          </div>
-          <div style="display:flex;gap:4px;flex-wrap:wrap">${drops}</div>
-        </div>`
-      }).join('')}
-    </div>
-    <div style="display:flex;gap:6px">
-      <button class="choice" onclick="returnToZoneHub()" style="flex:1;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
-        <span class="choice-arrow">←</span>
-        <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#1a1208">Back to zones</span>
-      </button>
-      <button class="choice" onclick="goTo('plaza_talk')" style="flex:1;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
-        <span class="choice-arrow">→</span>
-        <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#1a1208">Return to story</span>
-      </button>
-    </div>
-  `
-}
-
-window.fightFarmEnemy = function(enemyIndex) {
-  const loc   = window._currentFarmLoc
-  if (!loc) return
-  const enemy = { ...loc.enemies[enemyIndex] }
-  const panel = document.getElementById('right-panel')
-  buildCombatUI(panel, enemy, '__farm_win__', '__farm_zone__', '__farm_zone__', false, null, loc, enemyIndex)
-}
-
-// ── Choices ──────────────────────────────────────
-function renderChoices(panel, node) {
-  const insight = player.insight || 0
-  // Filter choices: show hidden ones only if player has enough Insight
-  const visibleChoices = (node.choices||[]).filter(c => !c.insightRequired || insight >= c.insightRequired)
-  const hiddenChoices  = (node.choices||[]).filter(c => c.insightRequired && insight < c.insightRequired)
-
-  panel.innerHTML = `
-    <p class="choices-label">What do you do?</p>
-    <div class="choices">
-      ${visibleChoices.map(c => `
-        <button class="choice ${c.variant||''}"
-          data-next="${c.next}"
-          data-outcome="${c.outcome||''}"
-          data-bossmode="${c.bossMode||''}">
-          <span class="choice-arrow">→</span>
-          <span class="choice-body">
-            ${c.label}
-            ${c.sub ? '<span class="choice-sub">'+c.sub+'</span>' : ''}
-          </span>
-        </button>
-      `).join('')}
-      ${hiddenChoices.map(c => `
-        <div class="choice locked" title="Requires Insight ${c.insightRequired}">
-          <span class="choice-arrow" style="color:#555">→</span>
-          <span class="choice-body" style="color:#888">
-            [INSIGHT ${c.insightRequired} REQUIRED]
-            <span class="choice-sub">Equip items with Insight to unlock hidden paths</span>
-          </span>
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#ffd700">⚡ INS</span>
+  function renderSlots() {
+    const equipped = {}
+    items.filter(i=>i.equipped_slot).forEach(i=>{ equipped[i.equipped_slot]=i })
+    document.getElementById('equip-slots').innerHTML = SLOTS.map(s => {
+      const item = equipped[s.key]
+      const EL_COLORS = {fire:'#ff5500',water:'#0088ff',earth:'#8b5e3c',air:'#a8d8ea',dark:'#b06eff',light:'#ffd700',none:'#9a8050'}
+      const elColor = item ? (EL_COLORS[item.element] || '#9a8050') : '#9a8050'
+      const _socketsTotal = item ? (item.sockets_total||0) : 0
+      const _socketsUsed  = item ? (item.sockets_used||0)  : 0
+      const _runeword     = item ? item.runeword_name : null
+      return `<div class="equip-slot${selectedId?' clickable':''}" data-slot="${s.key}" title="${item?item.name+' — click to manage':s.label}">
+        ${(()=>{if(!item)return '<span class="slot-icon">'+s.icon+'</span>';const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="slot-icon" style="width:28px;height:28px;object-fit:contain" onerror="this.style.display=\'none\'">'):'<span class="slot-icon">'+item.icon+'</span>';})()}
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <span class="slot-label" style="color:${item ? (RARITY[item.rarity]||'#1a1208') : '#1a1208'};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item ? item.name : s.label}</span>
+          ${item && _socketsTotal > 0 ? '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.46rem;color:'+(_runeword?'#5020b0':'#1a1208')+'">' + (_runeword ? '✦ '+_runeword : _socketsUsed+'/'+_socketsTotal+' sockets') + '</span>' : ''}
         </div>
-      `).join('')}
-    </div>
-  `
-  panel.querySelectorAll('.choice').forEach(btn => {
-    btn.addEventListener('click', () => {
-      goTo(btn.dataset.next, { outcome: btn.dataset.outcome||null, bossMode: btn.dataset.bossmode||null })
-    })
-  })
-}
+        ${item ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.46rem;color:${elColor}">${item.element && item.element!=='none' ? item.element.toUpperCase() : 'EQ'}</span>` : ''}
+      </div>`
+    }).join('')
 
-// ── End screen ───────────────────────────────────
-function renderEnd(panel, node) {
-  document.getElementById('story-text').textContent = node.text || ''
-  panel.innerHTML = `
-    <div class="end-box">
-      <p class="end-title">Chapter 1 Complete</p>
-      <p class="end-sub">The Watcher has been defeated.<br>Chapter 2 awaits.</p>
-      <a href="book.html" class="end-btn" style="display:block;margin-bottom:.75rem">Return to Book ›</a>
-      <button class="end-btn" id="restart-btn" style="font-size:.8rem;opacity:.7">↺ Replay Chapter 1</button>
-    </div>
-  `
-  document.getElementById('restart-btn').addEventListener('click', async () => {
-    await supabase.from('players').update({ current_node:'ch1_opening' }).eq('id', player.id)
-    player.current_node = 'ch1_opening'
-    currentHp = player.hp
-    outcome   = null
-    bossMode  = 'solo'
-    nodeId    = 'opening'
-    render()
-    window.scrollTo({ top:0, behavior:'smooth' })
-  })
-}
-
-// ── Generic combat (for story encounters) ────────
-function renderCombat(panel, node) {
-  buildCombatUI(panel, node.enemy, node.onWin, node.onLose, node.onEscape, false)
-}
-
-// ── Boss combat ───────────────────────────────────
-function renderBoss(panel, node) {
-  // Scale Watcher to player level — always a real challenge
-  const lvl    = player.level || 1
-  const enemy  = { ...node.enemy }
-  if (bossMode === 'solo')   enemy.hp = 120 + lvl * 20
-  if (bossMode === 'team')   enemy.hp = 160 + lvl * 20
-  if (bossMode === 'betray') enemy.hp = 180 + lvl * 25
-  // Also scale atk slightly to level
-  enemy.atk = node.enemy.atk + Math.floor(lvl * 1.5)
-  buildCombatUI(panel, enemy, 'chapter_end', 'pre_boss_check', 'pre_boss_check', true)
-}
-
-// ── Shared combat UI builder ──────────────────────
-function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
-  let enemyHp      = enemy.hp
-  const maxEnemyHp  = enemy.hp
-  const maxPlayerHp = player.max_hp || 100
-  let over = false
-
-  // Cache equipped items for derived stat calculations
-  ;(async () => {
-    const { data } = await supabase.from('inventory').select('*')
-      .eq('player_id', player.id).not('equipped_slot', 'is', null)
-    window._equippedItems = data || []
-  })()
-
-  panel.innerHTML = `
-    <div class="combat-panel" id="combat-wrap">
-      <div class="combat-enemy-row">
-        ${(()=>{
-          const EIMGS = {
-            'Glitch Rat':       '../assets/enemy/enemy_glitch_rat.png',
-            'Static Crawler':   '../assets/enemy/enemy_static_crawler.png',
-            'Pixel Shard':      '../assets/enemy/enemy_pixel_shard.png',
-            'Flicker Hound':    '../assets/enemy/flicker_hound.png',
-            'Pixel Drone':      '../assets/enemy/enemy_pixel_drone.png',
-            'Fracture Wolf':    '../assets/enemy/enemy_fracture_wolf.png',
-            'Corrupted Sentry': '../assets/enemy/enemy_corrupted_sentry.png',
-            'Void Sentinel':    '../assets/enemy/enemy_void_sentinel.png',
-            'System Enforcer':  '../assets/enemy/enemy_system_enforcer.png',
-          }
-          if (isBoss) return '<img src=\'../assets/boss/the_watcher.png\' alt=\'The Watcher\' style=\'width:80px;height:80px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 12px #00ffe740)\'>'
-          const src = EIMGS[enemy.name]
-          if (src) return `<img src="${src}" alt="${enemy.name}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))" onerror="this.outerHTML='<span class=\'combat-enemy-icon\'>${enemy.icon}</span>'">`
-          return `<span class="combat-enemy-icon">${enemy.icon}</span>`
-        })()}
-        <div style="flex:1">
-          <p class="combat-enemy-name">${enemy.name}</p>
-          <div class="stat-bar-wrap">
-            <div class="stat-bar" id="e-bar" style="background:#e05555;width:100%;transition:width .4s,background .4s"></div>
-          </div>
-          <p id="e-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435;margin-top:2px">${enemyHp} / ${maxEnemyHp} HP</p>
-        </div>
-      </div>
-      <div class="combat-log" id="combat-log">${isBoss ? 'The eye opens. It sees everything.' : 'The encounter begins.'}</div>
-      <div class="stat-row" style="margin-bottom:1rem">
-        <span class="stat-key" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435">YOUR HP</span>
-        <div class="stat-bar-wrap">
-          <div class="stat-bar" id="c-player-bar" style="background:#5ec45e;width:100%;transition:width .4s,background .4s"></div>
-        </div>
-        <span id="c-player-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#4a3c22;min-width:50px;text-align:right">${currentHp}/${maxPlayerHp}</span>
-      </div>
-      <div id="combat-actions">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:.4rem">CHOOSE YOUR ACTION</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-          <button class="combat-btn" id="btn-strike" title="Fast attack. Always goes first.">⚔ Strike</button>
-          <button class="combat-btn" id="btn-heavy" title="Heavy blow. High damage, slower.">💥 Heavy Strike</button>
-          <button class="combat-btn" id="btn-defend" title="Reduce incoming damage this turn.">🛡 Defend</button>
-          <button class="combat-btn" id="btn-items" style="color:#5eaee0" title="Use a consumable item.">🎒 Items</button>
-          <button class="combat-btn" id="btn-element" style="color:#888;grid-column:span 1" title="Unlock in Chapter 2" disabled>✨ Element (Ch.2)</button>
-          <button class="combat-btn" id="btn-escape" title="Attempt to flee.">💨 Flee</button>
-        </div>
-      </div>
-      <div id="items-panel" style="display:none;margin-top:.5rem;border:.5px solid rgba(94,174,224,.3);border-radius:4px;padding:.6rem;background:rgba(0,0,0,.05);animation:fadeIn .2s ease">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#5eaee0;letter-spacing:.06em;margin-bottom:.4rem">⚡ USE ITEM</p>
-        <div id="items-list"></div>
-        <button onclick="document.getElementById('items-panel').style.display='none'" style="font-family:'IM Fell English',serif;font-size:.78rem;color:#7a6435;background:none;border:none;cursor:pointer;margin-top:.4rem;padding:0">✕ Close</button>
-      </div>
-      <p id="combat-over" style="display:none;text-align:center;font-family:'Cinzel',serif;font-size:1.1rem;font-weight:600;color:#1a1208;letter-spacing:.1em;padding:.5rem"></p>
-    </div>
-  `
-
-  function syncBars() {
-    const ePct = Math.max(0, Math.round(enemyHp  / maxEnemyHp  * 100))
-    const pPct = Math.max(0, Math.round(currentHp / maxPlayerHp * 100))
-    const eBar = document.getElementById('e-bar')
-    const eHp  = document.getElementById('e-hp')
-    const pBar = document.getElementById('c-player-bar')
-    const pHp  = document.getElementById('c-player-hp')
-    if (eBar) { eBar.style.width = ePct+'%'; eBar.style.background = ePct>50?'#e05555':'#c8b96e' }
-    if (eHp)  eHp.textContent = enemyHp+' / '+maxEnemyHp+' HP'
-    if (pBar) { pBar.style.width = pPct+'%'; pBar.style.background = pPct>60?'#5ec45e':pPct>30?'#c8b96e':'#e05555' }
-    if (pHp)  pHp.textContent = currentHp+'/'+maxPlayerHp
-    updateHpBar(currentHp)
-  }
-
-  function log(msg) { const el=document.getElementById('combat-log'); if(el) el.textContent=msg }
-
-  function shake() {
-    const w=document.getElementById('combat-wrap')
-    if(!w) return
-    w.classList.add('animate-shake')
-    setTimeout(()=>w.classList.remove('animate-shake'),400)
-  }
-
-  async function endCombat(result) {
-    if (over) return
-    over = true
-    const actions = document.getElementById('combat-actions')
-    const overEl  = document.getElementById('combat-over')
-    if (actions) actions.style.display = 'none'
-
-    const isFarm = onWin === '__farm_win__'
-
-    if (overEl) {
-      overEl.style.display = 'block'
-      const resultLabel = result==='win' ? '✦ Victory ✦' : result==='escape' ? '✦ Escaped ✦' : '✦ Defeated ✦'
-
-      if (isFarm) {
-        const btnStyle = "font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;border-radius:3px;padding:.45rem 1rem;cursor:pointer;width:100%;border:1px solid rgba(139,106,32,.5);margin-bottom:4px"
-        overEl.innerHTML =
-          '<p style="font-family:Cinzel,serif;font-size:1.1rem;font-weight:600;color:#1a1208;letter-spacing:.1em;margin-bottom:.6rem">' + resultLabel + '</p>' +
-          '<div style="display:flex;flex-direction:column;gap:4px">' +
-          '<button onclick="returnToZone()" style="' + btnStyle + ';background:rgba(200,184,128,.45)">⚔ Fight Again (same zone)</button>' +
-          '<button onclick="returnToZoneHub()" style="' + btnStyle + ';background:rgba(200,184,128,.25)">← Pick a Different Zone</button>' +
-          '<button onclick="returnToStory()" style="' + btnStyle + ';background:rgba(200,184,128,.12)">↩ Return to Story</button>' +
-          '</div>'
-      } else {
-        overEl.textContent = resultLabel
-      }
-    }
-
-    const oldXp  = player.xp || 0
-    const oldLvl = player.level || 1
-
-    if (result === 'win') {
-      const RUNE_POOL_COMMON = ['rune_ignis','rune_aqua','rune_terra','rune_aero']
-      const RUNE_POOL_RARE   = ['rune_ignis','rune_aqua','rune_terra','rune_aero','rune_umbra','rune_lux']
-      const isHardEnemy      = (enemy.hp||0) > 60
-      const runeChance       = isBoss ? 1.0 : isHardEnemy ? 0.35 : 0.20
-      const runePool         = (isBoss || isHardEnemy) ? RUNE_POOL_RARE : RUNE_POOL_COMMON
-      const runeKey          = Math.random() < runeChance ? runePool[Math.floor(Math.random()*runePool.length)] : null
-
-      if (isFarm) {
-        // Farm: fire all DB saves in background — buttons already visible
-        const newXp = oldXp + (enemy.xp || 50)
-        checkLevelUp(oldXp, newXp, oldLvl).then(lvlUp => {
-          save({ xp: newXp, hp: currentHp, ...(lvlUp||{}) })
-        })
-        if (enemy.loot) for (const l of enemy.loot) addItem(l.itemKey, l.qty)
-        if (runeKey) addItem(runeKey, 1)
-        if (farmLoc && farmLoc.enemies[farmIdx]) {
-          for (const drop of farmLoc.enemies[farmIdx].loot) {
-            if (Math.random() < drop.chance) addItem(drop.itemKey, 1)
-          }
-        }
-      } else {
-        // Story/boss: await saves then navigate
-        const newXp   = oldXp + (enemy.xp || 50)
-        const updates = { xp: newXp, hp: currentHp }
-        const lvlUp   = await checkLevelUp(oldXp, newXp, oldLvl)
-        if (lvlUp) Object.assign(updates, lvlUp)
-        if (isBoss) {
-          const unlocked = player.chapters_unlocked || [1]
-          if (!unlocked.includes(2)) updates.chapters_unlocked = [...unlocked, 2]
-        }
-        await save(updates)
-        if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
-        if (runeKey) await addItem(runeKey, 1)
-        setTimeout(() => goTo(onWin), 1200)
-      }
-    } else {
-      await save({ hp: Math.max(1, currentHp) })
-      setTimeout(() => {
-        const dest = result==='escape' ? onEscape : onLose
-        if (dest === '__farm_zone__') {
-          const p = document.getElementById('right-panel')
-          if (farmLoc && p) renderFarmZone(p, farmLoc)
-          else renderLocationHub(p, NODES['farming_hub'])
+    document.querySelectorAll('.equip-slot').forEach(el => {
+      el.addEventListener('click', async () => {
+        const slot = el.dataset.slot
+        if (selectedId) {
+          await equipItem(selectedId, slot)
         } else {
-          goTo(dest)
+          const item = items.find(i=>i.equipped_slot===slot)
+          if (item) showEquippedModal(item)
         }
-      }, 1200)
-    }
-  }
-
-  // Get equipped stat bonuses (loaded from player object which we keep in sync)
-  const eqPower  = player.power   || 0
-  const eqGuard  = player.guard   || 0
-  const eqSpeed  = player.speed   || 0
-  const eqInsight= player.insight || 0
-  const eqLuck   = player.luck    || 0
-
-  // Speed bonus: if speed >= 3, player always goes first (already do by acting on click)
-  // Luck: adds to random range
-  // ── Turn-based combat engine ─────────────────────────────
-  let defending = false
-
-  function playerATK()  { return calcATK() }
-  function playerDEF()  { return calcDEF() }
-  function playerSPD()  { return calcSPD() }
-  function enemySPD()   { return enemy.spd || Math.floor((enemy.atk||5) * 0.6) }
-
-  function setButtons(enabled) {
-    ['btn-strike','btn-heavy','btn-defend','btn-items','btn-escape'].forEach(id => {
-      const b = document.getElementById(id)
-      if (b) b.disabled = !enabled
+      })
     })
   }
 
-  async function doTurn(playerAction) {
-    if (over) return
-    setButtons(false)
-    defending = false
-    const luckBonus  = Math.floor(eqLuck / 2)
-    const pSPD = playerSPD()
-    const eSPD = enemySPD()
-
-    // ── Determine turn order ──────────────────────────
-    // Strike always goes first. Heavy goes first only if playerSPD >= 8
-    const playerFirst =
-      playerAction === 'strike' ? true :
-      playerAction === 'defend' ? true :  // defend resolves before enemy hits
-      playerAction === 'heavy'  ? pSPD >= 8 :
-      false
-
-    let messages = []
-
-    // ── Player action ─────────────────────────────────
-    function resolvePlayerAction() {
-      if (playerAction === 'strike') {
-        const roll = window._forceMaxHit ? (6+luckBonus) : Math.floor(Math.random()*(6+luckBonus))+1
-        window._forceMaxHit = false
-        const dmg  = Math.max(1, playerATK() + roll)
-        enemyHp    = Math.max(0, enemyHp - dmg)
-        messages.push('You strike for <strong>'+dmg+'</strong> damage.')
-      } else if (playerAction === 'heavy') {
-        const roll = window._forceMaxHit ? (10+luckBonus) : Math.floor(Math.random()*(10+luckBonus))+3
-        window._forceMaxHit = false
-        const dmg  = Math.max(1, Math.round(playerATK() * 1.6) + roll)
-        enemyHp    = Math.max(0, enemyHp - dmg)
-        messages.push('Heavy strike lands for <strong>'+dmg+'</strong> damage!')
-      } else if (playerAction === 'defend') {
-        defending = true
-        messages.push('You brace for impact — defense doubled this turn.')
-      }
-    }
-
-    // ── Enemy action ──────────────────────────────────
-    function resolveEnemyAction() {
-      if (enemyHp <= 0) return
-      const defMult = defending ? 0.25 : 1
-      const eDmg    = Math.max(0, Math.round((enemy.atk + Math.floor(Math.random()*4) - playerDEF()) * defMult))
-      currentHp     = Math.max(0, currentHp - eDmg)
-      if (defending && eDmg === 0) {
-        messages.push(enemy.name + ' attacks — completely blocked!')
-      } else if (defending) {
-        messages.push(enemy.name + ' attacks for <strong>'+eDmg+'</strong> (reduced by defense).')
-      } else {
-        messages.push(enemy.name + ' retaliates for <strong>'+eDmg+'</strong>.')
-      }
-    }
-
-    if (playerFirst) {
-      resolvePlayerAction()
-      resolveEnemyAction()
-    } else {
-      resolveEnemyAction()
-      resolvePlayerAction()
-    }
-
-    // ── Log results ───────────────────────────────────
-    shake()
-    log(messages.join(' '))
-    syncBars()
-
-    // ── Check win/loss ────────────────────────────────
-    if (enemyHp <= 0) {
-      log(enemy.name + ' has fallen.')
-      endCombat('win')
-      return
-    }
-    if (currentHp <= 0) {
-      if (window._hasRevive) {
-        window._hasRevive = false
-        currentHp = 20
-        syncBars()
-        await supabase.from('players').update({ hp: 20 }).eq('id', player.id)
-        player.hp = 20
-        log('Phoenix Feather activates — you rise at 20 HP!')
-        setButtons(true)
-      } else {
-        log('You collapse…')
-        endCombat('defeat')
-      }
-      return
-    }
-    setButtons(true)
-  }
-
-  document.getElementById('btn-strike').addEventListener('click', () => doTurn('strike'))
-  document.getElementById('btn-heavy').addEventListener('click',  () => doTurn('heavy'))
-  document.getElementById('btn-defend').addEventListener('click', () => doTurn('defend'))
-
-  document.getElementById('btn-escape').addEventListener('click', async () => {
-    if (over) return
-    const escChance = 0.3 + (playerSPD() - enemySPD()) * 0.05
-    if (Math.random() < Math.max(0.1, Math.min(0.8, escChance))) {
-      log('You slip away…')
-      endCombat('escape')
-    } else {
-      const dmg = Math.max(0, enemy.atk - playerDEF())
-      currentHp = Math.max(0, currentHp - dmg)
-      log('Failed to flee — took ' + dmg + ' damage.')
-      syncBars()
-      if (currentHp <= 0) endCombat('defeat')
-    }
-  })
-
-  // ── Items button ─────────────────────────────
-  document.getElementById('btn-items').addEventListener('click', async () => {
-    if (over) return
-    const panel = document.getElementById('items-panel')
-    const list  = document.getElementById('items-list')
-
-    // Toggle panel
-    if (panel.style.display !== 'none') {
-      panel.style.display = 'none'
-      return
-    }
-    panel.style.display = 'block'
-    list.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:#9a8050">Loading...</p>'
-
-    // Fetch consumables and usable keys from inventory
-    const { data } = await supabase
-      .from('inventory').select('*')
-      .eq('player_id', player.id)
-      .in('item_type', ['consumable','key'])
-      .gt('quantity', 0)
-      .order('item_type')
-
-    const usable = (data||[]).filter(i => i.hp_restore > 0 || ['Phoenix Feather','Explosion Scroll','Lava Bomb','Water Potion','Medkit','Energy Drink','Fire Potion','Light Potion','Healing Rain'].includes(i.name))
-
-    if (!usable.length) {
-      list.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#7a6435">No usable items in bag.</p>'
-      return
-    }
-
-    const RC = {common:'#c8c0a0',uncommon:'#5ec45e',rare:'#5eaee0',epic:'#c090ff',legendary:'#f0d060',mythic:'#ff88ff'}
-
-    list.innerHTML = usable.map(item => `
-      <div onclick="combatUseItem('${item.id}','${item.name}',${item.hp_restore||0},${item.quantity||1},'${item.special_effect||''}')"
-        style="display:flex;align-items:center;gap:.5rem;padding:.45rem .25rem;border-bottom:.5px solid rgba(139,106,32,.12);cursor:pointer;transition:background .15s;border-radius:2px"
-        onmouseover="this.style.background='rgba(200,184,128,.1)'" onmouseout="this.style.background=''">
-        ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" style="width:28px;height:28px;object-fit:contain;border-radius:3px;flex-shrink:0">'):(item.icon||'📦')})()}
-        <div style="flex:1;min-width:0">
-          <p style="font-family:'Cinzel',serif;font-size:.75rem;color:${RC[item.rarity]||'#888'};margin:0 0 1px">${item.name}</p>
-          <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#9a8050;margin:0">
-            ${item.hp_restore>0 ? `+${item.hp_restore} HP` : item.special_effect || 'Special effect'}
-          </p>
-        </div>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#7a6435;flex-shrink:0">×${item.quantity||1}</span>
+  function renderGrid() {
+    // Exclude equipped items from the bag view
+    const unequipped = items.filter(i => !i.equipped_slot)
+    const filtered = unequipped.filter(i=>filter==='all'||i.item_type===filter)
+    const unequippedCount = items.filter(i=>!i.equipped_slot).length
+    document.getElementById('bag-count').textContent = unequippedCount + ' items'
+    document.getElementById('item-grid').innerHTML = filtered.map(item => `
+      <div class="item-card${selectedId===item.id?' selected':''}" data-id="${item.id}">
+        ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="item-icon" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display=\'none\'">'):'<span class="item-icon">'+(item.icon||'📦')+'</span>';})()}
+        <p class="item-name" style="color:${RARITY[item.rarity]||'#c8c0a0'}">${item.name}</p>
+        <p class="item-type">${item.subtype||item.item_type}</p>
+        ${item.quantity>1?`<span class="item-qty">×${item.quantity}</span>`:''}
+        ${item.equipped_slot?`<span class="item-eq">EQ</span>`:''}
+        ${(item.sockets_total||0)>0?`<span style="position:absolute;bottom:4px;left:4px;font-size:.45rem;color:#a07de0;font-family:'Share Tech Mono',monospace">${item.sockets_used||0}/${item.sockets_total}◈</span>`:''} 
       </div>
-    `).join('')
-  })
+    `).join('') || `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#3a2008;grid-column:span 3">Nothing here.</p>`
 
-  window.combatUseItem = async function(itemId, itemName, hpRestore, qty, specialEffect) {
-    const maxHp = player.max_hp || 100
-
-    // ── Healing items ─────────────────────────
-    if (hpRestore > 0) {
-      const healed  = Math.min(maxHp, currentHp + hpRestore) - currentHp
-      currentHp     = Math.min(maxHp, currentHp + hpRestore)
-      syncBars()
-      // Save HP to DB immediately
-      await supabase.from('players').update({ hp: currentHp }).eq('id', player.id)
-      player.hp = currentHp
-      log('Used ' + itemName + ' — restored ' + healed + ' HP. (' + currentHp + '/' + maxHp + ')')
-    }
-    // ── Phoenix Feather — auto-revive ─────────
-    else if (itemName === 'Phoenix Feather') {
-      window._hasRevive = true
-      log('Phoenix Feather equipped — will auto-revive at 20 HP if you fall.')
-    }
-    // ── Explosion Scroll — max next attack ────
-    else if (itemName === 'Explosion Scroll') {
-      window._forceMaxHit = true
-      log('Explosion Scroll loaded — next attack will deal maximum damage.')
-    }
-    // ── Lava Bomb — skip fight ─────────────────
-    else if (itemName === 'Lava Bomb') {
-      enemyHp = 0
-      syncBars()
-      log('Lava Bomb detonated — enemy destroyed instantly.')
-      document.getElementById('items-panel').style.display = 'none'
-      await consumeItem(itemId, qty)
-      endCombat('win')
-      return
-    }
-    else {
-      log('Cannot use ' + itemName + ' here.')
-      return
-    }
-
-    document.getElementById('items-panel').style.display = 'none'
-    await consumeItem(itemId, qty)
+    document.querySelectorAll('.item-card').forEach(el => {
+      el.addEventListener('click', () => {
+        selectedId = selectedId === el.dataset.id ? null : el.dataset.id
+        render()
+        renderDetail()
+      })
+    })
   }
 
-  // Helper — remove 1 from stack or delete if last
-  async function consumeItem(itemId, qty) {
-    if (qty <= 1) {
+  function renderStats() {
+    const eq   = items.filter(i=>i.equipped_slot)
+    const atk  = 1 + eq.reduce((s,i)=>s+(i.atk_bonus||0),0)
+    const def  =     eq.reduce((s,i)=>s+(i.def_bonus||0),0)
+    const pwr  =     eq.reduce((s,i)=>s+(i.power_bonus||0),0)
+    const ctr  =     eq.reduce((s,i)=>s+(i.control_bonus||0),0)
+    const grd  =     eq.reduce((s,i)=>s+(i.guard_bonus||0),0)
+    const spd  =     eq.reduce((s,i)=>s+(i.speed_bonus||0),0)
+    const ins  =     eq.reduce((s,i)=>s+(i.insight_bonus||0),0)
+    const lck  =     eq.reduce((s,i)=>s+(i.luck_bonus||0),0)
+    document.getElementById('total-stats').innerHTML = `
+      <span>ATK <strong style="color:#e05555">${atk}</strong></span>
+      <span>DEF <strong style="color:#5ec45e">${def}</strong></span>
+      ${pwr?`<span>PWR <strong style="color:#ff5500">${pwr}</strong></span>`:''}
+      ${ctr?`<span>CTR <strong style="color:#0088ff">${ctr}</strong></span>`:''}
+      ${grd?`<span>GRD <strong style="color:#8b5e3c">${grd}</strong></span>`:''}
+      ${spd?`<span>SPD <strong style="color:#a8d8ea">${spd}</strong></span>`:''}
+      ${ins?`<span>INS <strong style="color:#ffd700">${ins}</strong></span>`:''}
+      ${lck?`<span>LCK <strong style="color:#b06eff">${lck}</strong></span>`:''}
+    `
+  }
+
+  function renderDetail() {
+    const el = document.getElementById('item-detail')
+    if (!selectedId) { el.innerHTML=''; return }
+    const item = items.find(i=>i.id===selectedId)
+    if (!item) { el.innerHTML=''; return }
+    el.innerHTML = `
+      <div style="border:0.5px solid rgba(139,106,32,.3);border-radius:3px;padding:.75rem;margin-top:.5rem;background:rgba(0,0,0,.05)">
+        <div style="display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.5rem">
+          ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" style="width:52px;height:52px;object-fit:contain;border-radius:6px" onerror="this.style.display=\'none\'">'):'<span style="font-size:1.6rem">'+(item.icon||'📦')+'</span>';})()}
+          <div>
+            <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${RARITY[item.rarity]||'#c8c0a0'};margin:0 0 2px">${item.name}</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#3a2008;margin:0;letter-spacing:.06em">${item.rarity} · ${item.subtype||item.item_type}${item.two_handed?' · 2H':''}</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:.75rem;font-family:'Share Tech Mono',monospace;font-size:.65rem;margin-bottom:.6rem;flex-wrap:wrap">
+          ${item.atk_bonus>0?`<span style="color:#e05555">ATK +${item.atk_bonus}</span>`:''}
+          ${item.def_bonus>0?`<span style="color:#5ec45e">DEF +${item.def_bonus}</span>`:''}
+          ${item.hp_restore>0?`<span style="color:#5eaee0">+${item.hp_restore} HP</span>`:''}
+          ${!item.atk_bonus&&!item.def_bonus&&!item.hp_restore?`<span style="color:#3a2008">Utility item</span>`:''}
+        </div>
+        ${(item.sockets_total||0) > 0 ? `
+          <div style="margin-bottom:.5rem">
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a07de0;letter-spacing:.07em;margin-bottom:3px">SOCKETS ${item.sockets_used||0}/${item.sockets_total}</p>
+            <div style="display:flex;gap:4px;margin-bottom:4px">
+              ${Array.from({length:item.sockets_total||0}).map((_,i) => {
+                const rune = (item.socketed_runes||[])[i]
+                const runeColors = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+                const runeIcons  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+                const color = rune ? (runeColors[rune]||'#a07de0') : 'rgba(160,125,224,.3)'
+                return '<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:.75rem;background:'+(rune?color+'22':'rgba(0,0,0,.15)')+'" title="'+(rune||'Empty socket')+'">'+(rune?(runeIcons[rune]||'?'):'○')+'</div>'
+              }).join('')}
+            </div>
+            ${item.runeword_name ? '<p style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#a07de0;margin-top:2px">✦ '+item.runeword_name+'</p>' : ''}
+            ${(item.sockets_used||0) < (item.sockets_total||0) ? '<button onclick="openRunePicker(\''+item.id+'\',\''+item.item_type+'\')" style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#a07de0;background:none;border:.5px solid #a07de060;border-radius:3px;padding:3px 10px;cursor:pointer;margin-top:4px">✦ Add Rune</button>' : ''}
+            ${(item.sockets_used||0) > 0 ? '<button onclick="removeRunes(\''+item.id+'\')" style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#3a2008;background:none;border:.5px solid rgba(139,106,32,.3);border-radius:3px;padding:3px 10px;cursor:pointer;margin-top:4px;margin-left:4px">Remove Runes</button>' : ''}
+            <div id="rune-picker-${item.id}" style="display:none;margin-top:6px;padding:6px;background:rgba(0,0,0,.08);border-radius:4px;border:.5px solid rgba(160,125,224,.3)"></div>
+          </div>
+        ` : ''}
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          ${item.item_type==='consumable'?`<button onclick="useItem('${item.id}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#5eaee0;background:none;border:.5px solid #5eaee040;border-radius:3px;padding:4px 12px;cursor:pointer">Use ×1</button>`:''}
+          ${item.equipped_slot?`<button onclick="unequipSlot('${item.equipped_slot}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#c8b96e;background:none;border:.5px solid #c8b96e40;border-radius:3px;padding:4px 12px;cursor:pointer">Unequip</button>`:''}
+          ${!item.equipped_slot?`<button onclick="sellItem('${item.id}','${item.name}',${item.sell_price||Math.max(1,Math.floor((item.buy_price||20)*.4))},${item.quantity||1})" style="font-family:'Cinzel',serif;font-size:.72rem;color:#e05555;background:none;border:.5px solid #e0555540;border-radius:3px;padding:4px 12px;cursor:pointer">Sell ◈${item.sell_price||Math.max(1,Math.floor((item.buy_price||20)*.4))}</button>`:''}
+        </div>
+      </div>
+    `
+  }
+
+  // ── Equipped item modal ──────────────────────────
+  function showEquippedModal(item) {
+    document.getElementById('equipped-modal')?.remove()
+
+    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+    const RC = {common:'#2a1208',uncommon:'#2a6020',rare:'#1a3a6e',epic:'#4a2a8a',legendary:'#6b5010',mythic:'#6a1a6a'}
+
+    const sockets    = item.sockets_total || 0
+    const used       = item.sockets_used  || 0
+    const runes      = item.socketed_runes || []
+    const hasEmpty   = used < sockets
+    const hasRunes   = used > 0
+
+    // Rune slot display
+    const slotDisplay = sockets > 0 ? `
+      <div style="margin:8px 0">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.07em;margin-bottom:4px">SOCKETS ${used}/${sockets}</p>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+          ${Array.from({length:sockets}).map((_,i) => {
+            const rune = runes[i]
+            const color = rune ? (RUNE_COLORS[rune]||'#a07de0') : 'rgba(100,80,40,.3)'
+            return '<div style="width:26px;height:26px;border-radius:50%;border:1.5px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:.85rem;background:'+(rune?color+'22':'rgba(0,0,0,.1)')+'" title="'+(rune||'Empty socket')+'">'+(rune?(RUNE_ICONS[rune]||'?'):'○')+'</div>'
+          }).join('')}
+        </div>
+        ${item.runeword_name ? '<p style="font-family:\'Cinzel\',serif;font-size:.72rem;color:#4a20a8;margin-bottom:4px">✦ '+item.runeword_name+'</p>' : ''}
+      </div>` : ''
+
+    const modal = document.createElement('div')
+    modal.id = 'equipped-modal'
+    modal.style.cssText = `
+      position:fixed;inset:0;z-index:600;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.65);animation:fadeIn .2s ease`
+    modal.innerHTML = `
+      <div style="background:#c4b070;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+        <div style="display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.75rem">
+          ${(()=>{const s=getItemImg(item.item_key);return s?'<img src="'+s+'" style="width:48px;height:48px;object-fit:contain;border-radius:4px;flex-shrink:0">':'<span style="font-size:2rem">'+item.icon+'</span>'})()}
+          <div style="flex:1">
+            <p style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:600;color:${RC[item.rarity]||'#1a1208'};margin:0 0 2px">${item.name}</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#1a1208;margin:0">${item.rarity} · ${item.subtype||item.item_type}${item.two_handed?' · 2H':''}</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#1a1208;margin-top:2px">
+              ${item.atk_bonus>0?'ATK +'+item.atk_bonus+' ':''} ${item.def_bonus>0?'DEF +'+item.def_bonus+' ':''}
+              ${(item.power_bonus||0)>0?'PWR +'+item.power_bonus+' ':''} ${(item.speed_bonus||0)>0?'SPD +'+item.speed_bonus:''}
+            </p>
+          </div>
+          <button onclick="document.getElementById('equipped-modal').remove()" style="background:none;border:none;color:#1a1208;font-size:1.1rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0">✕</button>
+        </div>
+
+        ${slotDisplay}
+
+        ${hasEmpty ? `
+          <button onclick="openRunePickerModal('${item.id}','${item.item_type}')" style="width:100%;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(160,125,224,.25);border:1px solid rgba(160,125,224,.5);border-radius:3px;padding:.45rem;cursor:pointer;margin-bottom:6px">
+            ✦ Add Rune to Socket
+          </button>` : ''}
+
+        <button onclick="unequipSlot('${item.equipped_slot}');document.getElementById('equipped-modal').remove()" style="width:100%;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:.45rem;cursor:pointer;margin-bottom:6px">
+          Unequip
+        </button>
+
+        ${hasRunes ? `
+          <button onclick="destroyRunes('${item.id}')" style="width:100%;font-family:'Cinzel',serif;font-size:.78rem;color:#c04040;background:rgba(192,64,64,.1);border:1px solid rgba(192,64,64,.3);border-radius:3px;padding:.45rem;cursor:pointer">
+            ✕ Remove & Destroy Runes
+          </button>` : ''}
+      </div>
+    `
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove() })
+    document.body.appendChild(modal)
+  }
+
+  // ── Open rune picker from equipped modal ──────────
+  window.openRunePickerModal = async function(itemId, itemType) {
+    const pickerEl = document.createElement('div')
+    pickerEl.style.cssText = 'margin-top:8px;padding:8px;background:rgba(0,0,0,.1);border-radius:4px;border:.5px solid rgba(160,125,224,.3)'
+
+    const modal = document.getElementById('equipped-modal')
+    const existing = modal.querySelector('#modal-rune-picker')
+    if (existing) { existing.remove(); return }
+    pickerEl.id = 'modal-rune-picker'
+
+    const { data: runeItems } = await supabase.from('inventory')
+      .select('*').eq('player_id', player.id).like('item_key','rune_%').gt('quantity',0)
+
+    if (!runeItems || !runeItems.length) {
+      pickerEl.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#1a1208">No runes in inventory.</p>'
+    } else {
+      const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+      const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+      const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux'}
+      pickerEl.innerHTML = `
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE</p>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">
+          ${runeItems.map(r => {
+            const key = r.item_key.replace('rune_','')
+            const col = RUNE_COLORS[key]||'#888'
+            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\');document.getElementById(\'equipped-modal\').remove()" style="display:flex;align-items:center;gap:4px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'"><span>'+(RUNE_ICONS[key]||'?')+'</span><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></button>'
+          }).join('')}
+        </div>`
+    }
+    modal.querySelector('div').appendChild(pickerEl)
+  }
+
+  // ── Destroy runes (does NOT refund) ──────────────
+  window.destroyRunes = async function(itemId) {
+    if (!confirm('Remove and DESTROY all runes? They will not be returned.')) return
+    await supabase.from('inventory').update({
+      socketed_runes:[], sockets_used:0,
+      runeword_name:null, runeword_effect:null,
+      power_bonus:0, control_bonus:0, guard_bonus:0,
+      speed_bonus:0, insight_bonus:0, luck_bonus:0,
+    }).eq('id', itemId)
+    document.getElementById('equipped-modal')?.remove()
+    showToast('Runes destroyed')
+    await load()
+  }
+
+  async function equipItem(itemId, slot) {
+    const item = items.find(i=>i.id===itemId)
+    if (!item) return
+    const slotDef = SLOTS.find(s=>s.key===slot)
+    if (!slotDef.accepts.includes(item.subtype||item.item_type)) {
+      showToast(`${item.name} can't go in ${slotDef.label}`, true); return
+    }
+    // Unequip current in slot
+    const current = items.find(i=>i.equipped_slot===slot)
+    if (current) await supabase.from('inventory').update({equipped_slot:null}).eq('id',current.id)
+    // If 2H, clear offhand
+    if (item.two_handed && slot==='mainhand') {
+      const oh = items.find(i=>i.equipped_slot==='offhand')
+      if (oh) await supabase.from('inventory').update({equipped_slot:null}).eq('id',oh.id)
+    }
+    await supabase.from('inventory').update({equipped_slot:slot}).eq('id',itemId)
+    showToast(`${item.name} equipped`)
+    selectedId = null
+    await load()
+  }
+
+  async function unequipSlot(slot) {
+    const item = items.find(i=>i.equipped_slot===slot)
+    if (!item) return
+    await supabase.from('inventory').update({equipped_slot:null}).eq('id',item.id)
+    showToast(`${item.name} unequipped`)
+    await load()
+  }
+
+  window.unequipSlot = unequipSlot
+
+  // ── Runeword data ──────────────────────────────
+  const RUNEWORDS = {
+    'ignis+ignis':       {name:'Ember Core',      rarity:'rare',      slot:'weapon',   stats:{power_bonus:2,atk_bonus:2}},
+    'aero+ignis':        {name:'Blazing Speed',   rarity:'epic',      slot:'weapon',   stats:{power_bonus:2,speed_bonus:4}},
+    'ignis+umbra':       {name:'Hellfire Pact',   rarity:'legendary', slot:'weapon',   stats:{power_bonus:6,atk_bonus:4}},
+    'ignis+terra':       {name:'Molten Strike',   rarity:'rare',      slot:'weapon',   stats:{power_bonus:2,atk_bonus:3,guard_bonus:1}},
+    'aqua+ignis':        {name:'Steam Burst',     rarity:'epic',      slot:'weapon',   stats:{power_bonus:2,control_bonus:2}},
+    'aqua+aqua':         {name:'Flow State',      rarity:'rare',      slot:'weapon',   stats:{control_bonus:3,luck_bonus:2}},
+    'aqua+lux':          {name:'Sacred Tide',     rarity:'epic',      slot:'weapon',   stats:{control_bonus:2,insight_bonus:2}},
+    'aero+aqua':         {name:'Current Shift',   rarity:'epic',      slot:'weapon',   stats:{control_bonus:3,speed_bonus:2}},
+    'aqua+umbra':        {name:'Drowning Curse',  rarity:'legendary', slot:'weapon',   stats:{control_bonus:5,power_bonus:2}},
+    'aqua+terra':        {name:'Deep Stability',  rarity:'rare',      slot:'weapon',   stats:{control_bonus:2,guard_bonus:2}},
+    'aero+aero':         {name:'Wind Fury',       rarity:'rare',      slot:'weapon',   stats:{speed_bonus:4,luck_bonus:2}},
+    'aero+umbra':        {name:'Phantom Strike',  rarity:'legendary', slot:'weapon',   stats:{speed_bonus:4,power_bonus:3}},
+    'umbra+umbra':       {name:'Abyss Core',      rarity:'epic',      slot:'weapon',   stats:{power_bonus:5,atk_bonus:3}},
+    'lux+lux':           {name:'Radiant Edge',    rarity:'rare',      slot:'weapon',   stats:{insight_bonus:2,luck_bonus:2,guard_bonus:1}},
+    'ignis+lux':         {name:'Holy Flame',      rarity:'epic',      slot:'weapon',   stats:{power_bonus:2,insight_bonus:2,atk_bonus:2}},
+    'aero+lux':          {name:'Light Speed',     rarity:'epic',      slot:'weapon',   stats:{speed_bonus:3,insight_bonus:2}},
+    'terra+terra':       {name:'Stone Skin',      rarity:'rare',      slot:'armor',    stats:{guard_bonus:5,def_bonus:3}},
+    'lux+terra':         {name:'Sanctuary',       rarity:'epic',      slot:'armor',    stats:{guard_bonus:3,insight_bonus:2,def_bonus:2}},
+    'aqua+terra':        {name:'Living Armor',    rarity:'rare',      slot:'armor',    stats:{guard_bonus:2,def_bonus:2}},
+    'terra+umbra':       {name:'Grave Shell',     rarity:'epic',      slot:'armor',    stats:{guard_bonus:4,def_bonus:4}},
+    'aero+terra':        {name:'Dust Guard',      rarity:'rare',      slot:'armor',    stats:{guard_bonus:2,speed_bonus:2,def_bonus:2}},
+    'aero+lux+armor':    {name:"Heaven's Grace",  rarity:'epic',      slot:'armor',    stats:{guard_bonus:2,speed_bonus:3,def_bonus:1}},
+    'ignis+lux+armor':   {name:'Phoenix Guard',   rarity:'legendary', slot:'armor',    stats:{guard_bonus:2,def_bonus:2,power_bonus:1}},
+    'lux+terra+uni':     {name:'Harmony',         rarity:'rare',      slot:'any',      stats:{power_bonus:1,control_bonus:1,guard_bonus:1,speed_bonus:1}},
+    'aqua+ignis+uni':    {name:'Balance Break',   rarity:'epic',      slot:'any',      stats:{control_bonus:3,power_bonus:2}},
+    'lux+umbra+uni':     {name:'Twilight Core',   rarity:'legendary', slot:'any',      stats:{power_bonus:3,guard_bonus:2,insight_bonus:2}},
+  }
+
+  function findRuneword(runes, slot) {
+    const key = [...runes].sort().join('+')
+    if (RUNEWORDS[key]) return RUNEWORDS[key]
+    // Try with slot suffix
+    const suffixes = ['uni', slot==='accessory'?'acc':null, slot==='armor'?'armor':null].filter(Boolean)
+    for (const s of suffixes) {
+      const k2 = [...runes,s].sort().join('+')
+      if (RUNEWORDS[k2]) return RUNEWORDS[k2]
+    }
+    return null
+  }
+
+  // ── Open inline rune picker ──────────────────────
+  window.openRunePicker = async function(itemId, itemType) {
+    const pickerId = 'rune-picker-' + itemId
+    const picker   = document.getElementById(pickerId)
+    if (!picker) return
+
+    // Toggle
+    if (picker.style.display !== 'none') { picker.style.display = 'none'; return }
+    picker.style.display = 'block'
+    picker.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.58rem;color:#3a2008">Loading runes…</p>'
+
+    // Load runes from inventory
+    const { data: runeItems } = await supabase.from('inventory')
+      .select('*').eq('player_id', player.id).like('item_key','rune_%').gt('quantity',0)
+
+    if (!runeItems || !runeItems.length) {
+      picker.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#3a2008">No runes in inventory.<br>Farm enemies to find runes.</p>'
+      return
+    }
+
+    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+    const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux'}
+
+    picker.innerHTML = `
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a07de0;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE TO SOCKET</p>
+      <div style="display:flex;flex-wrap:wrap;gap:5px">
+        ${runeItems.map(r => {
+          const key   = r.item_key.replace('rune_','')
+          const color = RUNE_COLORS[key] || '#888'
+          const icon  = RUNE_ICONS[key]  || '?'
+          const name  = RUNE_NAMES[key]  || key
+          return `<button onclick="socketRuneToItem('${itemId}','${r.id}','${key}','${itemType}')"
+            style="display:flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:${color}">
+            <span>${icon}</span><span>${name}</span><span style="color:#3a2008;font-size:.5rem">×${r.quantity}</span>
+          </button>`
+        }).join('')}
+      </div>
+    `
+  }
+
+  // ── Socket a rune into an item ───────────────────
+  window.socketRuneToItem = async function(itemId, runeInventoryId, runeKey, itemType) {
+    const item = items.find(i => i.id === itemId)
+    if (!item) return
+
+    const sockets = item.sockets_total || 0
+    const used    = item.sockets_used  || 0
+    if (used >= sockets) { showToast('All sockets filled', true); return }
+
+    const newRunes  = [...(item.socketed_runes||[]), runeKey]
+    const newUsed   = used + 1
+
+    // Check for runeword
+    const slot = itemType === 'armor' ? 'armor' : itemType === 'weapon' ? 'weapon' : 'accessory'
+    const rw   = findRuneword(newRunes, slot)
+
+    // Build stat updates from runeword
+    const statUpdates = {}
+    if (rw) Object.entries(rw.stats).forEach(([k,v]) => { statUpdates[k] = (item[k]||0) + v })
+
+    await supabase.from('inventory').update({
+      socketed_runes:  newRunes,
+      sockets_used:    newUsed,
+      runeword_name:   rw ? rw.name   : (item.runeword_name  || null),
+      runeword_effect: rw ? rw.effect : (item.runeword_effect || null),
+      ...statUpdates,
+    }).eq('id', itemId)
+
+    // Consume the rune
+    const runeItem = items.find(i => i.id === runeInventoryId)
+    if (runeItem) {
+      if ((runeItem.quantity||1) <= 1) {
+        await supabase.from('inventory').delete().eq('id', runeInventoryId)
+      } else {
+        await supabase.from('inventory').update({ quantity: runeItem.quantity - 1 }).eq('id', runeInventoryId)
+      }
+    }
+
+    if (rw) showToast('✦ Runeword activated: ' + rw.name + '!')
+    else    showToast('Rune socketed — ' + newRunes.length + '/' + sockets + ' filled')
+
+    selectedId = itemId
+    await load()
+  }
+
+  // ── Remove all runes from an item ───────────────
+  window.removeRunes = async function(itemId) {
+    const item = items.find(i => i.id === itemId)
+    if (!item || !(item.sockets_used > 0)) return
+
+    // Refund runes to inventory
+    for (const runeKey of (item.socketed_runes||[])) {
+      const runeItemKey = 'rune_' + runeKey
+      const { data: ex } = await supabase.from('inventory').select('*')
+        .eq('player_id', player.id).eq('item_key', runeItemKey).maybeSingle()
+      if (ex) {
+        await supabase.from('inventory').update({ quantity: ex.quantity + 1 }).eq('id', ex.id)
+      } else {
+        const { data: m } = await supabase.from('items').select('*').eq('item_key', runeItemKey).single()
+        if (m) await supabase.from('inventory').insert({
+          player_id:player.id, item_key:runeItemKey, name:m.name,
+          item_type:'material', rarity:m.rarity, icon:m.icon,
+          element:m.element, quantity:1
+        })
+      }
+    }
+
+    // Clear rune stats (reset bonus stats)
+    await supabase.from('inventory').update({
+      socketed_runes:[], sockets_used:0,
+      runeword_name:null, runeword_effect:null,
+      power_bonus:0, control_bonus:0, guard_bonus:0,
+      speed_bonus:0, insight_bonus:0, luck_bonus:0,
+    }).eq('id', itemId)
+
+    showToast('Runes removed — returned to inventory')
+    selectedId = itemId
+    await load()
+  }
+
+  window.sellItem = async (itemId, itemName, sellPrice, qty) => {
+    if (qty > 1) {
+      // Sell one at a time
+      await supabase.from('inventory').update({ quantity: qty - 1 }).eq('id', itemId)
+    } else {
+      await supabase.from('inventory').delete().eq('id', itemId)
+    }
+    const newGold = (player.gold || 0) + sellPrice
+    await supabase.from('players').update({ gold: newGold }).eq('id', player.id)
+    player.gold = newGold
+    showToast('Sold ' + itemName + ' for ◈' + sellPrice)
+    selectedId = null
+    await load()
+  }
+
+  window.useItem = async (itemId) => {
+    const item = items.find(i=>i.id===itemId)
+    if (!item || item.item_type !== 'consumable') return
+
+    // ── Fetch current player HP from DB (always fresh) ──
+    const { data: freshPlayer } = await supabase
+      .from('players').select('hp,max_hp').eq('id', player.id).single()
+
+    const currentHp = freshPlayer?.hp    || 100
+    const maxHp     = freshPlayer?.max_hp || 100
+
+    if (item.hp_restore > 0) {
+      const newHp = Math.min(maxHp, currentHp + item.hp_restore)
+      const healed = newHp - currentHp
+      // Save to DB
+      await supabase.from('players').update({ hp: newHp }).eq('id', player.id)
+      showToast('+' + healed + ' HP restored (' + newHp + '/' + maxHp + ')')
+    } else if (item.special_effect) {
+      showToast(item.name + ' used — ' + item.special_effect)
+    } else {
+      showToast(item.name + ' used')
+    }
+
+    // Consume item
+    const newQty = (item.quantity || 1) - 1
+    if (newQty <= 0) {
       await supabase.from('inventory').delete().eq('id', itemId)
     } else {
-      await supabase.from('inventory').update({ quantity: qty - 1 }).eq('id', itemId)
+      await supabase.from('inventory').update({ quantity: newQty }).eq('id', itemId)
     }
+
+    selectedId = null
+    await load()
   }
 
-  // Apply force-max-hit flag in attack if set
-  // (Explosion Scroll — already handled by checking window._forceMaxHit before random roll)
+  // Filter tabs
+  document.getElementById('filter-tabs').innerHTML = FILTERS.map(f => `
+    <button onclick="setFilter('${f}')" id="ftab-${f}" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.07em;background:none;border:.5px solid rgba(139,106,32,.2);border-radius:20px;padding:2px 9px;cursor:pointer;color:#3a2008;transition:all .15s">${f}</button>
+  `).join('')
 
-  syncBars()
-}
+  window.setFilter = (f) => {
+    filter = f
+    FILTERS.forEach(x => {
+      const t = document.getElementById('ftab-'+x)
+      t.style.background   = x===f ? 'rgba(139,106,32,.15)' : 'none'
+      t.style.borderColor  = x===f ? 'rgba(139,106,32,.6)'  : 'rgba(139,106,32,.2)'
+      t.style.color        = x===f ? '#1a1208' : '#1a1208'
+    })
+    renderGrid()
+  }
 
-// ── Init ─────────────────────────────────────────
-renderHUD()
-render()
+  await load()
 </script>
 </body>
 </html>
