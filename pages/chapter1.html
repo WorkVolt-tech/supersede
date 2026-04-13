@@ -810,11 +810,14 @@ function renderHUD() {
   const hpPct  = Math.max(0, Math.round(hp / mhp * 100))
   const hpCol  = hpPct > 60 ? '#5ec45e' : hpPct > 30 ? '#c8b96e' : '#e05555'
   const xpNext = xpForLevel(lvl)
-  // Calculate XP spent reaching current level, then find progress within it
+  // Determine xp format: DB stores remaining XP within current level after level-ups
+  // If xp < total XP needed to reach this level, it's already the within-level value
   let xpSpent = 0
   for (let l = 1; l < lvl; l++) xpSpent += xpForLevel(l)
-  const xpIntoLevel = Math.max(0, xp - xpSpent)
-  const xpPct = Math.min(100, Math.round(xpIntoLevel / xpNext * 100))
+  const xpIntoLevel = xp >= xpSpent
+    ? xp - xpSpent   // total lifetime XP format
+    : xp             // within-level XP format (what DB stores after level-up)
+  const xpPct = Math.min(100, Math.round(Math.max(0, xpIntoLevel) / xpNext * 100))
   document.getElementById('hud').innerHTML = `
     <div class="hud-badge-row">
       <span class="hud-seal">${bs}</span>
