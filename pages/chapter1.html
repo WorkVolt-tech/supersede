@@ -682,27 +682,27 @@ Three zones pulse with System entity activity — each with different threats an
         id: 'loc_garage', name: 'Parking Garage', icon: '🅿️', level: 'Easy', color: '#5ec45e',
         desc: 'Weak spawns. Good for early runes and consumables.',
         enemies: [
-          { name:'Glitch Rat',     icon:'🐀', hp:20,  atk:3,  agility:3, xp:25,  loot:[{itemKey:'rune_ignis',   chance:.25},{itemKey:'energy_drink', chance:.4},{itemKey:'scrap_metal',chance:.6}] },
-          { name:'Static Crawler', icon:'🦎', hp:30,  atk:4,  agility:4, xp:35,  loot:[{itemKey:'rune_aqua',    chance:.25},{itemKey:'scrap_blade',  chance:.3},{itemKey:'scrap_metal',chance:.5}] },
-          { name:'Pixel Shard',    icon:'💠', hp:15,  atk:2,  agility:5, xp:20,  loot:[{itemKey:'rune_terra',   chance:.2}, {itemKey:'energy_drink', chance:.5},{itemKey:'flashlight', chance:.2}] },
+          { name:'Glitch Rat',     icon:'🐀', hp:20,  atk:3,  agility:3, xp:25,  loot:[{itemKey:'rune_ignis',   chance:.25},{itemKey:'energy_drink', chance:.4},{itemKey:'scrap_metal',chance:.6},{itemKey:'scrap_helm',chance:.08},{itemKey:'scrap_shield',chance:.06}] },
+          { name:'Static Crawler', icon:'🦎', hp:30,  atk:4,  agility:4, xp:35,  loot:[{itemKey:'rune_aqua',    chance:.25},{itemKey:'scrap_blade',  chance:.3},{itemKey:'scrap_metal',chance:.5},{itemKey:'scrap_helm',chance:.07},{itemKey:'scrap_shield',chance:.05}] },
+          { name:'Pixel Shard',    icon:'💠', hp:15,  atk:2,  agility:5, xp:20,  loot:[{itemKey:'rune_terra',   chance:.2}, {itemKey:'energy_drink', chance:.5},{itemKey:'flashlight', chance:.2},{itemKey:'scrap_shield',chance:.08}] },
         ],
       },
       {
         id: 'loc_market', name: 'Frozen Market', icon: '🏪', level: 'Medium', color: '#c8b96e',
         desc: 'Mid-tier entities. Better gear and rare rune drops.',
         enemies: [
-          { name:'Flicker Hound',  icon:'🐕', hp:55,  atk:6,  agility:6, xp:60,  loot:[{itemKey:'rune_aero',    chance:.3}, {itemKey:'jacket',        chance:.25},{itemKey:'knife',      chance:.2}] },
-          { name:'Pixel Drone',    icon:'🤖', hp:45,  atk:7,  agility:5, xp:65,  loot:[{itemKey:'rune_ignis',   chance:.35},{itemKey:'scrap_metal',   chance:.6}, {itemKey:'medkit',     chance:.15}] },
-          { name:'Fracture Wolf',  icon:'🐺', hp:70,  atk:7,  agility:7, xp:75,  loot:[{itemKey:'rune_umbra',   chance:.2}, {itemKey:'leather_gloves',chance:.2}, {itemKey:'worn_boots', chance:.2}] },
+          { name:'Flicker Hound',  icon:'🐕', hp:55,  atk:6,  agility:6, xp:60,  loot:[{itemKey:'rune_aero',    chance:.3}, {itemKey:'jacket',        chance:.25},{itemKey:'knife',      chance:.2},{itemKey:'iron_helm',chance:.1},{itemKey:'iron_shield',chance:.08}] },
+          { name:'Pixel Drone',    icon:'🤖', hp:45,  atk:7,  agility:5, xp:65,  loot:[{itemKey:'rune_ignis',   chance:.35},{itemKey:'scrap_metal',   chance:.6}, {itemKey:'medkit',     chance:.15},{itemKey:'iron_helm',chance:.12}] },
+          { name:'Fracture Wolf',  icon:'🐺', hp:70,  atk:7,  agility:7, xp:75,  loot:[{itemKey:'rune_umbra',   chance:.2}, {itemKey:'leather_gloves',chance:.2}, {itemKey:'worn_boots', chance:.2},{itemKey:'iron_shield',chance:.1}] },
         ],
       },
       {
         id: 'loc_tower', name: 'Glass Tower', icon: '🏢', level: 'Hard', color: '#e05555',
         desc: 'Elite entities. Rare and epic loot, high XP.',
         enemies: [
-          { name:'Corrupted Sentry',icon:'👾', hp:90,  atk:10, agility:6, xp:100, loot:[{itemKey:'rune_lux',     chance:.3}, {itemKey:'iron_sword',    chance:.15},{itemKey:'riot_vest',  chance:.1}] },
-          { name:'Void Sentinel',  icon:'⚫', hp:110, atk:12, agility:7, xp:120, loot:[{itemKey:'rune_umbra',   chance:.4}, {itemKey:'iron_helm',     chance:.15},{itemKey:'medkit',     chance:.25}] },
-          { name:'System Enforcer',icon:'🔴', hp:130, atk:14, agility:8, xp:150, loot:[{itemKey:'rune_lux',     chance:.35},{itemKey:'iron_shield',   chance:.1}, {itemKey:'iron_ring',  chance:.1}] },
+          { name:'Corrupted Sentry',icon:'👾', hp:90,  atk:10, agility:6, xp:100, loot:[{itemKey:'rune_lux',     chance:.3}, {itemKey:'iron_sword',    chance:.15},{itemKey:'riot_vest',  chance:.1},{itemKey:'tactical_helm',chance:.08},{itemKey:'tactical_sword',chance:.06}] },
+          { name:'Void Sentinel',  icon:'⚫', hp:110, atk:12, agility:7, xp:120, loot:[{itemKey:'rune_umbra',   chance:.4}, {itemKey:'iron_helm',     chance:.15},{itemKey:'medkit',     chance:.25},{itemKey:'tactical_helm',chance:.1}] },
+          { name:'System Enforcer',icon:'🔴', hp:130, atk:14, agility:8, xp:150, loot:[{itemKey:'rune_lux',     chance:.35},{itemKey:'iron_shield',   chance:.1}, {itemKey:'iron_ring',  chance:.1},{itemKey:'tactical_shield',chance:.08},{itemKey:'tactical_sword',chance:.05}] },
         ],
       },
     ],
@@ -1003,6 +1003,15 @@ const ITEM_IMAGES = {
   'rune_aero':'../assets/runes/rune_aero.png',
   'rune_umbra':'../assets/runes/rune_umbra.png',
   'rune_lux':'../assets/runes/rune_lux.png',
+  // Base helmets & shields
+  'scrap_helm':     '../assets/armor/scrap_helm.png',
+  'scrap_shield':   '../assets/armor/scrap_shield.png',
+  'iron_helm':      '../assets/armor/iron_helm.png',
+  'iron_shield':    '../assets/armor/iron_shield.png',
+  'tactical_helm':  '../assets/armor/tactical_helm.png',
+  'tactical_shield':'../assets/armor/tactical_shield.png',
+  // Tactical weapon
+  'tactical_sword': '../assets/weapon/tactical_sword.png',
 }
 function getItemImg(k) { return ITEM_IMAGES[k] || null }
 
