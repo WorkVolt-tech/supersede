@@ -789,10 +789,12 @@ async function checkLevelUp(oldXp, newXp, oldLevel) {
   player.max_hp = newMaxHp
   player.stat_points = newStatPts
 
+  player.level = level
+  player.xp    = newXp   // xp within this level (already subtracted thresholds in while loop)
   showToast('LEVEL UP! Lvl ' + level + ' — Full HP restored! +' + statPtsGained + ' stat points to spend!')
   renderHUD()
 
-  return { level, max_hp: newMaxHp, hp: newHp, stat_points: newStatPts }
+  return { level, max_hp: newMaxHp, hp: newHp, stat_points: newStatPts, xp: newXp }
 }
 
 // ── HUD ──────────────────────────────────────────
@@ -1283,7 +1285,7 @@ window.goTo = async function goTo(nextId, choice = {}) {
   const oldLvl = player.level || 1
 
   const updates = { current_node: 'ch1_' + nextId }
-  if (cur?.xp)     updates.xp = oldXp + cur.xp
+  if (cur?.xp)     { updates.xp = oldXp + cur.xp; player.xp = updates.xp }
   if (cur?.hpLoss) { currentHp = Math.max(1, currentHp - cur.hpLoss); updates.hp = currentHp }
   if (choice.outcome === 'attack') { updates.reputation = 'red'; updates.badge = 'red' }
   if (choice.bossMode) bossMode = choice.bossMode
@@ -1717,6 +1719,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       if (isFarm) {
         // Farm: fire all DB saves in background — buttons already visible
         const newXp = oldXp + (enemy.xp || 50)
+        player.xp = newXp
         // Gold drop: 0-100 gold scaled by enemy difficulty
         const goldMin  = Math.floor((enemy.hp || 20) * 0.1)
         const goldMax  = Math.floor((enemy.hp || 20) * 0.8)
@@ -1748,6 +1751,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         const sGoldDrop = Math.floor(Math.random() * 40) + 5
         updates.gold = (player.gold || 0) + sGoldDrop
         player.gold = updates.gold
+        if (updates.xp) player.xp = updates.xp
         await save(updates)
         if (goldDrop > 0) queueLoot('◈ ' + sGoldDrop + ' Gold', 1, null)
         if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
