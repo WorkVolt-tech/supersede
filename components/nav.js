@@ -8,7 +8,30 @@ const ADMIN_USER_IDS = new Set([
 import { supabase } from '../supabase.js'
 
 export async function renderNav(containerId = 'nav') {
-  const { data: { session } } = await supabase.auth.getSession()
+  // ── Edge-safe session check ───────────────────────────────
+  // Edge delays restoring sessions from storage. We wait for
+  // onAuthStateChange to fire with the real session before acting.
+  const session = await new Promise(resolve => {
+    let resolved = false
+    const done = (s) => { if (!resolved) { resolved = true; resolve(s) } }
+
+    // Immediate check — works in Chrome/Firefox
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) done(data.session)
+      else {
+        // Wait up to 2.5s for Edge to restore session from storage
+        const timer = setTimeout(() => done(null), 2500)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            clearTimeout(timer)
+            subscription.unsubscribe()
+            done(s)
+          }
+        })
+      }
+    })
+  })
+
   if (!session) { location.href = '../pages/auth.html'; return null }
 
   const { data: player } = await supabase
