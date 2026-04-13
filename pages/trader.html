@@ -18,7 +18,7 @@
         <div id="npc-list"></div>
         <hr class="ink-divider">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#9a8050;letter-spacing:.08em">GOLD</span>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#1a1208;letter-spacing:.08em">GOLD</span>
           <span id="gold-display" style="font-family:'Cinzel',serif;font-size:1.2rem;font-weight:600;color:#c8b96e">◈ 0</span>
         </div>
       </div>
@@ -28,7 +28,7 @@
       <div class="page-inner" id="npc-panel">
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:300px;gap:.5rem">
           <span style="font-size:2.5rem">🧭</span>
-          <p style="font-family:'IM Fell English',serif;font-style:italic;color:#7a6435">Select an NPC to interact.</p>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;color:#1a1208">Select an NPC to interact.</p>
         </div>
       </div>
     </div>
@@ -93,9 +93,9 @@
       <span class="slot-icon">${n.icon}</span>
       <div style="flex:1">
         <p style="font-family:'Cinzel',serif;font-size:.9rem;color:#1a1208;margin:0 0 1px">${n.name}</p>
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;margin:0">${n.title}</p>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#1a1208;margin:0">${n.title}</p>
       </div>
-      <span style="color:#9a8050">›</span>
+      <span style="color:#1a1208">›</span>
     </div>
   `).join('')
 
@@ -120,12 +120,12 @@
           <div style="display:flex;align-items:center;gap:.6rem;padding:.75rem 0;border-bottom:.5px solid rgba(139,106,32,.15);flex-wrap:wrap">
             <span style="font-size:1.2rem">${item.icon}</span>
             <div style="flex:1;min-width:0">
-              <p style="font-family:'Cinzel',serif;font-size:.82rem;color:${RARITY[item.rarity]||'#888'};margin:0 0 1px">${item.name}</p>
-              <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#7a6435;margin:0">
+              <p style="font-family:'Cinzel',serif;font-size:.82rem;color:${RARITY[item.rarity]||'#2a1208'};margin:0 0 1px">${item.name}</p>
+              <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#1a1208;margin:0">
                 ${item.element&&item.element!=='none'?`[${item.element.toUpperCase()}] `:''}${item.item_type}${item.atk_bonus>0?` · ATK +${item.atk_bonus}`:''}${item.def_bonus>0?` · DEF +${item.def_bonus}`:''}${item.hp_restore>0?` · +${item.hp_restore}HP`:''}${(item.power_bonus||0)>0?` · PWR +${item.power_bonus}`:''}${(item.speed_bonus||0)>0?` · SPD +${item.speed_bonus}`:''}${(item.insight_bonus||0)>0?` · INS +${item.insight_bonus}`:''}
               </p>
             </div>
-            <span style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${canAfford?'#c8b96e':'#804040'}">◈${item.buy_price}</span>
+            <span style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${canAfford?'#8b6010':'#c04040'}">◈${item.buy_price}</span>
             <button onclick="buyItem('${s.itemKey}')" ${canAfford?'':'disabled'} style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);padding:.3rem .75rem;cursor:pointer;border-radius:2px;opacity:${canAfford?1:.4}">Buy</button>
           </div>
         `
@@ -134,11 +134,11 @@
       panel.innerHTML = `
         <p class="chapter-label">${n.title}</p>
         <h2 class="page-title">${n.name}</h2>
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:#5a4a2a;margin-bottom:.5rem">${n.dialogue}</p>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:#1a1208;margin-bottom:.5rem">${n.dialogue}</p>
         <hr class="ink-divider">
         <div style="display:flex;gap:6px;margin-bottom:.75rem">
           <button id="tab-buy"  onclick="switchTab('buy',  '${n.key}')" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.07em;padding:3px 14px;border-radius:20px;cursor:pointer;background:rgba(139,106,32,.2);border:.5px solid rgba(139,106,32,.5);color:#1a1208">BUY</button>
-          <button id="tab-sell" onclick="switchTab('sell', '${n.key}')" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.07em;padding:3px 14px;border-radius:20px;cursor:pointer;background:none;border:.5px solid rgba(139,106,32,.2);color:#7a6435">SELL</button>
+          <button id="tab-sell" onclick="switchTab('sell', '${n.key}')" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.07em;padding:3px 14px;border-radius:20px;cursor:pointer;background:none;border:.5px solid rgba(139,106,32,.2);color:#1a1208">SELL</button>
         </div>
         <div id="tab-content-buy">${rows}</div>
         <div id="tab-content-sell" style="display:none"></div>
@@ -150,9 +150,9 @@
           <div style="display:flex;align-items:center;gap:.6rem;padding:.75rem 0;border-bottom:.5px solid rgba(139,106,32,.15)">
             <div style="flex:1">
               <p style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208;margin:0 0 1px">${s.label}</p>
-              <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;margin:0">${s.desc}</p>
+              <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#1a1208;margin:0">${s.desc}</p>
             </div>
-            <span style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${canAfford?'#c8b96e':'#804040'}">◈${s.goldCost}</span>
+            <span style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${canAfford?'#8b6010':'#c04040'}">◈${s.goldCost}</span>
             <button onclick="runesmith('${s.action}','${s.goldCost}')" ${canAfford?'':'disabled'} style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);padding:.3rem .75rem;cursor:pointer;border-radius:2px;opacity:${canAfford?1:.4}">Use</button>
           </div>
         `
@@ -160,9 +160,9 @@
       panel.innerHTML = `
         <p class="chapter-label">${n.title}</p>
         <h2 class="page-title">${n.name}</h2>
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:#5a4a2a;margin-bottom:.5rem">${n.dialogue}</p>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:#1a1208;margin-bottom:.5rem">${n.dialogue}</p>
         <hr class="ink-divider">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#9a8050;letter-spacing:.06em;margin-bottom:.75rem">Select the rarity of item you want to socket. Maximum sockets: Common=1, Uncommon=2, Rare=3, Epic=4, Legendary=5</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;letter-spacing:.06em;margin-bottom:.75rem">Select the rarity of item you want to socket. Maximum sockets: Common=1, Uncommon=2, Rare=3, Epic=4, Legendary=5</p>
         <div>${rows}</div>
         <hr class="ink-divider">
         <a href="crafting.html" style="font-family:'Cinzel',serif;font-size:.78rem;letter-spacing:.08em;color:#a07de0;text-decoration:none;border:.5px solid #a07de040;padding:.35rem .9rem;border-radius:2px">
@@ -176,9 +176,9 @@
           <div style="display:flex;align-items:center;gap:.6rem;padding:.75rem 0;border-bottom:.5px solid rgba(139,106,32,.15)">
             <div style="flex:1">
               <p style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208;margin:0 0 1px">${s.label}</p>
-              <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;margin:0">${s.desc}</p>
+              <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#1a1208;margin:0">${s.desc}</p>
             </div>
-            <span style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${canAfford?'#c8b96e':'#804040'}">◈${s.goldCost}</span>
+            <span style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${canAfford?'#8b6010':'#c04040'}">◈${s.goldCost}</span>
             <button onclick="heal('${s.action}','${s.goldCost}')" ${canAfford?'':'disabled'} style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);padding:.3rem .75rem;cursor:pointer;border-radius:2px;opacity:${canAfford?1:.4}">Use</button>
           </div>
         `
@@ -187,7 +187,7 @@
       panel.innerHTML = `
         <p class="chapter-label">${n.title}</p>
         <h2 class="page-title">${n.name}</h2>
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:#5a4a2a;margin-bottom:.5rem">${n.dialogue}</p>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:#1a1208;margin-bottom:.5rem">${n.dialogue}</p>
         <hr class="ink-divider">
         <div>${rows}</div>
       `
@@ -207,7 +207,7 @@
       buyBtn.style.color       = '#1a1208'
       sellBtn.style.background = 'none'
       sellBtn.style.borderColor= 'rgba(139,106,32,.2)'
-      sellBtn.style.color      = '#7a6435'
+      sellBtn.style.color      = '#1a1208'
       buyDiv.style.display  = 'block'
       sellDiv.style.display = 'none'
     } else {
@@ -216,19 +216,19 @@
       sellBtn.style.color       = '#1a1208'
       buyBtn.style.background   = 'none'
       buyBtn.style.borderColor  = 'rgba(139,106,32,.2)'
-      buyBtn.style.color        = '#7a6435'
+      buyBtn.style.color        = '#1a1208'
       buyDiv.style.display  = 'none'
       sellDiv.style.display = 'block'
 
       // Load player inventory for selling
-      sellDiv.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:#9a8050">Loading...</p>'
+      sellDiv.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:#1a1208">Loading...</p>'
       const { data: inv } = await supabase.from('inventory').select('*')
         .eq('player_id', player.id)
         .not('item_type', 'eq', 'material')
         .order('item_type')
 
       if (!inv || !inv.length) {
-        sellDiv.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.85rem;color:#7a6435">Nothing to sell.</p>'
+        sellDiv.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.85rem;color:#1a1208">Nothing to sell.</p>'
         return
       }
 
@@ -236,7 +236,7 @@
       const sellable = inv.filter(i => !i.equipped_slot)
 
       if (!sellable.length) {
-        sellDiv.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.85rem;color:#7a6435">All items are currently equipped. Unequip items in Inventory to sell them.</p>'
+        sellDiv.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.85rem;color:#1a1208">All items are currently equipped. Unequip items in Inventory to sell them.</p>'
         return
       }
 
@@ -251,11 +251,11 @@
           <div style="display:flex;align-items:center;gap:.6rem;padding:.65rem 0;border-bottom:.5px solid rgba(139,106,32,.15)">
             <span style="font-size:1.1rem">${item.icon||'📦'}</span>
             <div style="flex:1;min-width:0">
-              <p style="font-family:'Cinzel',serif;font-size:.8rem;color:${RC[item.rarity]||'#888'};margin:0 0 1px">
+              <p style="font-family:'Cinzel',serif;font-size:.8rem;color:${RC[item.rarity]||'#2a1208'};margin:0 0 1px">
                 ${item.name}
                 ${hasSocket?`<span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a07de0;margin-left:4px">[${item.sockets_used||0}/${item.sockets_total} runes]</span>`:''}
               </p>
-              <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#7a6435;margin:0">
+              <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;margin:0">
                 ${item.rarity} ${item.subtype||item.item_type}
                 ${item.atk_bonus>0?` · ATK +${item.atk_bonus}`:''}
                 ${item.def_bonus>0?` · DEF +${item.def_bonus}`:''}
