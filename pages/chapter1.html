@@ -856,15 +856,19 @@ async function save(updates) {
 // ── Loot drop queue — collect drops then show summary window ──
 let _lootQueue = []
 let _lootTimerId = null
+let _lootSuppressed = false  // suppress mid-sequence flashes
 
 function queueLoot(name, qty, img) {
   _lootQueue.push({ name, qty, img })
   clearTimeout(_lootTimerId)
-  _lootTimerId = setTimeout(showLootWindow, 400)
+  _lootTimerId = setTimeout(showLootWindow, 800)
 }
 
+function suppressLoot() { _lootSuppressed = true }
+function unsuppressLoot() { _lootSuppressed = false }
+
 function showLootWindow() {
-  if (!_lootQueue.length) return
+  if (_lootSuppressed || !_lootQueue.length) return
   const drops = [..._lootQueue]
   _lootQueue = []
 
@@ -1036,6 +1040,22 @@ async function addItem(itemKey, qty = 1) {
 }
 
 // ── Navigate ─────────────────────────────────────
+window.returnToZone = function() {
+  document.getElementById('loot-window')?.remove()
+  const p = document.getElementById('right-panel')
+  if (farmLoc && p) renderFarmZone(p, farmLoc)
+  else if (p) renderLocationHub(p, NODES['farming_hub'])
+}
+window.returnToZoneHub = function() {
+  document.getElementById('loot-window')?.remove()
+  const p = document.getElementById('right-panel')
+  if (p) renderLocationHub(p, NODES['farming_hub'])
+}
+window.returnToStory = function() {
+  document.getElementById('loot-window')?.remove()
+  goTo('plaza_talk')
+}
+
 window.goTo = async function goTo(nextId, choice = {}) {
   if (!NODES[nextId]) return
   const cur = NODES[nodeId]
@@ -1395,50 +1415,64 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
     const actions = document.getElementById('combat-actions')
     const overEl  = document.getElementById('combat-over')
     if (actions) actions.style.display = 'none'
-    if (overEl)  {
-      overEl.style.display='block'
-      overEl.textContent = result==='win' ? '✦ Victory ✦' : result==='escape' ? '✦ Escaped ✦' : '✦ Defeated ✦'
+
+    const isFarm = onWin === '__farm_win__'
+
+    if (overEl) {
+      overEl.style.display = 'block'
+      const resultLabel = result==='win' ? '✦ Victory ✦' : result==='escape' ? '✦ Escaped ✦' : '✦ Defeated ✦'
+
+      if (isFarm) {
+        const btnStyle = "font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;border-radius:3px;padding:.45rem 1rem;cursor:pointer;width:100%;border:1px solid rgba(139,106,32,.5);margin-bottom:4px"
+        overEl.innerHTML =
+          '<p style="font-family:Cinzel,serif;font-size:1.1rem;font-weight:600;color:#1a1208;letter-spacing:.1em;margin-bottom:.6rem">' + resultLabel + '</p>' +
+          '<div style="display:flex;flex-direction:column;gap:4px">' +
+          '<button onclick="returnToZone()" style="' + btnStyle + ';background:rgba(200,184,128,.45)">⚔ Fight Again (same zone)</button>' +
+          '<button onclick="returnToZoneHub()" style="' + btnStyle + ';background:rgba(200,184,128,.25)">← Pick a Different Zone</button>' +
+          '<button onclick="returnToStory()" style="' + btnStyle + ';background:rgba(200,184,128,.12)">↩ Return to Story</button>' +
+          '</div>'
+      } else {
+        overEl.textContent = resultLabel
+      }
     }
 
     const oldXp  = player.xp || 0
     const oldLvl = player.level || 1
 
     if (result === 'win') {
-      const newXp     = oldXp + (enemy.xp || 50)
-      const updates   = { xp: newXp, hp: currentHp }
-      const lvlUp     = await checkLevelUp(oldXp, newXp, oldLvl)
-      if (lvlUp) Object.assign(updates, lvlUp)
-      if (isBoss) {
-        const unlocked = player.chapters_unlocked || [1]
-        if (!unlocked.includes(2)) updates.chapters_unlocked = [...unlocked, 2]
-      }
-      await save(updates)
-      if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
-
-      // ── Rune drops ──────────────────────────────────
-      // Common enemies: 20% chance to drop ignis/aqua/terra/aero
-      // Hard enemies:   35% chance, can also drop umbra/lux
-      // Boss:           guaranteed rune drop, rare runes included
       const RUNE_POOL_COMMON = ['rune_ignis','rune_aqua','rune_terra','rune_aero']
       const RUNE_POOL_RARE   = ['rune_ignis','rune_aqua','rune_terra','rune_aero','rune_umbra','rune_lux']
       const isHardEnemy      = (enemy.hp||0) > 60
       const runeChance       = isBoss ? 1.0 : isHardEnemy ? 0.35 : 0.20
       const runePool         = (isBoss || isHardEnemy) ? RUNE_POOL_RARE : RUNE_POOL_COMMON
-      if (Math.random() < runeChance) {
-        const rune = runePool[Math.floor(Math.random()*runePool.length)]
-        await addItem(rune, 1)
-      }
-      // Farm win — process drops immediately then re-render zone (no delay)
-      if (onWin === '__farm_win__') {
+      const runeKey          = Math.random() < runeChance ? runePool[Math.floor(Math.random()*runePool.length)] : null
+
+      if (isFarm) {
+        // Farm: fire all DB saves in background — buttons already visible
+        const newXp = oldXp + (enemy.xp || 50)
+        checkLevelUp(oldXp, newXp, oldLvl).then(lvlUp => {
+          save({ xp: newXp, hp: currentHp, ...(lvlUp||{}) })
+        })
+        if (enemy.loot) for (const l of enemy.loot) addItem(l.itemKey, l.qty)
+        if (runeKey) addItem(runeKey, 1)
         if (farmLoc && farmLoc.enemies[farmIdx]) {
           for (const drop of farmLoc.enemies[farmIdx].loot) {
-            if (Math.random() < drop.chance) await addItem(drop.itemKey, 1)
+            if (Math.random() < drop.chance) addItem(drop.itemKey, 1)
           }
         }
-        const p = document.getElementById('right-panel')
-        if (farmLoc && p) renderFarmZone(p, farmLoc)
-        else if (p) renderLocationHub(p, NODES['farming_hub'])
       } else {
+        // Story/boss: await saves then navigate
+        const newXp   = oldXp + (enemy.xp || 50)
+        const updates = { xp: newXp, hp: currentHp }
+        const lvlUp   = await checkLevelUp(oldXp, newXp, oldLvl)
+        if (lvlUp) Object.assign(updates, lvlUp)
+        if (isBoss) {
+          const unlocked = player.chapters_unlocked || [1]
+          if (!unlocked.includes(2)) updates.chapters_unlocked = [...unlocked, 2]
+        }
+        await save(updates)
+        if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
+        if (runeKey) await addItem(runeKey, 1)
         setTimeout(() => goTo(onWin), 1200)
       }
     } else {
