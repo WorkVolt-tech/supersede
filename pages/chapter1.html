@@ -837,6 +837,10 @@ function renderHUD() {
       <div class="stat-box"><span class="stat-box-key">DEF</span><span class="stat-box-val">${calcDEF()}</span></div>
       <div class="stat-box"><span class="stat-box-key">GOLD</span><span class="stat-box-val" style="color:#c8b96e">${player.gold||0}</span></div>
     </div>
+    <div style="display:flex;gap:4px;margin-top:6px">
+      <button onclick="openStatWindow()" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">📊 STATS</button>
+      ${(player.stat_points||0)>0?'<button onclick="openStatModal()" style="flex:1;font-family:\'Share Tech Mono\',monospace;font-size:.55rem;color:#1a1208;background:rgba(200,184,128,.35);border:.5px solid rgba(139,106,32,.6);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">⬆ '+player.stat_points+' PTS</button>':''}
+    </div>
   `
 }
 
@@ -1173,6 +1177,85 @@ window.saveStats = async function() {
   document.getElementById('stat-modal').remove()
   renderHUD()
   showToast('Stats saved!')
+}
+
+// ── Full Stat Window ─────────────────────────────────────────
+window.openStatWindow = function() {
+  document.getElementById('stat-window')?.remove()
+
+  const eqItems  = window._equippedItems || []
+  const eqBonuses = (stat) => eqItems.reduce((s,i) => s + (i[stat]||0), 0)
+
+  const pwr = player.power   || 0
+  const ctr = player.control || 0
+  const grd = player.guard   || 0
+  const spd = player.speed   || 0
+  const ins = player.insight || 0
+  const lck = player.luck    || 0
+
+  const finalATK = calcATK()
+  const finalDEF = calcDEF()
+  const finalSPD = calcSPD()
+
+  const STATS = [
+    { key:'power',   label:'Power',   val:pwr, color:'#ff5500', desc:'Scales ATK damage',          derived:'ATK +' + Math.round(pwr*0.6) },
+    { key:'control', label:'Control', val:ctr, color:'#0088ff', desc:'Scales DEF & retry chance',   derived:'DEF +' + Math.round(ctr*0.2) },
+    { key:'guard',   label:'Guard',   val:grd, color:'#8b5e3c', desc:'Scales DEF & damage block',   derived:'DEF +' + Math.round(grd*0.6) },
+    { key:'speed',   label:'Speed',   val:spd, color:'#a8d8ea', desc:'Scales ATK & turn order',     derived:'ATK +' + Math.round(spd*0.2) + ', SPD +' + spd },
+    { key:'insight', label:'Insight', val:ins, color:'#ffd700', desc:'Scales SPD & luck effects',   derived:'SPD +' + Math.round(ins*0.1) },
+    { key:'luck',    label:'Luck',    val:lck, color:'#b06eff', desc:'Improves crit & loot chance', derived:'Loot +' + Math.round(lck*5) + '%' },
+  ]
+
+  const equippedNames = eqItems.map(i => i.name).join(', ') || 'None'
+
+  const modal = document.createElement('div')
+  modal.id = 'stat-window'
+  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
+  modal.innerHTML = `
+    <div style="background:#b8a568;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:320px;max-width:400px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">Character Stats</p>
+        <button onclick="document.getElementById('stat-window').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#1a1208">✕</button>
+      </div>
+
+      <div style="background:rgba(0,0,0,.08);border-radius:4px;padding:.6rem .75rem;margin-bottom:.75rem">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:4px">DERIVED STATS</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
+          ${[['ATK', finalATK, '#e05555'],['DEF', finalDEF, '#5ec45e'],['SPD', finalSPD, '#a8d8ea'],
+             ['HP', (player.max_hp||100), '#5eaee0'],['LVL', (player.level||1), '#c8b96e'],['GOLD', (player.gold||0), '#c8b96e']
+          ].map(([k,v,c]) => '<div style="text-align:center;background:rgba(0,0,0,.1);border-radius:3px;padding:4px 2px"><span style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#3a2008;display:block">'+k+'</span><span style="font-family:\'Cinzel\',serif;font-size:.95rem;font-weight:600;color:'+c+'">'+v+'</span></div>').join('')}
+        </div>
+      </div>
+
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:6px">CORE STATS ${(player.stat_points||0)>0?'<span style="color:#8b6a20">· '+player.stat_points+' points to spend</span>':''}</p>
+      ${STATS.map(s => `
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:5px;padding:5px 7px;background:rgba(0,0,0,.07);border-radius:3px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
+          <div style="flex:1">
+            <div style="display:flex;align-items:baseline;gap:4px">
+              <span style="font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;font-weight:600">${s.label}</span>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208">${s.val}</span>
+              <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#3a2008;margin-left:auto">${s.derived}</span>
+            </div>
+            <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.62rem;color:#3a2008;margin:0">${s.desc}</p>
+          </div>
+        </div>
+      `).join('')}
+
+      <div style="margin-top:.75rem;padding:.6rem .75rem;background:rgba(0,0,0,.08);border-radius:4px">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:3px">EQUIPPED</p>
+        <p style="font-family:'IM Fell English',serif;font-size:.72rem;color:#1a1208;margin:0">${equippedNames}</p>
+      </div>
+
+      ${(player.stat_points||0)>0?`
+        <button onclick="document.getElementById('stat-window').remove();openStatModal()" style="width:100%;margin-top:.75rem;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.6);border-radius:3px;padding:.45rem;cursor:pointer">
+          ⬆ Spend ${player.stat_points} Stat Points
+        </button>
+      `:''}
+    </div>
+  `
+  modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
+  document.body.appendChild(modal)
 }
 
 window.goTo = async function goTo(nextId, choice = {}) {
