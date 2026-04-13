@@ -173,8 +173,11 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
   }
 
   function renderGrid() {
-    const filtered = items.filter(i=>filter==='all'||i.item_type===filter)
-    document.getElementById('bag-count').textContent = items.length + ' items'
+    // Exclude equipped items from the bag view
+    const unequipped = items.filter(i => !i.equipped_slot)
+    const filtered = unequipped.filter(i=>filter==='all'||i.item_type===filter)
+    const unequippedCount = items.filter(i=>!i.equipped_slot).length
+    document.getElementById('bag-count').textContent = unequippedCount + ' items'
     document.getElementById('item-grid').innerHTML = filtered.map(item => `
       <div class="item-card${selectedId===item.id?' selected':''}" data-id="${item.id}">
         ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="item-icon" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display=\'none\'">'):'<span class="item-icon">'+(item.icon||'📦')+'</span>';})()}
