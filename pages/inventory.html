@@ -293,7 +293,14 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
         <div style="display:flex;gap:.5rem;flex-wrap:wrap">
           ${item.item_type==='consumable'?`<button onclick="useItem('${item.id}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#5eaee0;background:none;border:.5px solid #5eaee040;border-radius:3px;padding:4px 12px;cursor:pointer">Use ×1</button>`:''}
           ${item.equipped_slot?`<button onclick="unequipSlot('${item.equipped_slot}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#c8b96e;background:none;border:.5px solid #c8b96e40;border-radius:3px;padding:4px 12px;cursor:pointer">Unequip</button>`:''}
-          ${!item.equipped_slot?`<button onclick="sellItem('${item.id}','${item.name}',${item.sell_price||Math.max(1,Math.floor((item.buy_price||20)*.4))},${item.quantity||1})" style="font-family:'Cinzel',serif;font-size:.72rem;color:#e05555;background:none;border:.5px solid #e0555540;border-radius:3px;padding:4px 12px;cursor:pointer">Sell ◈${item.sell_price||Math.max(1,Math.floor((item.buy_price||20)*.4))}</button>`:''}
+          ${!item.equipped_slot ? (()=>{
+            const _sp  = item.sell_price || Math.max(1, Math.floor((item.buy_price||20)*.4))
+            const _qty = item.quantity || 1
+            const _bs  = "font-family:'Cinzel',serif;font-size:.72rem;background:none;border:.5px solid rgba(139,106,32,.5);border-radius:3px;padding:4px 10px;cursor:pointer;color:#6b4a10"
+            return _qty > 1
+              ? `<button onclick="sellItem('${item.id}','${item.name}',${_sp},${_qty})" style="${_bs}">Sell ×1 ◈${_sp}</button> <button onclick="sellItemAll('${item.id}','${item.name}',${_sp},${_qty})" style="${_bs}">Sell All ◈${_sp*_qty}</button>`
+              : `<button onclick="sellItem('${item.id}','${item.name}',${_sp},1)" style="${_bs}">Sell ◈${_sp}</button>`
+          })() : ''}
         </div>
       </div>
     `
@@ -617,16 +624,28 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
   }
 
   window.sellItem = async (itemId, itemName, sellPrice, qty) => {
-    if (qty > 1) {
-      // Sell one at a time
-      await supabase.from('inventory').update({ quantity: qty - 1 }).eq('id', itemId)
-    } else {
+    const newQty = (qty || 1) - 1
+    if (newQty <= 0) {
       await supabase.from('inventory').delete().eq('id', itemId)
+    } else {
+      await supabase.from('inventory').update({ quantity: newQty }).eq('id', itemId)
     }
     const newGold = (player.gold || 0) + sellPrice
     await supabase.from('players').update({ gold: newGold }).eq('id', player.id)
     player.gold = newGold
     showToast('Sold ' + itemName + ' for ◈' + sellPrice)
+    selectedId = null
+    await load()
+  }
+
+  window.sellItemAll = async (itemId, itemName, priceEach, qty) => {
+    // Always delete the entire row
+    await supabase.from('inventory').delete().eq('id', itemId)
+    const total   = priceEach * (qty || 1)
+    const newGold = (player.gold || 0) + total
+    await supabase.from('players').update({ gold: newGold }).eq('id', player.id)
+    player.gold = newGold
+    showToast('Sold ' + (qty||1) + '× ' + itemName + ' for ◈' + total)
     selectedId = null
     await load()
   }
