@@ -15,9 +15,21 @@
 
     <div class="auth-form">
       <label class="auth-label">Email</label>
-      <input class="auth-input" type="email" id="email" placeholder="you@example.com">
+      <input class="auth-input" type="email" id="email" placeholder="you@example.com" autocomplete="email">
+
+      <div id="username-row" style="display:none">
+        <label class="auth-label">Username</label>
+        <input class="auth-input" type="text" id="username" placeholder="Your in-game name" autocomplete="off" maxlength="24">
+      </div>
+
       <label class="auth-label">Password</label>
-      <input class="auth-input" type="password" id="password" placeholder="••••••••">
+      <input class="auth-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+
+      <div id="confirm-row" style="display:none">
+        <label class="auth-label">Confirm Password</label>
+        <input class="auth-input" type="password" id="confirm" placeholder="••••••••" autocomplete="new-password">
+      </div>
+
       <p class="auth-error" id="auth-error"></p>
       <button class="auth-btn" id="submit-btn">Enter ›</button>
     </div>
@@ -30,57 +42,111 @@
   import { supabase } from '../supabase.js'
 
   let mode = 'login'
+  let redirecting = false
 
-  // If already logged in, go to book
-  const { data: { session } } = await supabase.auth.getSession()
-  if (session) location.href = 'book.html'
+  // ── Fix Edge loop: only redirect once, use flag ───────────
+  async function checkSession() {
+    if (redirecting) return
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session) {
+      redirecting = true
+      location.replace('book.html')
+    }
+  }
+  await checkSession()
+
+  // Listen for auth changes (handles Edge quirk)
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (redirecting) return
+    if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
+      redirecting = true
+      location.replace('book.html')
+    }
+  })
+
+  function setMode(m) {
+    mode = m
+    const isSignup = m === 'signup'
+    document.getElementById('username-row').style.display = isSignup ? 'block' : 'none'
+    document.getElementById('confirm-row').style.display  = isSignup ? 'block' : 'none'
+    document.getElementById('auth-sub').textContent       = isSignup ? 'Register your identity with the System.' : 'Welcome back, player.'
+    document.getElementById('submit-btn').textContent     = isSignup ? 'Register ›' : 'Enter ›'
+    document.getElementById('toggle-btn').textContent     = isSignup ? 'Already registered? Log in.' : 'No account? Sign up.'
+    document.getElementById('auth-error').textContent     = ''
+    document.getElementById('password').autocomplete      = isSignup ? 'new-password' : 'current-password'
+  }
+
+  document.getElementById('toggle-btn').addEventListener('click', () => {
+    setMode(mode === 'login' ? 'signup' : 'login')
+  })
 
   document.getElementById('submit-btn').addEventListener('click', async () => {
     const email    = document.getElementById('email').value.trim()
     const password = document.getElementById('password').value
+    const confirm  = document.getElementById('confirm').value
+    const username = document.getElementById('username').value.trim()
     const errorEl  = document.getElementById('auth-error')
     const btn      = document.getElementById('submit-btn')
 
     errorEl.textContent = ''
-    btn.textContent = 'Connecting…'
-    btn.disabled = true
 
-    let result
-    if (mode === 'login') {
-      result = await supabase.auth.signInWithPassword({ email, password })
-    } else {
-      result = await supabase.auth.signUp({ email, password })
-    }
-
-    btn.disabled = false
-    btn.textContent = mode === 'login' ? 'Enter ›' : 'Register ›'
-
-    if (result.error) {
-      errorEl.textContent = result.error.message
-      return
-    }
-
-    // Create player row if new signup
+    // Validation
+    if (!email || !password) { errorEl.textContent = 'Email and password are required.'; return }
     if (mode === 'signup') {
-      const userId = result.data.user.id
-      const username = 'Player_' + Math.random().toString(36).slice(2,7).toUpperCase()
-      await supabase.from('players').insert({ user_id: userId, username })
+      if (!username) { errorEl.textContent = 'Please choose a username.'; return }
+      if (username.length < 3) { errorEl.textContent = 'Username must be at least 3 characters.'; return }
+      if (password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters.'; return }
+      if (password !== confirm) { errorEl.textContent = 'Passwords do not match.'; return }
     }
 
-    location.href = 'book.html'
+    btn.textContent = 'Connecting…'
+    btn.disabled    = true
+
+    if (mode === 'login') {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      btn.disabled    = false
+      btn.textContent = 'Enter ›'
+      if (error) { errorEl.textContent = error.message; return }
+      // onAuthStateChange handles redirect
+
+    } else {
+      // Sign up — email confirmation disabled in Supabase dashboard
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { username } }
+      })
+      btn.disabled    = false
+      btn.textContent = 'Register ›'
+      if (error) { errorEl.textContent = error.message; return }
+
+      // Create player row immediately
+      const userId = data.user?.id
+      if (userId) {
+        const finalName = username || ('Player_' + Math.random().toString(36).slice(2,7).toUpperCase())
+        const { error: pErr } = await supabase.from('players').upsert(
+          { id: userId, username: finalName },
+          { onConflict: 'id' }
+        )
+        if (pErr) console.warn('Player row error:', pErr.message)
+      }
+
+      // Sign in immediately so they don't have to verify email
+      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
+      if (signInErr) {
+        errorEl.textContent = 'Account created! Please sign in.'
+        setMode('login')
+        return
+      }
+      // onAuthStateChange handles redirect
+    }
   })
 
-  document.getElementById('toggle-btn').addEventListener('click', () => {
-    mode = mode === 'login' ? 'signup' : 'login'
-    document.getElementById('auth-sub').textContent   = mode === 'login' ? 'Welcome back, player.' : 'Register your identity with the System.'
-    document.getElementById('submit-btn').textContent  = mode === 'login' ? 'Enter ›' : 'Register ›'
-    document.getElementById('toggle-btn').textContent  = mode === 'login' ? 'No account? Sign up.' : 'Already registered? Log in.'
-    document.getElementById('auth-error').textContent  = ''
-  })
-
-  // Allow Enter key
-  document.getElementById('password').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('submit-btn').click()
+  // Enter key on any field
+  ['email','username','password','confirm'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') document.getElementById('submit-btn').click()
+    })
   })
 </script>
 </body>
