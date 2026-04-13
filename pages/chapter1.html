@@ -995,10 +995,12 @@ async function addItem(itemKey, qty = 1) {
   if (!m) return
   const stackable = ['consumable','material','key']
   if (stackable.includes(m.item_type)) {
+    // Always stack by item_key — find any existing stack regardless of equipped state
     const { data: ex } = await supabase.from('inventory').select('*')
       .eq('player_id', player.id).eq('item_key', itemKey).maybeSingle()
     if (ex) {
       await supabase.from('inventory').update({ quantity:(ex.quantity||1)+qty }).eq('id',ex.id)
+      queueLoot(m.name, qty, getItemImg(m.item_key))
     } else {
       await supabase.from('inventory').insert({
         player_id:player.id, item_key:m.item_key, name:m.name, item_type:m.item_type,
@@ -1009,8 +1011,8 @@ async function addItem(itemKey, qty = 1) {
         insight_bonus:m.insight_bonus||0, luck_bonus:m.luck_bonus||0,
         special_effect:m.special_effect||null, sockets_total:0, sockets_used:0, socketed_runes:[]
       })
+      queueLoot(m.name, qty, getItemImg(m.item_key))
     }
-    queueLoot(m.name, qty, getItemImg(m.item_key))
     return
   }
   const socketsRolled = rollSockets(m.rarity, m.item_type)
@@ -1420,21 +1422,19 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss) {
         const rune = runePool[Math.floor(Math.random()*runePool.length)]
         await addItem(rune, 1)
       }
-      setTimeout(async () => {
-        if (onWin === '__farm_win__') {
-          // Farm win — process per-enemy loot drops then return to zone
-          if (farmLoc && farmLoc.enemies[farmIdx]) {
-            for (const drop of farmLoc.enemies[farmIdx].loot) {
-              if (Math.random() < drop.chance) await addItem(drop.itemKey, 1)
-            }
+      // Farm win — process drops immediately then re-render zone (no delay)
+      if (onWin === '__farm_win__') {
+        if (farmLoc && farmLoc.enemies[farmIdx]) {
+          for (const drop of farmLoc.enemies[farmIdx].loot) {
+            if (Math.random() < drop.chance) await addItem(drop.itemKey, 1)
           }
-          const p = document.getElementById('right-panel')
-          if (farmLoc && p) renderFarmZone(p, farmLoc)
-          else if (p) renderLocationHub(p, NODES['farming_hub'])
-        } else {
-          goTo(onWin)
         }
-      }, 1200)
+        const p = document.getElementById('right-panel')
+        if (farmLoc && p) renderFarmZone(p, farmLoc)
+        else if (p) renderLocationHub(p, NODES['farming_hub'])
+      } else {
+        setTimeout(() => goTo(onWin), 1200)
+      }
     } else {
       await save({ hp: Math.max(1, currentHp) })
       setTimeout(() => {
