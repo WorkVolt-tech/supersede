@@ -264,7 +264,14 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
                 return '<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:.75rem;background:'+(rune?color+'22':'rgba(0,0,0,.15)')+'" title="'+(rune||'Empty socket')+'">'+(rune?(runeIcons[rune]||'?'):'○')+'</div>'
               }).join('')}
             </div>
-            ${item.runeword_name ? '<p style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#a07de0;margin-top:2px">✦ '+item.runeword_name+'</p>' : ''}
+            ${item.runeword_name ? `
+              <div style="margin-top:4px;padding:4px 6px;background:rgba(160,125,224,.12);border-radius:3px;border:.5px solid rgba(160,125,224,.3)">
+                <p style="font-family:'Cinzel',serif;font-size:.68rem;color:#a07de0;margin:0 0 2px">✦ ${item.runeword_name}</p>
+                ${item.runeword_effect ? '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.65rem;color:#1a1208;margin:0 0 2px">'+item.runeword_effect+'</p>' : ''}
+                <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#3a2008;margin:0">
+                  ${[['power_bonus','PWR'],['control_bonus','CTR'],['guard_bonus','GRD'],['speed_bonus','SPD'],['insight_bonus','INS'],['luck_bonus','LCK'],['atk_bonus','ATK'],['def_bonus','DEF']].filter(([k])=>(item[k]||0)>0).map(([k,l])=>l+' +'+item[k]).join(' · ')}
+                </p>
+              </div>` : ''}
             ${(item.sockets_used||0) < (item.sockets_total||0) ? '<button onclick="openRunePicker(\''+item.id+'\',\''+item.item_type+'\')" style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#a07de0;background:none;border:.5px solid #a07de060;border-radius:3px;padding:3px 10px;cursor:pointer;margin-top:4px">✦ Add Rune</button>' : ''}
             ${(item.sockets_used||0) > 0 ? '<button onclick="removeRunes(\''+item.id+'\')" style="font-family:\'Cinzel\',serif;font-size:.68rem;color:#3a2008;background:none;border:.5px solid rgba(139,106,32,.3);border-radius:3px;padding:3px 10px;cursor:pointer;margin-top:4px;margin-left:4px">Remove Runes</button>' : ''}
             <div id="rune-picker-${item.id}" style="display:none;margin-top:6px;padding:6px;background:rgba(0,0,0,.08);border-radius:4px;border:.5px solid rgba(160,125,224,.3)"></div>
@@ -304,7 +311,14 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
             return '<div style="width:26px;height:26px;border-radius:50%;border:1.5px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:.85rem;background:'+(rune?color+'22':'rgba(0,0,0,.1)')+'" title="'+(rune||'Empty socket')+'">'+(rune?(RUNE_ICONS[rune]||'?'):'○')+'</div>'
           }).join('')}
         </div>
-        ${item.runeword_name ? '<p style="font-family:\'Cinzel\',serif;font-size:.72rem;color:#4a20a8;margin-bottom:4px">✦ '+item.runeword_name+'</p>' : ''}
+        ${item.runeword_name ? `
+  <div style="margin-top:4px;padding:4px 6px;background:rgba(160,125,224,.15);border-radius:3px">
+    <p style="font-family:'Cinzel',serif;font-size:.72rem;color:#4a20a8;margin:0 0 2px">✦ ${item.runeword_name}</p>
+    ${item.runeword_effect ? '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.66rem;color:#1a1208;margin:0 0 2px">'+item.runeword_effect+'</p>' : ''}
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#3a2008;margin:0">
+      ${[['power_bonus','PWR'],['control_bonus','CTR'],['guard_bonus','GRD'],['speed_bonus','SPD'],['insight_bonus','INS'],['luck_bonus','LCK'],['atk_bonus','ATK'],['def_bonus','DEF']].filter(([k])=>(item[k]||0)>0).map(([k,l])=>l+' +'+item[k]).join(' · ')}
+    </p>
+  </div>` : ''}
       </div>` : ''
 
     const modal = document.createElement('div')
