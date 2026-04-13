@@ -487,42 +487,156 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
 
   // ── Runeword data ──────────────────────────────
   const RUNEWORDS = {
-    'ignis+ignis':       {name:'Ember Core',      rarity:'rare',      slot:'weapon',   stats:{power_bonus:2,atk_bonus:2}},
-    'aero+ignis':        {name:'Blazing Speed',   rarity:'epic',      slot:'weapon',   stats:{power_bonus:2,speed_bonus:4}},
-    'ignis+umbra':       {name:'Hellfire Pact',   rarity:'legendary', slot:'weapon',   stats:{power_bonus:6,atk_bonus:4}},
-    'ignis+terra':       {name:'Molten Strike',   rarity:'rare',      slot:'weapon',   stats:{power_bonus:2,atk_bonus:3,guard_bonus:1}},
-    'aqua+ignis':        {name:'Steam Burst',     rarity:'epic',      slot:'weapon',   stats:{power_bonus:2,control_bonus:2}},
-    'aqua+aqua':         {name:'Flow State',      rarity:'rare',      slot:'weapon',   stats:{control_bonus:3,luck_bonus:2}},
-    'aqua+lux':          {name:'Sacred Tide',     rarity:'epic',      slot:'weapon',   stats:{control_bonus:2,insight_bonus:2}},
-    'aero+aqua':         {name:'Current Shift',   rarity:'epic',      slot:'weapon',   stats:{control_bonus:3,speed_bonus:2}},
-    'aqua+umbra':        {name:'Drowning Curse',  rarity:'legendary', slot:'weapon',   stats:{control_bonus:5,power_bonus:2}},
-    'aqua+terra':        {name:'Deep Stability',  rarity:'rare',      slot:'weapon',   stats:{control_bonus:2,guard_bonus:2}},
-    'aero+aero':         {name:'Wind Fury',       rarity:'rare',      slot:'weapon',   stats:{speed_bonus:4,luck_bonus:2}},
-    'aero+umbra':        {name:'Phantom Strike',  rarity:'legendary', slot:'weapon',   stats:{speed_bonus:4,power_bonus:3}},
-    'umbra+umbra':       {name:'Abyss Core',      rarity:'epic',      slot:'weapon',   stats:{power_bonus:5,atk_bonus:3}},
-    'lux+lux':           {name:'Radiant Edge',    rarity:'rare',      slot:'weapon',   stats:{insight_bonus:2,luck_bonus:2,guard_bonus:1}},
-    'ignis+lux':         {name:'Holy Flame',      rarity:'epic',      slot:'weapon',   stats:{power_bonus:2,insight_bonus:2,atk_bonus:2}},
-    'aero+lux':          {name:'Light Speed',     rarity:'epic',      slot:'weapon',   stats:{speed_bonus:3,insight_bonus:2}},
-    'terra+terra':       {name:'Stone Skin',      rarity:'rare',      slot:'armor',    stats:{guard_bonus:5,def_bonus:3}},
-    'lux+terra':         {name:'Sanctuary',       rarity:'epic',      slot:'armor',    stats:{guard_bonus:3,insight_bonus:2,def_bonus:2}},
-    'aqua+terra':        {name:'Living Armor',    rarity:'rare',      slot:'armor',    stats:{guard_bonus:2,def_bonus:2}},
-    'terra+umbra':       {name:'Grave Shell',     rarity:'epic',      slot:'armor',    stats:{guard_bonus:4,def_bonus:4}},
-    'aero+terra':        {name:'Dust Guard',      rarity:'rare',      slot:'armor',    stats:{guard_bonus:2,speed_bonus:2,def_bonus:2}},
-    'aero+lux+armor':    {name:"Heaven's Grace",  rarity:'epic',      slot:'armor',    stats:{guard_bonus:2,speed_bonus:3,def_bonus:1}},
-    'ignis+lux+armor':   {name:'Phoenix Guard',   rarity:'legendary', slot:'armor',    stats:{guard_bonus:2,def_bonus:2,power_bonus:1}},
-    'lux+terra+uni':     {name:'Harmony',         rarity:'rare',      slot:'any',      stats:{power_bonus:1,control_bonus:1,guard_bonus:1,speed_bonus:1}},
-    'aqua+ignis+uni':    {name:'Balance Break',   rarity:'epic',      slot:'any',      stats:{control_bonus:3,power_bonus:2}},
-    'lux+umbra+uni':     {name:'Twilight Core',   rarity:'legendary', slot:'any',      stats:{power_bonus:3,guard_bonus:2,insight_bonus:2}},
-  }
+    // ══════════════════════════════════════════════════════
+    // WEAPON RUNEWORDS — 2 rune
+    // ══════════════════════════════════════════════════════
+    'ignis+ignis':              {n:2,name:'Ember Core',        rarity:'rare',      slot:'weapon',    stats:{power_bonus:2,atk_bonus:2}},
+    'aero+ignis':               {n:2,name:'Blazing Speed',     rarity:'epic',      slot:'weapon',    stats:{power_bonus:2,speed_bonus:4}},
+    'ignis+umbra':              {n:2,name:'Hellfire Pact',     rarity:'legendary', slot:'weapon',    stats:{power_bonus:6,atk_bonus:4}},
+    'ignis+terra':              {n:2,name:'Molten Strike',     rarity:'rare',      slot:'weapon',    stats:{power_bonus:2,atk_bonus:3,guard_bonus:1}},
+    'aqua+ignis':               {n:2,name:'Steam Burst',       rarity:'epic',      slot:'weapon',    stats:{power_bonus:2,control_bonus:2}},
+    'ignis+lux':                {n:2,name:'Holy Flame',        rarity:'epic',      slot:'weapon',    stats:{power_bonus:2,insight_bonus:2,atk_bonus:2}},
+    'aqua+aqua':                {n:2,name:'Flow State',        rarity:'rare',      slot:'weapon',    stats:{control_bonus:3,luck_bonus:2}},
+    'aqua+lux':                 {n:2,name:'Sacred Tide',       rarity:'epic',      slot:'weapon',    stats:{control_bonus:2,insight_bonus:2}},
+    'aero+aqua':                {n:2,name:'Current Shift',     rarity:'epic',      slot:'weapon',    stats:{control_bonus:3,speed_bonus:2}},
+    'aqua+umbra':               {n:2,name:'Drowning Curse',    rarity:'legendary', slot:'weapon',    stats:{control_bonus:5,power_bonus:2}},
+    'aqua+terra':               {n:2,name:'Deep Stability',    rarity:'rare',      slot:'weapon',    stats:{control_bonus:2,guard_bonus:2}},
+    'aero+aero':                {n:2,name:'Wind Fury',         rarity:'rare',      slot:'weapon',    stats:{speed_bonus:4,luck_bonus:2}},
+    'aero+umbra':               {n:2,name:'Phantom Strike',    rarity:'legendary', slot:'weapon',    stats:{speed_bonus:4,power_bonus:3}},
+    'aero+lux':                 {n:2,name:'Light Speed',       rarity:'epic',      slot:'weapon',    stats:{speed_bonus:3,insight_bonus:2}},
+    'umbra+umbra':              {n:2,name:'Abyss Core',        rarity:'epic',      slot:'weapon',    stats:{power_bonus:5,atk_bonus:3}},
+    'lux+umbra':                {n:2,name:'Twilight Blade',    rarity:'legendary', slot:'weapon',    stats:{power_bonus:3,guard_bonus:2,insight_bonus:2}},
+    'lux+lux':                  {n:2,name:'Radiant Edge',      rarity:'rare',      slot:'weapon',    stats:{insight_bonus:2,luck_bonus:2,guard_bonus:1}},
+    'terra+umbra+weapon':       {n:2,name:'Grave Force',       rarity:'epic',      slot:'weapon',    stats:{power_bonus:4,atk_bonus:5}},
 
+    // ══════════════════════════════════════════════════════
+    // WEAPON RUNEWORDS — 3 rune
+    // ══════════════════════════════════════════════════════
+    'ignis+ignis+umbra':        {n:3,name:'Doom Flame',        rarity:'legendary', slot:'weapon',    stats:{power_bonus:5,atk_bonus:5}},
+    'aero+ignis+ignis':         {n:3,name:'Doom Flame',        rarity:'legendary', slot:'weapon',    stats:{power_bonus:5,atk_bonus:5}},
+    'aero+aero+ignis':          {n:3,name:'Inferno Rush',      rarity:'epic',      slot:'weapon',    stats:{power_bonus:3,speed_bonus:2,atk_bonus:2}},
+    'aero+terra+umbra':         {n:3,name:'Shadow Cyclone',    rarity:'legendary', slot:'weapon',    stats:{speed_bonus:2,power_bonus:3,atk_bonus:3}},
+    'aqua+aero+umbra':          {n:3,name:'Phantom Current',   rarity:'legendary', slot:'weapon',    stats:{control_bonus:4,speed_bonus:3,power_bonus:2}},
+    'aqua+aqua+lux':            {n:3,name:'Ocean Blessing',    rarity:'epic',      slot:'weapon',    stats:{control_bonus:3,insight_bonus:2,luck_bonus:2}},
+    'aero+aqua+lux':            {n:3,name:'Radiant Flow',      rarity:'epic',      slot:'weapon',    stats:{speed_bonus:2,control_bonus:2,insight_bonus:2}},
+    'aqua+ignis+terra':         {n:3,name:'Steam Core',        rarity:'epic',      slot:'weapon',    stats:{power_bonus:2,control_bonus:2,guard_bonus:1,atk_bonus:2}},
+    'ignis+terra+umbra':        {n:3,name:'Magma Curse',       rarity:'legendary', slot:'weapon',    stats:{power_bonus:3,atk_bonus:4}},
+    'aqua+lux+umbra':           {n:3,name:'Void Purge',        rarity:'legendary', slot:'weapon',    stats:{control_bonus:3,power_bonus:2,insight_bonus:2}},
+    'ignis+lux+terra':          {n:3,name:'Sacred Volcano',    rarity:'legendary', slot:'weapon',    stats:{guard_bonus:2,power_bonus:4,atk_bonus:3}},
+    'aero+ignis+umbra':         {n:3,name:'Ash Reaper',        rarity:'epic',      slot:'weapon',    stats:{power_bonus:3,speed_bonus:2,atk_bonus:3}},
+    'aero+aqua+ignis':          {n:3,name:'Superheated Storm', rarity:'epic',      slot:'weapon',    stats:{power_bonus:2,speed_bonus:3,control_bonus:2}},
+    'lux+terra+umbra+weapon3':  {n:3,name:'Soul Rift',         rarity:'legendary', slot:'weapon',    stats:{power_bonus:4,insight_bonus:2,atk_bonus:3}},
+
+    // ══════════════════════════════════════════════════════
+    // WEAPON RUNEWORDS — 4 rune
+    // ══════════════════════════════════════════════════════
+    'ignis+ignis+umbra+umbra':  {n:4,name:'Hell Collapse',     rarity:'mythic',    slot:'weapon',    stats:{power_bonus:8,atk_bonus:6}},
+    'aero+aero+ignis+ignis':    {n:4,name:'Storm Inferno',     rarity:'legendary', slot:'weapon',    stats:{speed_bonus:4,power_bonus:3,atk_bonus:3}},
+    'aqua+aero+ignis+umbra':    {n:4,name:'Chaos Engine',      rarity:'mythic',    slot:'weapon',    stats:{power_bonus:6,speed_bonus:4,atk_bonus:4}},
+    'aero+aqua+lux+terra':      {n:4,name:'Elemental Edge',    rarity:'legendary', slot:'weapon',    stats:{power_bonus:3,control_bonus:3,speed_bonus:2,guard_bonus:2}},
+    'aero+ignis+terra+umbra':   {n:4,name:'Void Eruption',     rarity:'mythic',    slot:'weapon',    stats:{power_bonus:7,speed_bonus:3,atk_bonus:5}},
+
+    // ══════════════════════════════════════════════════════
+    // WEAPON RUNEWORDS — 5 rune
+    // ══════════════════════════════════════════════════════
+    'aero+aqua+ignis+terra+umbra':  {n:5,name:'Worldbreaker',  rarity:'mythic',    slot:'weapon',    stats:{power_bonus:8,speed_bonus:5,atk_bonus:7,guard_bonus:2}},
+    'aero+aqua+ignis+lux+umbra':    {n:5,name:'Heaven Ender',  rarity:'mythic',    slot:'weapon',    stats:{power_bonus:7,speed_bonus:4,atk_bonus:6,insight_bonus:3}},
+
+    // ══════════════════════════════════════════════════════
+    // WEAPON RUNEWORDS — 6 rune
+    // ══════════════════════════════════════════════════════
+    'aero+aqua+ignis+lux+terra+umbra': {n:6,name:'Genesis Blade',rarity:'mythic',  slot:'weapon',    stats:{power_bonus:6,control_bonus:6,guard_bonus:6,speed_bonus:6,insight_bonus:6,luck_bonus:6,atk_bonus:8}},
+
+    // ══════════════════════════════════════════════════════
+    // ARMOR RUNEWORDS — 2 rune
+    // ══════════════════════════════════════════════════════
+    'terra+terra':              {n:2,name:'Stone Skin',         rarity:'rare',      slot:'armor',     stats:{guard_bonus:5,def_bonus:3}},
+    'lux+terra':                {n:2,name:'Sanctuary',          rarity:'epic',      slot:'armor',     stats:{guard_bonus:3,insight_bonus:2,def_bonus:2}},
+    'aqua+terra+armor':         {n:2,name:'Living Armor',       rarity:'rare',      slot:'armor',     stats:{guard_bonus:2,def_bonus:2}},
+    'terra+umbra':              {n:2,name:'Grave Shell',        rarity:'epic',      slot:'armor',     stats:{guard_bonus:4,def_bonus:4}},
+    'aero+terra':               {n:2,name:'Dust Guard',         rarity:'rare',      slot:'armor',     stats:{guard_bonus:2,speed_bonus:2,def_bonus:2}},
+    'ignis+ignis+armor':        {n:2,name:'Flame Guard',        rarity:'uncommon',  slot:'armor',     stats:{guard_bonus:1,def_bonus:2}},
+    'ignis+terra+armor':        {n:2,name:'Molten Shell',       rarity:'rare',      slot:'armor',     stats:{guard_bonus:2,power_bonus:1,def_bonus:3}},
+    'aqua+ignis+armor':         {n:2,name:'Steam Armor',        rarity:'rare',      slot:'armor',     stats:{guard_bonus:2,def_bonus:3}},
+    'aqua+aqua+armor':          {n:2,name:'Flow Armor',         rarity:'rare',      slot:'armor',     stats:{guard_bonus:2,control_bonus:2,def_bonus:2}},
+    'aqua+lux+armor':           {n:2,name:'Healing Guard',      rarity:'epic',      slot:'armor',     stats:{guard_bonus:2,insight_bonus:1,def_bonus:2}},
+    'aqua+umbra+armor':         {n:2,name:'Void Barrier',       rarity:'epic',      slot:'armor',     stats:{guard_bonus:3,control_bonus:2,def_bonus:2}},
+    'aero+aero+armor':          {n:2,name:'Ghost Cloak',        rarity:'rare',      slot:'armor',     stats:{guard_bonus:1,speed_bonus:4,def_bonus:1}},
+    'aero+aqua+armor':          {n:2,name:'Mist Form',          rarity:'epic',      slot:'armor',     stats:{guard_bonus:2,speed_bonus:3,control_bonus:1}},
+    'aero+umbra+armor':         {n:2,name:'Shadow Veil',        rarity:'rare',      slot:'armor',     stats:{guard_bonus:1,speed_bonus:3,def_bonus:2}},
+    'umbra+umbra+armor':        {n:2,name:'Grave Armor',        rarity:'epic',      slot:'armor',     stats:{guard_bonus:4,def_bonus:4}},
+    'lux+umbra+armor':          {n:2,name:'Fallen Light',       rarity:'epic',      slot:'armor',     stats:{guard_bonus:2,insight_bonus:2,power_bonus:1}},
+    'lux+lux+armor':            {n:2,name:'Divine Shell',       rarity:'epic',      slot:'armor',     stats:{guard_bonus:3,insight_bonus:3,luck_bonus:2}},
+    'ignis+umbra+armor':        {n:2,name:'Hell Armor',         rarity:'epic',      slot:'armor',     stats:{guard_bonus:2,power_bonus:2,def_bonus:3}},
+
+    // ══════════════════════════════════════════════════════
+    // ARMOR RUNEWORDS — 3 rune
+    // ══════════════════════════════════════════════════════
+    'aero+lux+armor':           {n:3,name:"Heaven's Grace",     rarity:'epic',      slot:'armor',     stats:{guard_bonus:2,speed_bonus:3,def_bonus:1}},
+    'ignis+lux+armor':          {n:3,name:'Phoenix Guard',      rarity:'legendary', slot:'armor',     stats:{guard_bonus:2,def_bonus:2,power_bonus:1}},
+    'aqua+lux+terra+armor':     {n:3,name:'Eternal Guard',      rarity:'legendary', slot:'armor',     stats:{guard_bonus:6,def_bonus:4,insight_bonus:2}},
+    'terra+terra+aqua+armor':   {n:3,name:'Deep Root',          rarity:'epic',      slot:'armor',     stats:{guard_bonus:4,def_bonus:3,control_bonus:2}},
+    'aero+terra+umbra+armor':   {n:3,name:'Wraith Shell',       rarity:'legendary', slot:'armor',     stats:{guard_bonus:4,speed_bonus:2,def_bonus:3}},
+    'ignis+terra+umbra+armor':  {n:3,name:'Magma Armor',        rarity:'legendary', slot:'armor',     stats:{guard_bonus:3,power_bonus:2,def_bonus:4}},
+    'aero+ignis+lux+armor':     {n:3,name:'Celestial Flame',    rarity:'legendary', slot:'armor',     stats:{guard_bonus:2,power_bonus:2,speed_bonus:2,def_bonus:2}},
+    'lux+umbra+lux+armor':      {n:3,name:'Fallen Angel',       rarity:'legendary', slot:'armor',     stats:{guard_bonus:4,power_bonus:3,def_bonus:3}},
+
+    // ══════════════════════════════════════════════════════
+    // ARMOR RUNEWORDS — 4 rune
+    // ══════════════════════════════════════════════════════
+    'aqua+lux+terra+umbra+armor':{n:4,name:'World Core',        rarity:'legendary', slot:'armor',     stats:{guard_bonus:8,def_bonus:6,control_bonus:2}},
+    'aero+ignis+terra+umbra+armor':{n:4,name:'Titan Shell',     rarity:'mythic',    slot:'armor',     stats:{guard_bonus:6,def_bonus:5,power_bonus:3,speed_bonus:2}},
+
+    // ══════════════════════════════════════════════════════
+    // ARMOR RUNEWORDS — 5 rune
+    // ══════════════════════════════════════════════════════
+    'aero+aqua+lux+terra+umbra+armor':{n:5,name:'Celestial Aegis',rarity:'mythic',  slot:'armor',     stats:{guard_bonus:6,def_bonus:6,insight_bonus:4,luck_bonus:4}},
+
+    // ══════════════════════════════════════════════════════
+    // ARMOR RUNEWORDS — 6 rune
+    // ══════════════════════════════════════════════════════
+    'aero+aqua+ignis+lux+terra+umbra+armor':{n:6,name:'Genesis Armor',rarity:'mythic',slot:'armor',   stats:{guard_bonus:8,def_bonus:8,power_bonus:4,speed_bonus:4,insight_bonus:4,luck_bonus:4}},
+
+    // ══════════════════════════════════════════════════════
+    // UNIVERSAL RUNEWORDS (any slot)
+    // ══════════════════════════════════════════════════════
+    'lux+terra+uni':            {n:2,name:'Harmony',            rarity:'rare',      slot:'any',       stats:{power_bonus:1,control_bonus:1,guard_bonus:1,speed_bonus:1}},
+    'aqua+ignis+uni':           {n:2,name:'Balance Break',      rarity:'epic',      slot:'any',       stats:{control_bonus:3,power_bonus:2}},
+    'lux+umbra+uni':            {n:2,name:'Twilight Core',      rarity:'legendary', slot:'any',       stats:{power_bonus:3,guard_bonus:2,insight_bonus:2}},
+    'aero+terra+uni':           {n:2,name:'Foundation Shift',   rarity:'rare',      slot:'any',       stats:{speed_bonus:2,guard_bonus:2}},
+    'aqua+ignis+lux+uni':       {n:3,name:'Trinity Flow',       rarity:'epic',      slot:'any',       stats:{power_bonus:2,control_bonus:2,insight_bonus:2}},
+    'lux+terra+umbra+uni':      {n:3,name:'Dark Balance',       rarity:'legendary', slot:'any',       stats:{power_bonus:3,guard_bonus:2,insight_bonus:2}},
+    'aero+ignis+terra+uni':     {n:3,name:'Storm Forge',        rarity:'epic',      slot:'any',       stats:{speed_bonus:2,power_bonus:2,guard_bonus:1}},
+    'aero+aqua+umbra+uni':      {n:3,name:'Phantom Tide',       rarity:'legendary', slot:'any',       stats:{speed_bonus:3,control_bonus:3,power_bonus:1}},
+    'lux+lux+lux+uni':          {n:3,name:'Pure Divinity',      rarity:'mythic',    slot:'any',       stats:{insight_bonus:5,guard_bonus:4,luck_bonus:5}},
+    'aero+aqua+ignis+lux+terra+umbra+uni':{n:6,name:'Genesis',  rarity:'mythic',    slot:'any',       stats:{power_bonus:5,control_bonus:5,guard_bonus:5,speed_bonus:5,insight_bonus:5,luck_bonus:5}},
+
+    // ══════════════════════════════════════════════════════
+    // ACCESSORY RUNEWORDS
+    // ══════════════════════════════════════════════════════
+    'lux+lux+acc':              {n:2,name:'Blessing Loop',      rarity:'rare',      slot:'accessory', stats:{luck_bonus:3,insight_bonus:2}},
+    'umbra+umbra+acc':          {n:2,name:'Curse Loop',         rarity:'epic',      slot:'accessory', stats:{power_bonus:4,luck_bonus:1}},
+    'aero+ignis+acc':           {n:2,name:'Flash Burn',         rarity:'uncommon',  slot:'accessory', stats:{speed_bonus:2,power_bonus:1}},
+    'aqua+lux+acc':             {n:2,name:'Pure Flow',          rarity:'rare',      slot:'accessory', stats:{control_bonus:2,insight_bonus:1}},
+    'lux+terra+acc':            {n:2,name:'Stone Heart',        rarity:'rare',      slot:'accessory', stats:{guard_bonus:2,insight_bonus:1}},
+    'aero+aqua+acc':            {n:2,name:'Slipstream',         rarity:'uncommon',  slot:'accessory', stats:{speed_bonus:2,control_bonus:1}},
+    'ignis+umbra+acc':          {n:2,name:'Hell Ring',          rarity:'epic',      slot:'accessory', stats:{power_bonus:3,atk_bonus:2}},
+    'aqua+umbra+acc':           {n:2,name:'Dark Flow',          rarity:'epic',      slot:'accessory', stats:{control_bonus:2,power_bonus:1}},
+    'aero+terra+acc':           {n:2,name:'Dust Band',          rarity:'uncommon',  slot:'accessory', stats:{speed_bonus:2,guard_bonus:1}},
+    'lux+umbra+acc':            {n:2,name:'Twilight Loop',      rarity:'rare',      slot:'accessory', stats:{insight_bonus:2,power_bonus:1,guard_bonus:1}},
+  }
   function findRuneword(runes, slot) {
-    const key = [...runes].sort().join('+')
-    if (RUNEWORDS[key]) return RUNEWORDS[key]
-    // Try with slot suffix
+    const count = runes.length
+    const key   = [...runes].sort().join('+')
+
+    // Only match if the runeword requires EXACTLY this many runes
+    if (RUNEWORDS[key] && RUNEWORDS[key].n === count) return RUNEWORDS[key]
+
+    // Try with slot suffix (armor/uni) — suffix adds to key but not rune count
     const suffixes = ['uni', slot==='accessory'?'acc':null, slot==='armor'?'armor':null].filter(Boolean)
     for (const s of suffixes) {
-      const k2 = [...runes,s].sort().join('+')
-      if (RUNEWORDS[k2]) return RUNEWORDS[k2]
+      const k2 = [...runes, s].sort().join('+')
+      if (RUNEWORDS[k2] && RUNEWORDS[k2].n === count) return RUNEWORDS[k2]
     }
     return null
   }
