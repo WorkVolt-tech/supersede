@@ -146,10 +146,16 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
       const item = equipped[s.key]
       const EL_COLORS = {fire:'#ff5500',water:'#0088ff',earth:'#8b5e3c',air:'#a8d8ea',dark:'#b06eff',light:'#ffd700',none:'#9a8050'}
       const elColor = item ? (EL_COLORS[item.element] || '#9a8050') : '#9a8050'
-      return `<div class="equip-slot${selectedId?' clickable':''}" data-slot="${s.key}" title="${item?item.name+' — click to unequip':s.label}">
+      const _socketsTotal = item ? (item.sockets_total||0) : 0
+      const _socketsUsed  = item ? (item.sockets_used||0)  : 0
+      const _runeword     = item ? item.runeword_name : null
+      return `<div class="equip-slot${selectedId?' clickable':''}" data-slot="${s.key}" title="${item?item.name+' — click to manage':s.label}">
         ${(()=>{if(!item)return '<span class="slot-icon">'+s.icon+'</span>';const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="slot-icon" style="width:28px;height:28px;object-fit:contain" onerror="this.style.display=\'none\'">'):'<span class="slot-icon">'+item.icon+'</span>';})()}
-        <span class="slot-label" style="color:${item ? (RARITY[item.rarity]||elColor) : '#9a8050'}">${item ? item.name : s.label}</span>
-        ${item ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:${elColor}">${item.element && item.element!=='none' ? item.element.toUpperCase() : 'EQ'}</span>` : ''}
+        <div style="flex:1;min-width:0;overflow:hidden">
+          <span class="slot-label" style="color:${item ? (RARITY[item.rarity]||'#1a1208') : '#1a1208'};display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item ? item.name : s.label}</span>
+          ${item && _socketsTotal > 0 ? '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.46rem;color:'+(_runeword?'#5020b0':'#1a1208')+'">' + (_runeword ? '✦ '+_runeword : _socketsUsed+'/'+_socketsTotal+' sockets') + '</span>' : ''}
+        </div>
+        ${item ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.46rem;color:${elColor}">${item.element && item.element!=='none' ? item.element.toUpperCase() : 'EQ'}</span>` : ''}
       </div>`
     }).join('')
 
@@ -160,7 +166,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           await equipItem(selectedId, slot)
         } else {
           const item = items.find(i=>i.equipped_slot===slot)
-          if (item) await unequipSlot(slot)
+          if (item) showEquippedModal(item)
         }
       })
     })
@@ -172,7 +178,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     document.getElementById('item-grid').innerHTML = filtered.map(item => `
       <div class="item-card${selectedId===item.id?' selected':''}" data-id="${item.id}">
         ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="item-icon" style="width:32px;height:32px;object-fit:contain" onerror="this.style.display=\'none\'">'):'<span class="item-icon">'+(item.icon||'📦')+'</span>';})()}
-        <p class="item-name" style="color:${RARITY[item.rarity]||'#888'}">${item.name}</p>
+        <p class="item-name" style="color:${RARITY[item.rarity]||'#2a1208'}">${item.name}</p>
         <p class="item-type">${item.subtype||item.item_type}</p>
         ${item.quantity>1?`<span class="item-qty">×${item.quantity}</span>`:''}
         ${item.equipped_slot?`<span class="item-eq">EQ</span>`:''}
@@ -221,7 +227,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
         <div style="display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.5rem">
           ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" style="width:52px;height:52px;object-fit:contain;border-radius:6px" onerror="this.style.display=\'none\'">'):'<span style="font-size:1.6rem">'+(item.icon||'📦')+'</span>';})()}
           <div>
-            <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${RARITY[item.rarity]||'#888'};margin:0 0 2px">${item.name}</p>
+            <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${RARITY[item.rarity]||'#2a1208'};margin:0 0 2px">${item.name}</p>
             <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#3a2008;margin:0;letter-spacing:.06em">${item.rarity} · ${item.subtype||item.item_type}${item.two_handed?' · 2H':''}</p>
           </div>
         </div>
@@ -256,6 +262,122 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
         </div>
       </div>
     `
+  }
+
+  // ── Equipped item modal ──────────────────────────
+  function showEquippedModal(item) {
+    document.getElementById('equipped-modal')?.remove()
+
+    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+    const RC = {common:'#2a1208',uncommon:'#2a6020',rare:'#1a3a6e',epic:'#4a2a8a',legendary:'#6b5010',mythic:'#6a1a6a'}
+
+    const sockets    = item.sockets_total || 0
+    const used       = item.sockets_used  || 0
+    const runes      = item.socketed_runes || []
+    const hasEmpty   = used < sockets
+    const hasRunes   = used > 0
+
+    // Rune slot display
+    const slotDisplay = sockets > 0 ? `
+      <div style="margin:8px 0">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.07em;margin-bottom:4px">SOCKETS ${used}/${sockets}</p>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+          ${Array.from({length:sockets}).map((_,i) => {
+            const rune = runes[i]
+            const color = rune ? (RUNE_COLORS[rune]||'#a07de0') : 'rgba(100,80,40,.3)'
+            return '<div style="width:26px;height:26px;border-radius:50%;border:1.5px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:.85rem;background:'+(rune?color+'22':'rgba(0,0,0,.1)')+'" title="'+(rune||'Empty socket')+'">'+(rune?(RUNE_ICONS[rune]||'?'):'○')+'</div>'
+          }).join('')}
+        </div>
+        ${item.runeword_name ? '<p style="font-family:\'Cinzel\',serif;font-size:.72rem;color:#4a20a8;margin-bottom:4px">✦ '+item.runeword_name+'</p>' : ''}
+      </div>` : ''
+
+    const modal = document.createElement('div')
+    modal.id = 'equipped-modal'
+    modal.style.cssText = `
+      position:fixed;inset:0;z-index:600;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(0,0,0,.65);animation:fadeIn .2s ease`
+    modal.innerHTML = `
+      <div style="background:#c4b070;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+        <div style="display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.75rem">
+          ${(()=>{const s=getItemImg(item.item_key);return s?'<img src="'+s+'" style="width:48px;height:48px;object-fit:contain;border-radius:4px;flex-shrink:0">':'<span style="font-size:2rem">'+item.icon+'</span>'})()}
+          <div style="flex:1">
+            <p style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:600;color:${RC[item.rarity]||'#1a1208'};margin:0 0 2px">${item.name}</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#1a1208;margin:0">${item.rarity} · ${item.subtype||item.item_type}${item.two_handed?' · 2H':''}</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#1a1208;margin-top:2px">
+              ${item.atk_bonus>0?'ATK +'+item.atk_bonus+' ':''} ${item.def_bonus>0?'DEF +'+item.def_bonus+' ':''}
+              ${(item.power_bonus||0)>0?'PWR +'+item.power_bonus+' ':''} ${(item.speed_bonus||0)>0?'SPD +'+item.speed_bonus:''}
+            </p>
+          </div>
+          <button onclick="document.getElementById('equipped-modal').remove()" style="background:none;border:none;color:#1a1208;font-size:1.1rem;cursor:pointer;padding:0;line-height:1;flex-shrink:0">✕</button>
+        </div>
+
+        ${slotDisplay}
+
+        ${hasEmpty ? `
+          <button onclick="openRunePickerModal('${item.id}','${item.item_type}')" style="width:100%;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(160,125,224,.25);border:1px solid rgba(160,125,224,.5);border-radius:3px;padding:.45rem;cursor:pointer;margin-bottom:6px">
+            ✦ Add Rune to Socket
+          </button>` : ''}
+
+        <button onclick="unequipSlot('${item.equipped_slot}');document.getElementById('equipped-modal').remove()" style="width:100%;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:.45rem;cursor:pointer;margin-bottom:6px">
+          Unequip
+        </button>
+
+        ${hasRunes ? `
+          <button onclick="destroyRunes('${item.id}')" style="width:100%;font-family:'Cinzel',serif;font-size:.78rem;color:#c04040;background:rgba(192,64,64,.1);border:1px solid rgba(192,64,64,.3);border-radius:3px;padding:.45rem;cursor:pointer">
+            ✕ Remove & Destroy Runes
+          </button>` : ''}
+      </div>
+    `
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove() })
+    document.body.appendChild(modal)
+  }
+
+  // ── Open rune picker from equipped modal ──────────
+  window.openRunePickerModal = async function(itemId, itemType) {
+    const pickerEl = document.createElement('div')
+    pickerEl.style.cssText = 'margin-top:8px;padding:8px;background:rgba(0,0,0,.1);border-radius:4px;border:.5px solid rgba(160,125,224,.3)'
+
+    const modal = document.getElementById('equipped-modal')
+    const existing = modal.querySelector('#modal-rune-picker')
+    if (existing) { existing.remove(); return }
+    pickerEl.id = 'modal-rune-picker'
+
+    const { data: runeItems } = await supabase.from('inventory')
+      .select('*').eq('player_id', player.id).like('item_key','rune_%').gt('quantity',0)
+
+    if (!runeItems || !runeItems.length) {
+      pickerEl.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#1a1208">No runes in inventory.</p>'
+    } else {
+      const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+      const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+      const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux'}
+      pickerEl.innerHTML = `
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE</p>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">
+          ${runeItems.map(r => {
+            const key = r.item_key.replace('rune_','')
+            const col = RUNE_COLORS[key]||'#888'
+            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\');document.getElementById(\'equipped-modal\').remove()" style="display:flex;align-items:center;gap:4px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'"><span>'+(RUNE_ICONS[key]||'?')+'</span><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></button>'
+          }).join('')}
+        </div>`
+    }
+    modal.querySelector('div').appendChild(pickerEl)
+  }
+
+  // ── Destroy runes (does NOT refund) ──────────────
+  window.destroyRunes = async function(itemId) {
+    if (!confirm('Remove and DESTROY all runes? They will not be returned.')) return
+    await supabase.from('inventory').update({
+      socketed_runes:[], sockets_used:0,
+      runeword_name:null, runeword_effect:null,
+      power_bonus:0, control_bonus:0, guard_bonus:0,
+      speed_bonus:0, insight_bonus:0, luck_bonus:0,
+    }).eq('id', itemId)
+    document.getElementById('equipped-modal')?.remove()
+    showToast('Runes destroyed')
+    await load()
   }
 
   async function equipItem(itemId, slot) {
@@ -513,7 +635,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
       const t = document.getElementById('ftab-'+x)
       t.style.background   = x===f ? 'rgba(139,106,32,.15)' : 'none'
       t.style.borderColor  = x===f ? 'rgba(139,106,32,.6)'  : 'rgba(139,106,32,.2)'
-      t.style.color        = x===f ? '#1a1208' : '#7a6435'
+      t.style.color        = x===f ? '#1a1208' : '#1a1208'
     })
     renderGrid()
   }
