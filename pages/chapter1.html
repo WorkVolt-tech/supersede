@@ -764,7 +764,6 @@ let outcome   = null
 if (!NODES[nodeId]) nodeId = 'opening'
 
 // ── Level up logic ───────────────────────────────
-// Called after every XP gain — levels up player if threshold crossed
 async function checkLevelUp(oldXp, newXp, oldLevel) {
   let level   = oldLevel
   let xp      = newXp
@@ -782,10 +781,8 @@ async function checkLevelUp(oldXp, newXp, oldLevel) {
 
   const newMaxHp    = (player.max_hp || 100) + levelsGained * 20
   const newHp       = newMaxHp  // FULL HP restore on level up
-  const statPtsGained = levelsGained * 3
-  const newStatPts  = (player.stat_points || 0) + statPtsGained
 
-  // ── Award 2 Skill Points per level gained ──────────────
+  // Award 2 Skill Points per level gained (spent in Skill Tree, not stat modal)
   const spGained  = levelsGained * 2
   const newSP     = (player.skill_points || 0) + spGained
   player.skill_points = newSP
@@ -796,14 +793,13 @@ async function checkLevelUp(oldXp, newXp, oldLevel) {
 
   currentHp = newHp
   player.max_hp = newMaxHp
-  player.stat_points = newStatPts
 
   player.level = level
-  player.xp    = newXp   // xp within this level (already subtracted thresholds in while loop)
-  showToast('LEVEL UP! Lvl ' + level + ' — Full HP restored! +' + statPtsGained + ' stat points · +' + spGained + ' skill points!')
+  player.xp    = newXp
+  showToast('LEVEL UP! Lvl ' + level + ' — Full HP restored! +' + spGained + ' skill points — visit Skills page!')
   renderHUD()
 
-  return { level, max_hp: newMaxHp, hp: newHp, stat_points: newStatPts, xp: newXp, skill_points: newSP, sp_claimed: newClaimed }
+  return { level, max_hp: newMaxHp, hp: newHp, xp: newXp, skill_points: newSP, sp_claimed: newClaimed }
 }
 
 // ── HUD ──────────────────────────────────────────
@@ -845,7 +841,7 @@ function renderHUD() {
       <div class="stat-bar-wrap"><div class="stat-bar" style="width:${xpPct}%;background:#a07de0;transition:width .4s"></div></div>
       <span class="stat-val">→ Lvl ${lvl+1}</span>
     </div>
-    ${(player.stat_points||0)>0?`<div onclick="openStatModal()" style="background:rgba(200,184,128,.25);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:4px 8px;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;cursor:pointer;text-align:center">⬆ ${player.stat_points} STAT POINTS — tap to spend</div>`:''}
+    ${(player.skill_points||0)>0?`<div onclick="window.location.href='skills.html'" style="background:rgba(160,125,224,.25);border:1px solid rgba(160,125,224,.5);border-radius:3px;padding:4px 8px;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;cursor:pointer;text-align:center">⬡ ${player.skill_points} SKILL POINTS — tap to spend</div>`:''}
     <div class="stat-grid">
       <div class="stat-box"><span class="stat-box-key">ATK</span><span class="stat-box-val">${calcATK()}</span></div>
       <div class="stat-box"><span class="stat-box-key">DEF</span><span class="stat-box-val">${calcDEF()}</span></div>
@@ -853,7 +849,7 @@ function renderHUD() {
     </div>
     <div style="display:flex;gap:4px;margin-top:6px">
       <button onclick="openStatWindow()" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">📊 STATS</button>
-      ${(player.stat_points||0)>0?'<button onclick="openStatModal()" style="flex:1;font-family:\'Share Tech Mono\',monospace;font-size:.55rem;color:#1a1208;background:rgba(200,184,128,.35);border:.5px solid rgba(139,106,32,.6);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">⬆ '+player.stat_points+' PTS</button>':''}
+      <button onclick="window.location.href='skills.html'" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(160,125,224,.2);border:.5px solid rgba(160,125,224,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">⬡ SKILLS</button>
     </div>
   `
 }
@@ -1142,81 +1138,12 @@ function getEquippedBonus(stat) {
   return (window._equippedItems||[]).reduce((s,i)=>s+(i[stat]||0),0)
 }
 
-// ── Stat allocation modal ─────────────────────────────────────
-window.openStatModal = function() {
-  document.getElementById('stat-modal')?.remove()
-  const pts = player.stat_points || 0
-  if (pts <= 0) { showToast('No stat points to spend'); return }
-
-  const STATS = [
-    {key:'power',   label:'Power',   desc:'Boosts ATK damage'},
-    {key:'control', label:'Control', desc:'Boosts DEF & retry chance'},
-    {key:'guard',   label:'Guard',   desc:'Boosts DEF & damage reduction'},
-    {key:'speed',   label:'Speed',   desc:'Boosts ATK & turn order'},
-    {key:'insight', label:'Insight', desc:'Boosts SPD & luck scaling'},
-    {key:'luck',    label:'Luck',    desc:'Improves crit & loot chance'},
-  ]
-
-  const modal = document.createElement('div')
-  modal.id = 'stat-modal'
-  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7)'
-  modal.innerHTML = `
-    <div style="background:#c4b070;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:300px;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">Allocate Stats</p>
-        <button onclick="document.getElementById('stat-modal').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#1a1208">✕</button>
-      </div>
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;margin-bottom:.75rem">Points available: <strong id="pts-left">${pts}</strong></p>
-      ${STATS.map(s => `
-        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
-          <div style="flex:1">
-            <p style="font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;margin:0">${s.label} <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#3a2008">${player[s.key]||0}</span></p>
-            <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.65rem;color:#3a2008;margin:0">${s.desc}</p>
-          </div>
-          <button onclick="spendStat('${s.key}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:3px 10px;cursor:pointer">+ Spend</button>
-        </div>
-      `).join('')}
-      <button onclick="saveStats()" style="width:100%;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.5);border:1px solid rgba(139,106,32,.6);border-radius:3px;padding:.45rem;cursor:pointer;margin-top:.5rem">Save</button>
-    </div>
-  `
-  modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
-  document.body.appendChild(modal)
-}
-
-let _pendingStats = {}
-window.spendStat = function(key) {
-  const pts = (player.stat_points||0) - Object.values(_pendingStats).reduce((a,b)=>a+b,0)
-  if (pts <= 0) { showToast('No points left'); return }
-  _pendingStats[key] = (_pendingStats[key]||0) + 1
-  player[key] = (player[key]||0) + 1
-  const left = (player.stat_points||0) - Object.values(_pendingStats).reduce((a,b)=>a+b,0)
-  document.getElementById('pts-left').textContent = left
-  // Refresh modal labels
-  document.getElementById('stat-modal').querySelectorAll('span[style*="Mono"]').forEach((el,i) => {
-    const keys = ['power','control','guard','speed','insight','luck']
-    if (keys[i] !== undefined) el.textContent = player[keys[i]]||0
-  })
-}
-window.saveStats = async function() {
-  const spent = Object.values(_pendingStats).reduce((a,b)=>a+b,0)
-  if (spent === 0) { document.getElementById('stat-modal').remove(); return }
-  const newPts = Math.max(0, (player.stat_points||0) - spent)
-  const updates = { stat_points: newPts }
-  Object.entries(_pendingStats).forEach(([k,v]) => { updates[k] = player[k] })
-  player.stat_points = newPts
-  _pendingStats = {}
-  await supabase.from('players').update(updates).eq('id', player.id)
-  document.getElementById('stat-modal').remove()
-  renderHUD()
-  showToast('Stats saved!')
-}
-
 // ── Full Stat Window ─────────────────────────────────────────
+// (Stat allocation modal removed — stats are now managed via the Skill Tree on the Skills page)
 window.openStatWindow = function() {
   document.getElementById('stat-window')?.remove()
 
   const eqItems  = window._equippedItems || []
-  const eqBonuses = (stat) => eqItems.reduce((s,i) => s + (i[stat]||0), 0)
 
   const pwr = player.power   || 0
   const ctr = player.control || 0
@@ -1259,7 +1186,7 @@ window.openStatWindow = function() {
         </div>
       </div>
 
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:6px">CORE STATS ${(player.stat_points||0)>0?'<span style="color:#8b6a20">· '+player.stat_points+' points to spend</span>':''}</p>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:6px">CORE STATS <span style="color:#a08858">· Unlocked via Skill Tree</span></p>
       ${STATS.map(s => `
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:5px;padding:5px 7px;background:rgba(0,0,0,.07);border-radius:3px">
           <div style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
@@ -1279,9 +1206,9 @@ window.openStatWindow = function() {
         <p style="font-family:'IM Fell English',serif;font-size:.72rem;color:#1a1208;margin:0">${equippedNames}</p>
       </div>
 
-      ${(player.stat_points||0)>0?`
-        <button onclick="document.getElementById('stat-window').remove();openStatModal()" style="width:100%;margin-top:.75rem;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.6);border-radius:3px;padding:.45rem;cursor:pointer">
-          ⬆ Spend ${player.stat_points} Stat Points
+      ${(player.skill_points||0)>0?`
+        <button onclick="document.getElementById('stat-window').remove();window.location.href='skills.html'" style="width:100%;margin-top:.75rem;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(160,125,224,.35);border:1px solid rgba(160,125,224,.6);border-radius:3px;padding:.45rem;cursor:pointer">
+          ⬡ Spend ${player.skill_points} Skill Points → Skills Page
         </button>
       `:''}
     </div>
@@ -1773,7 +1700,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         player.gold = updates.gold
         if (updates.xp) player.xp = updates.xp
         await save(updates)
-        if (goldDrop > 0) queueLoot('◈ ' + sGoldDrop + ' Gold', 1, null)
+        if (sGoldDrop > 0) queueLoot('◈ ' + sGoldDrop + ' Gold', 1, null)
         if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
         if (runeKey) await addItem(runeKey, 1)
         setTimeout(() => goTo(onWin), 1200)
