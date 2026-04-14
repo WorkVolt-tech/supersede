@@ -645,8 +645,8 @@ function showNodeDetail(nd) {
     const typeLabel = nd.type==='keystone' ? '★ KEYSTONE' : nd.type==='notable' ? '◆ NOTABLE' : '· NODE'
     const prereqsMet = nd.requires.every(r => r==='center' || skillsUnlocked.includes(r))
     const statLine   = nd.stat && nd.val ? `+${nd.val} ${nd.stat.replace('_bonus','').replace('_',' ')}` : ''
-    const inBattle   = battleSkills.includes(nd.id)
-    const battleFull = battleSkills.length >= 4
+    const inBattle   = pendingBattleSkills.includes(nd.id)
+    const battleFull = pendingBattleSkills.length >= 4
 
     body = `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem">
@@ -659,9 +659,9 @@ function showNodeDetail(nd) {
           ${!isUnlocked(nd) && !canUnlock(nd) && !prereqsMet ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a08858">🔒 Unlock path first</span>` : ''}
           ${!isUnlocked(nd) && !canUnlock(nd) && prereqsMet && skillPoints < nd.cost ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Need ${nd.cost} SP</span>` : ''}
           ${isUnlocked(nd) && nd.type !== 'small' && nd.type !== 'start' && nd.type !== 'keystone' && !inBattle && !battleFull
-            ? `<button onclick="addToBattle('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(94,174,224,.3);border:1px solid rgba(94,174,224,.5);border-radius:3px;padding:.3rem .8rem;cursor:pointer">⚔ Add to Battle</button>` : ''}
+            ? `<button onclick="stageAddToBattle('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(94,174,224,.3);border:1px solid rgba(94,174,224,.5);border-radius:3px;padding:.3rem .8rem;cursor:pointer">+ Add to Battle</button>` : ''}
           ${isUnlocked(nd) && inBattle
-            ? `<button onclick="removeFromBattle('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#c04040;background:rgba(192,64,64,.1);border:.5px solid rgba(192,64,64,.3);border-radius:3px;padding:.3rem .8rem;cursor:pointer">✕ Remove from Battle</button>` : ''}
+            ? `<button onclick="stageRemoveFromBattle('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#e05555;background:rgba(192,64,64,.12);border:.5px solid rgba(192,64,64,.4);border-radius:3px;padding:.3rem .8rem;cursor:pointer">− Remove from Battle</button>` : ''}
           ${isUnlocked(nd) && nd.type !== 'small' && nd.type !== 'start' && nd.type !== 'keystone' && !inBattle && battleFull
             ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Battle slots full</span>` : ''}
         </div>
@@ -692,63 +692,157 @@ window.doUnlock = async (id) => {
   renderBattleSlotsPage()
 }
 
-// ── Battle slots ─────────────────────────────────────
-window.addToBattle = async (id) => {
-  if (battleSkills.length >= 4) { showToast('Battle slots full!', true); return }
-  if (battleSkills.includes(id)) return
-  battleSkills = [...battleSkills, id]
-  await supabase.from('players').update({ battle_skills: battleSkills }).eq('id', player.id)
-  player.battle_skills = battleSkills
-  showToast('Added to battle slots!')
-  renderSlotsBar(); renderBattleSlotsPage()
-  const nd = NODES.find(n => n.id === id)
-  if (nd) showNodeDetail(nd)
+// ── Battle slots — staged editing ────────────────────
+// pendingBattleSkills is a local draft. Only saved on confirmSaveSlots().
+let pendingBattleSkills = [...battleSkills]
+let slotsDirty = false
+
+function markSlotsDirty() {
+  slotsDirty = true
+  renderSlotsBar()
+  renderBattleSlotsPage()
 }
-window.removeFromBattle = async (id) => {
-  battleSkills = battleSkills.filter(k => k !== id)
-  await supabase.from('players').update({ battle_skills: battleSkills }).eq('id', player.id)
-  player.battle_skills = battleSkills
-  renderSlotsBar(); renderBattleSlotsPage()
+
+window.stageAddToBattle = (id) => {
+  if (pendingBattleSkills.length >= 4) { showToast('Battle slots full!', true); return }
+  if (pendingBattleSkills.includes(id)) return
+  pendingBattleSkills = [...pendingBattleSkills, id]
+  closeSkillPicker()
+  markSlotsDirty()
   const nd = NODES.find(n => n.id === id)
   if (nd) showNodeDetail(nd)
 }
 
+window.stageRemoveFromBattle = (id) => {
+  pendingBattleSkills = pendingBattleSkills.filter(k => k !== id)
+  markSlotsDirty()
+  const nd = NODES.find(n => n.id === id)
+  if (nd) showNodeDetail(nd)
+}
+
+window.confirmSaveSlots = async () => {
+  battleSkills = [...pendingBattleSkills]
+  await supabase.from('players').update({ battle_skills: battleSkills }).eq('id', player.id)
+  player.battle_skills = battleSkills
+  slotsDirty = false
+  renderSlotsBar()
+  renderBattleSlotsPage()
+  showToast('✦ Battle slots saved!')
+}
+
+window.cancelSlotEdits = () => {
+  pendingBattleSkills = [...battleSkills]
+  slotsDirty = false
+  closeSkillPicker()
+  renderSlotsBar()
+  renderBattleSlotsPage()
+}
+
+// Keep old addToBattle/removeFromBattle as aliases for node detail panel compatibility
+window.addToBattle    = (id) => window.stageAddToBattle(id)
+window.removeFromBattle = (id) => window.stageRemoveFromBattle(id)
+
+// ── Skill picker modal (for + button) ─────────────────
+window.openSkillPicker = (slotIndex) => {
+  closeSkillPicker()
+  // Eligible: unlocked, not passive/start/small/keystone, not already in pending
+  const eligible = NODES.filter(nd =>
+    isUnlocked(nd) &&
+    nd.type !== 'small' &&
+    nd.type !== 'start' &&
+    nd.type !== 'keystone' &&
+    nd.type !== 'elemental' &&
+    !pendingBattleSkills.includes(nd.id)
+  )
+
+  const picker = document.createElement('div')
+  picker.id = 'skill-picker-modal'
+  picker.style.cssText = 'position:fixed;inset:0;z-index:1050;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
+  picker.innerHTML = `
+    <div style="background:#1a1208;border:1px solid rgba(200,184,128,.3);border-radius:6px;padding:1rem;min-width:260px;max-width:320px;max-height:70vh;display:flex;flex-direction:column">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+        <p style="font-family:'Cinzel',serif;font-size:.88rem;color:#c8b96e;margin:0">Add to Slot ${slotIndex+1}</p>
+        <button onclick="closeSkillPicker()" style="background:none;border:none;color:#a08858;font-size:1rem;cursor:pointer">✕</button>
+      </div>
+      <div style="overflow-y:auto;flex:1">
+        ${eligible.length ? eligible.map(nd => {
+          const col = nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e'
+          return `<div onclick="stageAddToBattle('${nd.id}')"
+            style="display:flex;align-items:center;gap:.6rem;padding:.5rem .4rem;border-bottom:.5px solid rgba(200,184,128,.1);cursor:pointer;border-radius:3px;transition:background .15s"
+            onmouseover="this.style.background='rgba(200,184,128,.08)'" onmouseout="this.style.background=''">
+            <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0"></div>
+            <div style="flex:1;min-width:0">
+              <p style="font-family:'Cinzel',serif;font-size:.8rem;color:${col};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nd.label}</p>
+              <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#a08858;margin:0">${nd.branch.toUpperCase()} · ${nd.type.toUpperCase()}</p>
+            </div>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#c8b96e">+</span>
+          </div>`
+        }).join('') : `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#a08858;padding:.5rem 0">No eligible skills available. Unlock notable or active skills from the tree.</p>`}
+      </div>
+    </div>
+  `
+  picker.addEventListener('click', e => { if (e.target === picker) closeSkillPicker() })
+  document.body.appendChild(picker)
+}
+
+window.closeSkillPicker = () => {
+  document.getElementById('skill-picker-modal')?.remove()
+}
+
 function renderSlotsBar() {
   const list = document.getElementById('slots-list')
+  if (!list) return
   let html = ''
   for (let i = 0; i < 4; i++) {
-    const id = battleSkills[i] || null
-    const nd = id ? NODES.find(n => n.id === id) : null
-    const col= nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
+    const id  = pendingBattleSkills[i] || null
+    const nd  = id ? NODES.find(n => n.id === id) : null
+    const col = nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
     html += `<div class="slot-item${nd?' filled':''}">
       <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a08858;min-width:16px">S${i+1}</span>
       ${nd
         ? `<span style="font-family:'Cinzel',serif;font-size:.72rem;color:${col};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nd.label}</span>
-           <button class="slot-remove" onclick="removeFromBattle('${id}')">✕</button>`
-        : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.7rem;color:#3a2008;flex:1">Empty</span>`}
+           <button onclick="stageRemoveFromBattle('${id}')" title="Remove" style="background:rgba(192,64,64,.15);border:.5px solid rgba(192,64,64,.4);color:#e05555;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>`
+        : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.7rem;color:#7a6435;flex:1">Empty</span>
+           <button onclick="openSkillPicker(${i})" title="Add skill" style="background:rgba(94,174,224,.15);border:.5px solid rgba(94,174,224,.4);color:#5eaee0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>`}
     </div>`
   }
+  // Save / Cancel bar
+  html += `<div style="margin-top:.6rem;display:flex;gap:5px">
+    <button onclick="confirmSaveSlots()" style="flex:1;font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:${slotsDirty?'rgba(200,184,128,.6)':'rgba(200,184,128,.25)'};border:1px solid ${slotsDirty?'rgba(139,106,32,.8)':'rgba(139,106,32,.3)'};border-radius:3px;padding:.4rem;cursor:pointer;transition:all .2s">
+      ${slotsDirty ? '💾 Save Changes' : '✓ Saved'}
+    </button>
+    ${slotsDirty ? `<button onclick="cancelSlotEdits()" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#c04040;background:rgba(192,64,64,.08);border:.5px solid rgba(192,64,64,.3);border-radius:3px;padding:.4rem .6rem;cursor:pointer">↩ Undo</button>` : ''}
+  </div>`
   list.innerHTML = html
 }
 
 function renderBattleSlotsPage() {
   const c = document.getElementById('battle-slots-page')
+  if (!c) return
   let html = ''
   for (let i = 0; i < 4; i++) {
-    const id = battleSkills[i] || null
-    const nd = id ? NODES.find(n => n.id === id) : null
-    const col= nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
+    const id  = pendingBattleSkills[i] || null
+    const nd  = id ? NODES.find(n => n.id === id) : null
+    const col = nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
     html += `<div style="border:.5px solid ${nd?col+'55':'rgba(139,106,32,.22)'};border-radius:4px;padding:.45rem .6rem;display:flex;align-items:center;gap:.5rem;min-height:44px;background:${nd?'rgba(0,0,0,.05)':''}">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;min-width:16px">S${i+1}</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a08858;min-width:16px">S${i+1}</span>
       ${nd
         ? `<div style="flex:1;min-width:0">
              <p style="font-family:'Cinzel',serif;font-size:.78rem;color:${col};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nd.label}</p>
-             <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#7a6435;margin:0">${nd.branch.toUpperCase()} · ${nd.type.toUpperCase()}</p>
+             <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#a08858;margin:0">${nd.branch.toUpperCase()} · ${nd.type.toUpperCase()}</p>
            </div>
-           <button onclick="removeFromBattle('${id}')" style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040;background:none;border:none;cursor:pointer;flex-shrink:0">✕</button>`
-        : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435">Empty — unlock and assign a skill</span>`}
+           <button onclick="stageRemoveFromBattle('${id}')" title="Remove" style="background:rgba(192,64,64,.15);border:.5px solid rgba(192,64,64,.4);color:#e05555;border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>`
+        : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;flex:1">Empty</span>
+           <button onclick="openSkillPicker(${i})" title="Add skill" style="background:rgba(94,174,224,.15);border:.5px solid rgba(94,174,224,.4);color:#5eaee0;border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>`}
     </div>`
   }
+  // Save / Cancel
+  html += `<div style="display:flex;gap:6px;margin-top:.5rem">
+    <button onclick="confirmSaveSlots()" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:${slotsDirty?'rgba(200,184,128,.6)':'rgba(200,184,128,.25)'};border:1px solid ${slotsDirty?'rgba(139,106,32,.8)':'rgba(139,106,32,.3)'};border-radius:3px;padding:.45rem;cursor:pointer;transition:all .2s">
+      ${slotsDirty ? '💾 Save Changes' : '✓ Saved'}
+    </button>
+    ${slotsDirty ? `<button onclick="cancelSlotEdits()" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#c04040;background:rgba(192,64,64,.08);border:.5px solid rgba(192,64,64,.3);border-radius:3px;padding:.45rem .75rem;cursor:pointer">↩ Undo</button>` : ''}
+  </div>`
   c.innerHTML = html
 }
 
@@ -798,7 +892,7 @@ window.confirmReset = async () => {
   const statUpdates = {}
   Object.entries(refunds).forEach(([k,v]) => { statUpdates[k] = Math.max(0,(player[k]||0)-v) })
   const newSP = skillPoints + spent
-  skillsUnlocked=[]; battleSkills=[]; skillPoints=newSP
+  skillsUnlocked=[]; battleSkills=[]; pendingBattleSkills=[]; skillPoints=newSP; slotsDirty=false
   await supabase.from('players').update({ skills_unlocked:[], battle_skills:[], skill_points:newSP, ...statUpdates }).eq('id',player.id)
   Object.assign(player, { skills_unlocked:[], battle_skills:[], skill_points:newSP, ...statUpdates })
   document.getElementById('rst-modal')?.remove()
