@@ -415,6 +415,20 @@ const BRANCH_COLOR = {
 }
 const NODE_SIZE = { start:'st', small:'sm', notable:'md', keystone:'ks', elemental:'el' }
 
+// ── Stat key → DB column mapping ─────────────────────
+// Node stats use descriptive keys; DB players table uses short column names
+const STAT_COL = {
+  atk_bonus:     'atk',
+  def_bonus:     'def',
+  power_bonus:   'power',
+  guard_bonus:   'guard',
+  control_bonus: 'control',
+  speed_bonus:   'speed',
+  insight_bonus: 'insight',
+  luck_bonus:    'luck',
+}
+function statToCol(statKey) { return STAT_COL[statKey] || statKey }
+
 // ── State ────────────────────────────────────────────
 let player, skillsUnlocked, battleSkills, skillPoints
 let selectedNode = null
@@ -427,6 +441,9 @@ let slotsDirty = false
 // ── Init ─────────────────────────────────────────────
 player = await renderNav('nav')
 if (!player) throw new Error('no player')
+
+// Diagnostic: confirm player loaded correctly
+console.log('[SuperSede] Player loaded:', player.id, '| SP:', player.skill_points, '| skills_unlocked:', player.skills_unlocked)
 
 skillsUnlocked = player.skills_unlocked || []
 battleSkills   = player.battle_skills   || []
@@ -484,18 +501,18 @@ function checkClaimSP() {
 window.claimSP = async () => {
   const owed = calcOwedSP()
   if (owed <= 0) return
-  const totalOwed     = (Math.max(0,(player.level||1)-1)*2) + ((player.chapters_unlocked||[1]).includes(2)||(player.current_chapter||1)>=2?4:0)
-  const newClaimed    = totalOwed
-  const newSP         = skillPoints + owed
+  const totalOwed  = (Math.max(0,(player.level||1)-1)*2) + ((player.chapters_unlocked||[1]).includes(2)||(player.current_chapter||1)>=2?4:0)
+  const newClaimed = totalOwed
+  const newSP      = skillPoints + owed
+  const { data, error } = await supabase.from('players')
+    .update({ skill_points: newSP, sp_claimed: newClaimed })
+    .eq('id', player.id)
+    .select().single()
+  if (error) { console.error('claimSP error:', error.message); showToast('Error claiming SP — check console'); return }
+  if (data) Object.assign(player, data)
   skillPoints         = newSP
   player.skill_points = newSP
   player.sp_claimed   = newClaimed
-
-  await supabase.from('players').update({
-    skill_points: newSP,
-    sp_claimed:   newClaimed,
-  }).eq('id', player.id)
-
   updateSPDisplay()
   checkClaimSP()
   showToast('✦ Claimed ' + owed + ' Skill Points!')
@@ -537,6 +554,7 @@ function updateSPDisplay() {
 }
 
 // ── Build tree ───────────────────────────────────────
+let _panZoomInit = false
 function buildTree() {
   const canvas = document.getElementById('tree-canvas')
   const svg    = document.getElementById('tree-svg')
@@ -570,7 +588,7 @@ function buildTree() {
     canvas.appendChild(el)
   })
 
-  setupPanZoom()
+  if (!_panZoomInit) { setupPanZoom(); _panZoomInit = true }
 }
 
 function buildNodeClass(nd) {
@@ -647,7 +665,7 @@ function showNodeDetail(nd) {
   } else {
     const typeLabel = nd.type==='keystone' ? '★ KEYSTONE' : nd.type==='notable' ? '◆ NOTABLE' : '· NODE'
     const prereqsMet = nd.requires.every(r => r==='center' || skillsUnlocked.includes(r))
-    const statLine   = nd.stat && nd.val ? `+${nd.val} ${nd.stat.replace('_bonus','').replace('_',' ')}` : ''
+    const statLine   = nd.stat && nd.val ? `+${nd.val} ${statToCol(nd.stat).replace('_',' ')}` : ''
     const inBattle   = pendingBattleSkills.includes(nd.id)
     const battleFull = pendingBattleSkills.length >= 4
 
@@ -682,11 +700,21 @@ window.doUnlock = async (id) => {
   if (!nd || !canUnlock(nd)) return
   skillsUnlocked = [...skillsUnlocked, id]
   skillPoints -= nd.cost
-  if (nd.stat && nd.val) player[nd.stat] = (player[nd.stat] || 0) + nd.val
+
   const update = { skills_unlocked: skillsUnlocked, skill_points: skillPoints }
-  if (nd.stat && nd.val) update[nd.stat] = player[nd.stat]
-  await supabase.from('players').update(update).eq('id', player.id)
-  Object.assign(player, { skills_unlocked: skillsUnlocked, skill_points: skillPoints })
+
+  // Map the node's stat key to the actual DB column name and apply the bonus
+  if (nd.stat && nd.val) {
+    const col = statToCol(nd.stat)
+    player[col] = (player[col] || 0) + nd.val
+    update[col] = player[col]
+  }
+
+  const { data, error } = await supabase.from('players').update(update).eq('id', player.id).select().single()
+  if (error) { console.error('doUnlock save error:', error.message); showToast('Error saving — check console'); return }
+  if (data) Object.assign(player, data)
+  player.skills_unlocked = skillsUnlocked
+  player.skill_points    = skillPoints
   updateSPDisplay()
   showToast('✦ ' + nd.label + ' unlocked!')
   buildTree()
@@ -723,7 +751,11 @@ window.stageRemoveFromBattle = (id) => {
 
 window.confirmSaveSlots = async () => {
   battleSkills = [...pendingBattleSkills]
-  await supabase.from('players').update({ battle_skills: battleSkills }).eq('id', player.id)
+  const { error } = await supabase.from('players')
+    .update({ battle_skills: battleSkills })
+    .eq('id', player.id)
+    .select().single()
+  if (error) { console.error('confirmSaveSlots error:', error.message); showToast('Error saving slots — check console'); return }
   player.battle_skills = battleSkills
   slotsDirty = false
   renderSlotsBar()
@@ -888,13 +920,18 @@ window.confirmReset = async () => {
   const refunds = {}
   skillsUnlocked.forEach(id => {
     const nd = NODES.find(n=>n.id===id)
-    if (nd?.stat && nd?.val) refunds[nd.stat] = (refunds[nd.stat]||0) + nd.val
+    if (nd?.stat && nd?.val) {
+      const col = statToCol(nd.stat)
+      refunds[col] = (refunds[col]||0) + nd.val
+    }
   })
   const statUpdates = {}
   Object.entries(refunds).forEach(([k,v]) => { statUpdates[k] = Math.max(0,(player[k]||0)-v) })
   const newSP = skillPoints + spent
+  const payload = { skills_unlocked:[], battle_skills:[], skill_points:newSP, ...statUpdates }
+  const { error } = await supabase.from('players').update(payload).eq('id', player.id).select().single()
+  if (error) { console.error('confirmReset error:', error.message); showToast('Error resetting — check console'); return }
   skillsUnlocked=[]; battleSkills=[]; pendingBattleSkills=[]; skillPoints=newSP; slotsDirty=false
-  await supabase.from('players').update({ skills_unlocked:[], battle_skills:[], skill_points:newSP, ...statUpdates }).eq('id',player.id)
   Object.assign(player, { skills_unlocked:[], battle_skills:[], skill_points:newSP, ...statUpdates })
   document.getElementById('rst-modal')?.remove()
   updateSPDisplay()
