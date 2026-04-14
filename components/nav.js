@@ -63,6 +63,7 @@ export async function renderNav(containerId = 'nav') {
       <div class="nav-links">
         <a href="${base}pages/book.html"      class="nav-link">Chapters</a>
         <a href="${base}pages/inventory.html" class="nav-link">Inventory</a>
+        <a href="${base}pages/skills.html"    class="nav-link">Skills</a>
         <a href="${base}pages/trader.html"    class="nav-link">Trader</a>
         <a href="${base}pages/lobby.html"     class="nav-link">Lobby</a>
         <a href="${base}pages/badges.html"    class="nav-link">Badges</a>
