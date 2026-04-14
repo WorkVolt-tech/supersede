@@ -631,7 +631,8 @@ function canUnlock(nd) {
   if (nd.type === 'elemental') return false
   if (isUnlocked(nd)) return false
   if (skillPoints < (nd.cost || 1)) return false
-  return nd.requires.every(r => r === 'center' || skillsUnlocked.includes(r))
+  // Any ONE prerequisite being met is enough to unlock this node
+  return nd.requires.length === 0 || nd.requires.some(r => r === 'center' || skillsUnlocked.includes(r))
 }
 
 function refreshSelected() {
@@ -664,7 +665,7 @@ function showNodeDetail(nd) {
       </p>`
   } else {
     const typeLabel = nd.type==='keystone' ? '★ KEYSTONE' : nd.type==='notable' ? '◆ NOTABLE' : '· NODE'
-    const prereqsMet = nd.requires.every(r => r==='center' || skillsUnlocked.includes(r))
+    const prereqsMet = nd.requires.length === 0 || nd.requires.some(r => r==='center' || skillsUnlocked.includes(r))
     const statLine   = nd.stat && nd.val ? `+${nd.val} ${statToCol(nd.stat).replace('_',' ')}` : ''
     const inBattle   = pendingBattleSkills.includes(nd.id)
     const battleFull = pendingBattleSkills.length >= 4
