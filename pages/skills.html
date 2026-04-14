@@ -421,6 +421,8 @@ let selectedNode = null
 let scale = 0.5, panX = 0, panY = 0
 let isDragging = false, dragStartX, dragStartY, panStartX, panStartY
 const CANVAS_W = 2000, CANVAS_H = 2000
+let pendingBattleSkills = []
+let slotsDirty = false
 
 // ── Init ─────────────────────────────────────────────
 player = await renderNav('nav')
@@ -695,9 +697,6 @@ window.doUnlock = async (id) => {
 
 // ── Battle slots — staged editing ────────────────────
 // pendingBattleSkills is a local draft. Only saved on confirmSaveSlots().
-// NOTE: initialized after battleSkills is populated in the async init block above.
-let pendingBattleSkills = []
-let slotsDirty = false
 
 function markSlotsDirty() {
   slotsDirty = true
