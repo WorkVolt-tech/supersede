@@ -429,6 +429,7 @@ if (!player) throw new Error('no player')
 skillsUnlocked = player.skills_unlocked || []
 battleSkills   = player.battle_skills   || []
 skillPoints    = player.skill_points    || 0
+pendingBattleSkills = [...battleSkills]  // init draft from saved state
 
 updateSPDisplay()
 renderPageSummary()
@@ -694,7 +695,8 @@ window.doUnlock = async (id) => {
 
 // ── Battle slots — staged editing ────────────────────
 // pendingBattleSkills is a local draft. Only saved on confirmSaveSlots().
-let pendingBattleSkills = [...battleSkills]
+// NOTE: initialized after battleSkills is populated in the async init block above.
+let pendingBattleSkills = []
 let slotsDirty = false
 
 function markSlotsDirty() {
