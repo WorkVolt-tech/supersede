@@ -1628,9 +1628,9 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
           <button class="combat-btn" id="btn-heavy" title="Heavy blow. High damage, slower.">💥 Heavy Strike</button>
           <button class="combat-btn" id="btn-defend" title="Reduce incoming damage this turn.">🛡 Defend</button>
           <button class="combat-btn" id="btn-items" style="color:#5eaee0" title="Use a consumable item.">🎒 Items</button>
-          <button class="combat-btn" id="btn-element" style="color:#888;grid-column:span 1" title="Unlock in Chapter 2" disabled>✨ Element (Ch.2)</button>
-          <button class="combat-btn" id="btn-escape" title="Attempt to flee.">💨 Flee</button>
+          <button class="combat-btn" id="btn-escape" title="Attempt to flee." style="grid-column:span 2">💨 Flee</button>
         </div>
+        <div id="skill-slots-row" style="display:flex;flex-direction:column;gap:4px;margin-top:5px"></div>
       </div>
       <div id="items-panel" style="display:none;margin-top:.5rem;border:.5px solid rgba(94,174,224,.3);border-radius:4px;padding:.6rem;background:rgba(0,0,0,.05);animation:fadeIn .2s ease">
         <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#5eaee0;letter-spacing:.06em;margin-bottom:.4rem">⚡ USE ITEM</p>
@@ -1802,63 +1802,314 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   function playerSPD()  { return calcSPD() }
   function enemySPD()   { return enemy.spd || Math.floor((enemy.atk||5) * 0.6) }
 
+  // ── Battle skills from player ────────────────────────────
+  const battleSkillKeys = player.battle_skills || []
+
+  // Inline skill definitions (mirrored from skills.html)
+  const BATTLE_SKILLS = {
+    darkness_passive_backstab:      { label:'Backstab',       type:'passive',  el:'dark',      color:'#b06eff' },
+    darkness_skill_shadow_step:     { label:'Shadow Step',    type:'active',   el:'dark',      color:'#b06eff', desc:'Next attack ignores enemy DEF', fn:'shadowStep' },
+    darkness_ultimate_void_zone:    { label:'Void Zone',      type:'ultimate', el:'dark',      color:'#b06eff', desc:'Enemy ATK -30% for 3 turns',    fn:'voidZone' },
+    earth_passive_damage_reduction: { label:'Stone Skin',     type:'passive',  el:'earth',     color:'#8b5e3c' },
+    earth_skill_rock_armor:         { label:'Rock Armor',     type:'active',   el:'earth',     color:'#8b5e3c', desc:'+20 DEF for 2 turns',           fn:'rockArmor' },
+    earth_ultimate_earthquake:      { label:'Earthquake',     type:'ultimate', el:'earth',     color:'#8b5e3c', desc:'Massive damage, stun 1 turn',   fn:'earthquake' },
+    fire_passive_burn:              { label:'Burn',           type:'passive',  el:'fire',      color:'#ff5500' },
+    fire_skill_fire_blast:          { label:'Fire Blast',     type:'active',   el:'fire',      color:'#ff5500', desc:'25 fire dmg, ignores 50% DEF',  fn:'fireBlast' },
+    fire_ultimate_inferno_zone:     { label:'Inferno Zone',   type:'ultimate', el:'fire',      color:'#ff5500', desc:'40 dmg/turn for 3 turns',       fn:'infernoZone' },
+    light_passive_boost_allies:     { label:'Radiance',       type:'passive',  el:'light',     color:'#ffd700' },
+    light_skill_heal_pulse:         { label:'Heal Pulse',     type:'active',   el:'light',     color:'#ffd700', desc:'Restore 25 HP',                 fn:'healPulse' },
+    light_ultimate_divine_barrier:  { label:'Divine Barrier', type:'ultimate', el:'light',     color:'#ffd700', desc:'Invulnerable 1 turn + reflect',  fn:'divineBarrier' },
+    lightning_passive_chain_damage: { label:'Chain',          type:'passive',  el:'lightning', color:'#88ccff' },
+    lightning_skill_lightning_strike:{ label:'Lightning Strike',type:'active', el:'lightning', color:'#88ccff', desc:'30 dmg, ignores shields',       fn:'lightningStrike' },
+    lightning_ultimate_thunderstorm:{ label:'Thunderstorm',   type:'ultimate', el:'lightning', color:'#88ccff', desc:'5 bolts × 15 damage',           fn:'thunderstorm' },
+    metal_passive_reflect:          { label:'Reflect',        type:'passive',  el:'metal',     color:'#c0c0c0' },
+    metal_skill_blade_form:         { label:'Blade Form',     type:'active',   el:'metal',     color:'#c0c0c0', desc:'ATK +20, SPD +5 for 2 turns',   fn:'bladeForm' },
+    metal_ultimate_iron_domain:     { label:'Iron Domain',    type:'ultimate', el:'metal',     color:'#c0c0c0', desc:'ATK doubles for 3 turns',       fn:'ironDomain' },
+    plant_passive_heal_still:       { label:'Regrowth',       type:'passive',  el:'plant',     color:'#5ec45e' },
+    plant_skill_root_trap:          { label:'Root Trap',      type:'active',   el:'plant',     color:'#5ec45e', desc:'Enemy skips next attack',       fn:'rootTrap' },
+    plant_ultimate_nature_overgrowth:{ label:'Overgrowth',   type:'ultimate', el:'plant',     color:'#5ec45e', desc:'+40 HP and 30 damage',           fn:'overgrowth' },
+    water_passive_regen:            { label:'Flow',           type:'passive',  el:'water',     color:'#0088ff' },
+    water_skill_water_shield:       { label:'Water Shield',   type:'active',   el:'water',     color:'#0088ff', desc:'Absorb next 30 damage',         fn:'waterShield' },
+    water_ultimate_tsunami:         { label:'Tsunami',        type:'ultimate', el:'water',     color:'#0088ff', desc:'50 damage, skip enemy turn',    fn:'tsunami' },
+    wind_passive_dodge:             { label:'Gust',           type:'passive',  el:'wind',      color:'#a8d8ea' },
+    wind_skill_dash_strike:         { label:'Dash Strike',    type:'active',   el:'wind',      color:'#a8d8ea', desc:'ATK×2, go first next turn',     fn:'dashStrike' },
+    wind_ultimate_tornado_field:    { label:'Tornado Field',  type:'ultimate', el:'wind',      color:'#a8d8ea', desc:'Enemy ATK -10, your SPD ×2',    fn:'tornadoField' },
+  }
+
+  // ── Combat status effects ────────────────────────────────
+  let statusEffects = {
+    playerATKBonus:  0,
+    playerDEFBonus:  0,
+    playerSPDBonus:  0,
+    ignoreEnemyDEF:  false,
+    invulnerable:    false,
+    waterShield:     0,   // HP absorbed
+    enemyATKMult:    1.0,
+    enemyStunTurns:  0,
+    burnTurns:       0,
+    infernoTurns:    0,
+    regenTurns:      0,
+    rootTrapTurns:   0,
+    skillCooldowns:  {},  // key → turns remaining
+  }
+
+  // Apply passive skills at battle start
+  function applyPassives() {
+    const unlocked = player.skills_unlocked || []
+    if (unlocked.includes('water_passive_regen'))            statusEffects.regenTurns    = 999  // always on
+    if (unlocked.includes('earth_passive_damage_reduction')) statusEffects.playerDEFBonus += 5
+    if (unlocked.includes('metal_passive_reflect'))          statusEffects.metalReflect  = true
+  }
+  applyPassives()
+
+  // ── Render battle skill slots ─────────────────────────────
+  function renderSkillSlots() {
+    const row = document.getElementById('skill-slots-row')
+    if (!row) return
+    const activeSkills = battleSkillKeys.filter(k => {
+      const s = BATTLE_SKILLS[k]
+      return s && s.type !== 'passive'
+    })
+    if (!activeSkills.length) {
+      row.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#7a6435;margin-top:2px">No active skills assigned — visit Skills page</p>'
+      return
+    }
+    row.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#1a1208;letter-spacing:.07em;margin-bottom:2px">SKILLS</p>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">' +
+      activeSkills.map(k => {
+        const sk = BATTLE_SKILLS[k]
+        const cd = statusEffects.skillCooldowns[k] || 0
+        const isUlt = sk.type === 'ultimate'
+        return `<button class="combat-btn" id="btn-skill-${k}" onclick="useSkill('${k}')" ${cd>0?'disabled':''} title="${sk.desc||sk.label}"
+          style="color:${sk.color};${isUlt?'border-color:'+sk.color+'60;':''};font-size:.58rem;display:flex;align-items:center;gap:4px">
+          <img src="../assets/ability/${k}.png" style="width:16px;height:16px;object-fit:contain;border-radius:2px" onerror="this.style.display='none'">
+          <span>${isUlt?'★ ':''} ${sk.label}${cd>0?' ('+cd+')':''}</span>
+        </button>`
+      }).join('') + '</div>'
+  }
+
   function setButtons(enabled) {
     ['btn-strike','btn-heavy','btn-defend','btn-items','btn-escape'].forEach(id => {
       const b = document.getElementById(id)
       if (b) b.disabled = !enabled
     })
+    // Also update skill buttons
+    battleSkillKeys.forEach(k => {
+      const b = document.getElementById('btn-skill-'+k)
+      if (b && enabled) {
+        const cd = statusEffects.skillCooldowns[k] || 0
+        b.disabled = cd > 0
+      } else if (b) {
+        b.disabled = true
+      }
+    })
   }
 
-  async function doTurn(playerAction) {
+  // ── Skill use handler ────────────────────────────────────
+  window.useSkill = function(key) {
+    if (over) return
+    const sk = BATTLE_SKILLS[key]
+    if (!sk) return
+    const cd = statusEffects.skillCooldowns[key] || 0
+    if (cd > 0) { log('Skill on cooldown (' + cd + ' turns)'); return }
+    doTurn('skill', key)
+  }
+
+
+  async function doTurn(playerAction, skillKey = null) {
     if (over) return
     setButtons(false)
     defending = false
     const luckBonus  = Math.floor(eqLuck / 2)
-    const pSPD = playerSPD()
+    const pSPD = playerSPD() + (statusEffects.playerSPDBonus || 0)
     const eSPD = enemySPD()
+    const unlocked = player.skills_unlocked || []
 
-    // ── Determine turn order ──────────────────────────
-    // Strike always goes first. Heavy goes first only if playerSPD >= 8
+    // Tick down status effects before resolving
+    if (statusEffects.enemyStunTurns > 0)  statusEffects.enemyStunTurns--
+    if (statusEffects.rootTrapTurns  > 0)  statusEffects.rootTrapTurns--
+    // Tick skill cooldowns
+    Object.keys(statusEffects.skillCooldowns).forEach(k => {
+      if (statusEffects.skillCooldowns[k] > 0) statusEffects.skillCooldowns[k]--
+    })
+
+    // Determine turn order
     const playerFirst =
       playerAction === 'strike' ? true :
-      playerAction === 'defend' ? true :  // defend resolves before enemy hits
+      playerAction === 'defend' ? true :
       playerAction === 'heavy'  ? pSPD >= 8 :
+      playerAction === 'skill'  ? true :  // skills always go first
       false
 
     let messages = []
 
-    // ── Player action ─────────────────────────────────
+    // ── Player action ─────────────────────────────────────
     function resolvePlayerAction() {
       if (playerAction === 'strike') {
-        const roll = window._forceMaxHit ? (6+luckBonus) : Math.floor(Math.random()*(6+luckBonus))+1
+        // Backstab passive: 15% double damage
+        const backstab   = unlocked.includes('darkness_passive_backstab') && Math.random() < 0.15
+        const roll       = window._forceMaxHit ? (6+luckBonus) : Math.floor(Math.random()*(6+luckBonus))+1
         window._forceMaxHit = false
-        const dmg  = Math.max(1, playerATK() + roll)
-        enemyHp    = Math.max(0, enemyHp - dmg)
-        messages.push('You strike for <strong>'+dmg+'</strong> damage.')
+        const baseATK    = playerATK() + (statusEffects.playerATKBonus||0)
+        const ignoreDEF  = statusEffects.ignoreEnemyDEF
+        statusEffects.ignoreEnemyDEF = false
+        const dmg        = Math.max(1, (baseATK + roll) * (backstab ? 2 : 1))
+        enemyHp          = Math.max(0, enemyHp - dmg)
+        messages.push(backstab
+          ? '⚡ Backstab! You strike for <strong>' + dmg + '</strong> double damage!'
+          : 'You strike for <strong>' + dmg + '</strong> damage.' + (ignoreDEF ? ' (DEF ignored)' : ''))
+        // Burn passive: apply burn on strike
+        if (unlocked.includes('fire_passive_burn')) {
+          statusEffects.burnTurns = 2
+          messages.push('🔥 Burn applied — 3 damage/turn for 2 turns.')
+        }
+        // Chain passive: 20% chain to extra hit
+        if (unlocked.includes('lightning_passive_chain_damage') && Math.random() < 0.2) {
+          const chainDmg = Math.max(1, Math.floor(dmg * 0.5))
+          enemyHp = Math.max(0, enemyHp - chainDmg)
+          messages.push('⚡ Chain! Secondary hit for <strong>' + chainDmg + '</strong>.')
+        }
       } else if (playerAction === 'heavy') {
-        const roll = window._forceMaxHit ? (10+luckBonus) : Math.floor(Math.random()*(10+luckBonus))+3
+        const roll   = window._forceMaxHit ? (10+luckBonus) : Math.floor(Math.random()*(10+luckBonus))+3
         window._forceMaxHit = false
-        const dmg  = Math.max(1, Math.round(playerATK() * 1.6) + roll)
-        enemyHp    = Math.max(0, enemyHp - dmg)
-        messages.push('Heavy strike lands for <strong>'+dmg+'</strong> damage!')
+        const baseATK = playerATK() + (statusEffects.playerATKBonus||0)
+        const dmg    = Math.max(1, Math.round(baseATK * 1.6) + roll)
+        enemyHp      = Math.max(0, enemyHp - dmg)
+        messages.push('Heavy strike lands for <strong>' + dmg + '</strong> damage!')
       } else if (playerAction === 'defend') {
         defending = true
         messages.push('You brace for impact — defense doubled this turn.')
+      } else if (playerAction === 'skill' && skillKey) {
+        const sk = BATTLE_SKILLS[skillKey]
+        if (!sk) return
+        statusEffects.skillCooldowns[skillKey] = sk.type === 'ultimate' ? 4 : 2
+
+        if (sk.fn === 'shadowStep') {
+          statusEffects.ignoreEnemyDEF = true
+          messages.push('🌑 Shadow Step — your next attack will ignore enemy DEF!')
+        } else if (sk.fn === 'rockArmor') {
+          statusEffects.playerDEFBonus  = (statusEffects.playerDEFBonus||0) + 20
+          statusEffects.rockArmorTurns  = 2
+          messages.push('🪨 Rock Armor activated — +20 DEF for 2 turns!')
+        } else if (sk.fn === 'earthquake') {
+          const dmg = Math.max(15, playerATK() * 2)
+          enemyHp   = Math.max(0, enemyHp - dmg)
+          statusEffects.enemyStunTurns = 1
+          messages.push('🌍 Earthquake! ' + dmg + ' damage — enemy stunned for 1 turn!')
+        } else if (sk.fn === 'fireBlast') {
+          const def = Math.floor((enemy.def||0) * 0.5)
+          const dmg = Math.max(1, 25 + playerATK() - def)
+          enemyHp   = Math.max(0, enemyHp - dmg)
+          messages.push('🔥 Fire Blast — ' + dmg + ' fire damage (50% DEF ignored)!')
+        } else if (sk.fn === 'infernoZone') {
+          statusEffects.infernoTurns = 3
+          messages.push('🔥 Inferno Zone ignited — 40 damage/turn for 3 turns!')
+        } else if (sk.fn === 'healPulse') {
+          const heal = Math.min(player.max_hp||100, currentHp + 25) - currentHp
+          currentHp  = Math.min(player.max_hp||100, currentHp + 25)
+          messages.push('✨ Heal Pulse — restored ' + heal + ' HP!')
+        } else if (sk.fn === 'divineBarrier') {
+          statusEffects.invulnerable = true
+          statusEffects.divineBarrierReflect = true
+          messages.push('✨ Divine Barrier — invulnerable this turn! Damage reflected.')
+        } else if (sk.fn === 'lightningStrike') {
+          const dmg = 30 + Math.floor(playerATK() * 0.5)
+          enemyHp   = Math.max(0, enemyHp - dmg)
+          messages.push('⚡ Lightning Strike — ' + dmg + ' lightning damage (ignores shields)!')
+        } else if (sk.fn === 'thunderstorm') {
+          let total = 0
+          for (let b = 0; b < 5; b++) {
+            const bolt = 10 + Math.floor(Math.random()*10)
+            total += bolt; enemyHp = Math.max(0, enemyHp - bolt)
+          }
+          messages.push('⚡ Thunderstorm — 5 bolts, ' + total + ' total damage!')
+        } else if (sk.fn === 'bladeForm') {
+          statusEffects.playerATKBonus  = (statusEffects.playerATKBonus||0) + 20
+          statusEffects.playerSPDBonus  = (statusEffects.playerSPDBonus||0) + 5
+          statusEffects.bladeFormTurns  = 2
+          messages.push('⚙ Blade Form — ATK +20 and SPD +5 for 2 turns!')
+        } else if (sk.fn === 'ironDomain') {
+          statusEffects.playerATKBonus  = (statusEffects.playerATKBonus||0) + playerATK()
+          statusEffects.ironDomainTurns = 3
+          messages.push('⚙ Iron Domain — your ATK doubled for 3 turns!')
+        } else if (sk.fn === 'rootTrap') {
+          statusEffects.rootTrapTurns = 1
+          messages.push('🌿 Root Trap — enemy is rooted, will skip their next attack!')
+        } else if (sk.fn === 'overgrowth') {
+          const heal = Math.min(player.max_hp||100, currentHp + 40) - currentHp
+          currentHp  = Math.min(player.max_hp||100, currentHp + 40)
+          const dmg  = 30
+          enemyHp    = Math.max(0, enemyHp - dmg)
+          messages.push('🌿 Nature Overgrowth — healed ' + heal + ' HP and dealt ' + dmg + ' damage!')
+        } else if (sk.fn === 'waterShield') {
+          statusEffects.waterShield = (statusEffects.waterShield||0) + 30
+          messages.push('💧 Water Shield — absorbing up to 30 damage!')
+        } else if (sk.fn === 'tsunami') {
+          const dmg = 50 + Math.floor(playerATK() * 0.4)
+          enemyHp   = Math.max(0, enemyHp - dmg)
+          statusEffects.enemyStunTurns = 1
+          messages.push('🌊 Tsunami — ' + dmg + ' damage, enemy knocked back 1 turn!')
+        } else if (sk.fn === 'dashStrike') {
+          const dmg = Math.max(1, playerATK() * 2 + Math.floor(Math.random()*8))
+          enemyHp   = Math.max(0, enemyHp - dmg)
+          statusEffects.playerSPDBonus = (statusEffects.playerSPDBonus||0) + 10
+          messages.push('💨 Dash Strike — ' + dmg + ' damage! Speed +10 next turn.')
+        } else if (sk.fn === 'tornadoField') {
+          statusEffects.enemyATKMult  = 0.7
+          statusEffects.playerSPDBonus = (statusEffects.playerSPDBonus||0) + pSPD
+          statusEffects.tornadoTurns   = 3
+          messages.push('💨 Tornado Field — enemy ATK -30%, your SPD doubled for 3 turns!')
+        } else if (sk.fn === 'voidZone') {
+          statusEffects.enemyATKMult  = 0.7
+          statusEffects.voidZoneTurns = 3
+          messages.push('🌑 Void Zone — enemy ATK reduced by 30% for 3 turns!')
+        }
       }
     }
 
-    // ── Enemy action ──────────────────────────────────
+    // ── Enemy action ──────────────────────────────────────
     function resolveEnemyAction() {
       if (enemyHp <= 0) return
-      const defMult = defending ? 0.25 : 1
-      const eDmg    = Math.max(0, Math.round((enemy.atk + Math.floor(Math.random()*4) - playerDEF()) * defMult))
-      currentHp     = Math.max(0, currentHp - eDmg)
+      // Stun / root check
+      if (statusEffects.enemyStunTurns > 0 || statusEffects.rootTrapTurns > 0) {
+        messages.push(enemy.name + ' is stunned and cannot attack!')
+        return
+      }
+      if (statusEffects.invulnerable) {
+        const reflectDmg = Math.floor(enemy.atk * 0.5)
+        enemyHp          = Math.max(0, enemyHp - reflectDmg)
+        statusEffects.invulnerable = false
+        messages.push('✨ Divine Barrier absorbs the blow! Reflected ' + reflectDmg + ' back.')
+        return
+      }
+      const defMult  = defending ? 0.25 : 1
+      const eATKMult = statusEffects.enemyATKMult || 1.0
+      const totalDEF = playerDEF() + (statusEffects.playerDEFBonus||0)
+      let eDmg       = Math.max(0, Math.round((enemy.atk * eATKMult + Math.floor(Math.random()*4) - totalDEF) * defMult))
+
+      // Water shield absorbs
+      if (statusEffects.waterShield > 0 && eDmg > 0) {
+        const absorbed = Math.min(statusEffects.waterShield, eDmg)
+        eDmg -= absorbed
+        statusEffects.waterShield -= absorbed
+        if (absorbed > 0) messages.push('💧 Water Shield absorbs ' + absorbed + ' damage.')
+      }
+
+      currentHp = Math.max(0, currentHp - eDmg)
+
+      // Metal reflect passive: 10% of damage reflected
+      if (statusEffects.metalReflect && eDmg > 0) {
+        const refDmg = Math.max(1, Math.floor(eDmg * 0.1))
+        enemyHp      = Math.max(0, enemyHp - refDmg)
+        messages.push('⚙ Metal Reflect — ' + refDmg + ' damage reflected!')
+      }
+
       if (defending && eDmg === 0) {
         messages.push(enemy.name + ' attacks — completely blocked!')
       } else if (defending) {
-        messages.push(enemy.name + ' attacks for <strong>'+eDmg+'</strong> (reduced by defense).')
+        messages.push(enemy.name + ' attacks for <strong>' + eDmg + '</strong> (reduced by defense).')
       } else {
-        messages.push(enemy.name + ' retaliates for <strong>'+eDmg+'</strong>.')
+        messages.push(enemy.name + ' retaliates for <strong>' + eDmg + '</strong>.')
       }
     }
 
@@ -1870,53 +2121,67 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       resolvePlayerAction()
     }
 
-    // ── Yara attacks (if alive, team mode only) ─────────
+    // ── DoT & ongoing effects ─────────────────────────────
+    if (statusEffects.burnTurns > 0 && enemyHp > 0) {
+      enemyHp = Math.max(0, enemyHp - 3)
+      statusEffects.burnTurns--
+      messages.push('🔥 Burn deals 3 damage. (' + statusEffects.burnTurns + ' turns left)')
+    }
+    if (statusEffects.infernoTurns > 0 && enemyHp > 0) {
+      enemyHp = Math.max(0, enemyHp - 40)
+      statusEffects.infernoTurns--
+      messages.push('🔥 Inferno Zone: 40 damage! (' + statusEffects.infernoTurns + ' turns left)')
+    }
+    if (statusEffects.regenTurns > 0 && currentHp > 0) {
+      const heal = Math.min(player.max_hp||100, currentHp + 5) - currentHp
+      currentHp += heal
+      if (heal > 0) messages.push('💧 Flow: +5 HP regen.')
+    }
+    // Tick temp buffs
+    if (statusEffects.rockArmorTurns > 0) {
+      statusEffects.rockArmorTurns--
+      if (statusEffects.rockArmorTurns === 0) { statusEffects.playerDEFBonus = Math.max(0, (statusEffects.playerDEFBonus||0)-20); messages.push('🪨 Rock Armor faded.') }
+    }
+    if (statusEffects.bladeFormTurns > 0) {
+      statusEffects.bladeFormTurns--
+      if (statusEffects.bladeFormTurns === 0) { statusEffects.playerATKBonus=Math.max(0,(statusEffects.playerATKBonus||0)-20); statusEffects.playerSPDBonus=Math.max(0,(statusEffects.playerSPDBonus||0)-5); messages.push('⚙ Blade Form faded.') }
+    }
+    if (statusEffects.voidZoneTurns > 0) { statusEffects.voidZoneTurns--; if(statusEffects.voidZoneTurns===0){statusEffects.enemyATKMult=1.0; messages.push('🌑 Void Zone faded.')} }
+    if (statusEffects.tornadoTurns  > 0) { statusEffects.tornadoTurns--;  if(statusEffects.tornadoTurns===0){statusEffects.enemyATKMult=1.0; messages.push('💨 Tornado Field faded.')} }
+
+    // ── Yara attacks (team mode) ────────────────────────
     if (yara && yara.alive && enemyHp > 0) {
       const yaraDmg = Math.max(1, yara.atk + Math.floor(Math.random()*4))
       enemyHp = Math.max(0, enemyHp - yaraDmg)
-      // Watcher retaliates against Yara 40% of the time
       if (Math.random() < 0.4) {
         const yaraHit = Math.max(0, Math.floor(enemy.atk * 0.5) - yara.def)
         yara.hp = Math.max(0, yara.hp - yaraHit)
-        if (yara.hp <= 0) {
-          yara.alive = false
-          messages.push('Yara strikes for ' + yaraDmg + ' — then takes ' + yaraHit + ' and falls!')
-        } else {
-          messages.push('Yara strikes for ' + yaraDmg + ' (takes ' + yaraHit + ' retaliation, ' + yara.hp + ' HP left).')
-        }
+        if (yara.hp <= 0) { yara.alive = false; messages.push('Yara strikes for ' + yaraDmg + ' — then takes ' + yaraHit + ' and falls!') }
+        else               { messages.push('Yara strikes for ' + yaraDmg + ' (takes ' + yaraHit + ' retaliation, ' + yara.hp + ' HP left).') }
       } else {
         messages.push('Yara strikes for ' + yaraDmg + '.')
       }
     }
 
-    // ── Log results ───────────────────────────────────
     shake()
     log(messages.join(' '))
     syncBars()
+    renderSkillSlots()
 
-    // ── Check win/loss ────────────────────────────────
-    if (enemyHp <= 0) {
-      log(enemy.name + ' has fallen.')
-      endCombat('win')
-      return
-    }
+    if (enemyHp <= 0) { log(enemy.name + ' has fallen.'); endCombat('win'); return }
     if (currentHp <= 0) {
       if (window._hasRevive) {
-        window._hasRevive = false
-        currentHp = 20
-        syncBars()
+        window._hasRevive = false; currentHp = 20; syncBars()
         await supabase.from('players').update({ hp: 20 }).eq('id', player.id)
         player.hp = 20
         log('Phoenix Feather activates — you rise at 20 HP!')
         setButtons(true)
-      } else {
-        log('You collapse…')
-        endCombat('defeat')
-      }
+      } else { log('You collapse…'); endCombat('defeat') }
       return
     }
     setButtons(true)
   }
+
 
   document.getElementById('btn-strike').addEventListener('click', () => doTurn('strike'))
   document.getElementById('btn-heavy').addEventListener('click',  () => doTurn('heavy'))
@@ -2035,9 +2300,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     }
   }
 
-  // Apply force-max-hit flag in attack if set
-  // (Explosion Scroll — already handled by checking window._forceMaxHit before random roll)
-
+  renderSkillSlots()
   syncBars()
 }
 
