@@ -147,7 +147,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
   let player = await renderNav('nav')
   if (!player) throw new Error('no player')
 
-  let items = [], selectedId = null, filter = 'all'
+  let items = [], selectedId = null, filter = 'all', sellMode = false, sellSelected = new Set()
 
   async function load() {
     const { data } = await supabase.from('inventory').select('*').eq('player_id', player.id).order('obtained_at',{ascending:false})
@@ -214,8 +214,32 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     const filtered = unequipped.filter(i=>filter==='all'||i.item_type===filter)
     const unequippedCount = items.filter(i=>!i.equipped_slot).length
     document.getElementById('bag-count').textContent = unequippedCount + ' items'
-    document.getElementById('item-grid').innerHTML = filtered.map(item => `
-      <div class="item-card${selectedId===item.id?' selected':''}" data-id="${item.id}" style="display:flex;align-items:flex-start;gap:6px;min-height:72px">
+
+    // ── Sell-mode toolbar ────────────────────────────
+    let toolbar = document.getElementById('sell-toolbar')
+    if (!toolbar) {
+      toolbar = document.createElement('div')
+      toolbar.id = 'sell-toolbar'
+      toolbar.style.cssText = 'display:flex;gap:5px;margin-bottom:.5rem;flex-wrap:wrap;align-items:center'
+      const filterTabs = document.getElementById('filter-tabs')
+      filterTabs.insertAdjacentElement('afterend', toolbar)
+    }
+    const totalSellGold = [...sellSelected].reduce((sum, id) => {
+      const it = items.find(i=>i.id===id)
+      if (!it) return sum
+      return sum + (it.sell_price || Math.max(1, Math.floor((it.buy_price||20)*.4))) * (it.quantity||1)
+    }, 0)
+    toolbar.innerHTML = sellMode
+      ? `<button onclick="toggleSellMode()" style="font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:3px 10px;border-radius:20px;cursor:pointer;background:rgba(192,64,64,.15);border:.5px solid rgba(192,64,64,.5);color:#c04040">✕ Cancel</button>
+         ${sellSelected.size>0 ? `<button onclick="sellSelectedItems()" style="font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:3px 10px;border-radius:20px;cursor:pointer;background:rgba(139,106,32,.2);border:.5px solid rgba(139,106,32,.5);color:#1a1208">Sell ${sellSelected.size} item(s) ◈${totalSellGold}</button>
+         <button onclick="selectAllSellable()" style="font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:.5px solid rgba(139,106,32,.2);color:#3a2008">Select All</button>` : '<span style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.75rem;color:#3a2008">Click items to select</span>'}`
+      : `<button onclick="toggleSellMode()" style="font-family:'Share Tech Mono',monospace;font-size:.58rem;padding:3px 10px;border-radius:20px;cursor:pointer;background:none;border:.5px solid rgba(139,106,32,.2);color:#3a2008">⊞ Multi-Sell</button>`
+
+    document.getElementById('item-grid').innerHTML = filtered.map(item => {
+      const isSellSelected = sellMode && sellSelected.has(item.id)
+      return `
+      <div class="item-card${!sellMode && selectedId===item.id?' selected':''}" data-id="${item.id}" style="display:flex;align-items:flex-start;gap:6px;min-height:72px;${sellMode?'cursor:pointer;':''}${isSellSelected?'outline:1.5px solid #c8b96e;background:rgba(200,184,128,.18);':''}" >
+        ${sellMode ? `<div style="width:16px;height:16px;border-radius:3px;border:1.5px solid ${isSellSelected?'#c8b96e':'rgba(139,106,32,.4)'};background:${isSellSelected?'#c8b96e':'transparent'};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px">${isSellSelected?'<span style="font-size:.6rem;color:#1a1208">✓</span>':''}</div>` : ''}
         ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" class="item-icon" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">'):'<span class="item-icon">'+(item.icon||'📦')+'</span>';})()}
         <div style="flex:1;min-width:0;overflow:hidden">
           <p class="item-name" style="color:${RARITY[item.rarity]||'#c8c0a0'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:1px">${item.name}</p>
@@ -236,17 +260,59 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           })()}
           ${(item.sockets_total||0)>0?'<p style="font-family:monospace;font-size:.44rem;color:'+(item.runeword_name?'#a07de0':'#7a6090')+';margin:0">'+(item.runeword_name?'✦ '+item.runeword_name:''+(item.sockets_used||0)+'/'+(item.sockets_total)+'◈')+'</p>':''}
         </div>
-        ${item.equipped_slot?'<span class="item-eq" style="position:absolute;top:3px;right:3px">EQ</span>':''} 
+        ${item.equipped_slot?'<span class="item-eq" style="position:absolute;top:3px;right:3px">EQ</span>':''}
       </div>
-    `).join('') || `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#3a2008;grid-column:span 3">Nothing here.</p>`
+      `
+    }).join('') || `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#3a2008;grid-column:span 3">Nothing here.</p>`
 
     document.querySelectorAll('.item-card').forEach(el => {
       el.addEventListener('click', () => {
-        selectedId = selectedId === el.dataset.id ? null : el.dataset.id
-        render()
-        renderDetail()
+        if (sellMode) {
+          const id = el.dataset.id
+          if (sellSelected.has(id)) sellSelected.delete(id)
+          else sellSelected.add(id)
+          renderGrid()
+        } else {
+          selectedId = selectedId === el.dataset.id ? null : el.dataset.id
+          render()
+          renderDetail()
+        }
       })
     })
+  }
+
+  window.toggleSellMode = () => {
+    sellMode = !sellMode
+    sellSelected.clear()
+    selectedId = null
+    renderGrid()
+    renderDetail()
+  }
+
+  window.selectAllSellable = () => {
+    const unequipped = items.filter(i => !i.equipped_slot && (filter==='all'||i.item_type===filter))
+    unequipped.forEach(i => sellSelected.add(i.id))
+    renderGrid()
+  }
+
+  window.sellSelectedItems = async () => {
+    if (!sellSelected.size) return
+    const toSell = [...sellSelected].map(id => items.find(i=>i.id===id)).filter(Boolean)
+    let totalGold = 0
+    for (const item of toSell) {
+      const price = item.sell_price || Math.max(1, Math.floor((item.buy_price||20)*.4))
+      const qty = item.quantity || 1
+      totalGold += price * qty
+      await supabase.from('inventory').delete().eq('id', item.id)
+    }
+    const newGold = (player.gold || 0) + totalGold
+    await supabase.from('players').update({ gold: newGold }).eq('id', player.id)
+    player.gold = newGold
+    showToast('Sold ' + toSell.length + ' item(s) for ◈' + totalGold)
+    sellSelected.clear()
+    sellMode = false
+    selectedId = null
+    await load()
   }
 
   function renderStats() {
@@ -278,12 +344,15 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     if (!item) { el.innerHTML=''; return }
     el.innerHTML = `
       <div style="border:0.5px solid rgba(139,106,32,.3);border-radius:3px;padding:.75rem;margin-top:.5rem;background:rgba(0,0,0,.05)">
-        <div style="display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.5rem">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
+          <div style="display:flex;gap:.6rem;align-items:flex-start;flex:1">
           ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" style="width:52px;height:52px;object-fit:contain;border-radius:6px" onerror="this.style.display=\'none\'">'):'<span style="font-size:1.6rem">'+(item.icon||'📦')+'</span>';})()}
           <div>
             <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${RARITY[item.rarity]||'#c8c0a0'};margin:0 0 2px">${item.name}</p>
             <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#3a2008;margin:0;letter-spacing:.06em">${item.rarity} · ${item.subtype||item.item_type}${item.two_handed?' · 2H':''}</p>
           </div>
+          </div>
+          <button onclick="selectedId=null;render()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#3a2008;padding:0;line-height:1;flex-shrink:0;margin-left:.5rem">✕</button>
         </div>
         <div style="display:flex;gap:.75rem;font-family:'Share Tech Mono',monospace;font-size:.65rem;margin-bottom:.6rem;flex-wrap:wrap">
           ${item.atk_bonus>0?`<span style="color:#e05555">ATK +${item.atk_bonus}</span>`:''}
@@ -434,7 +503,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           ${runeItems.map(r => {
             const key = r.item_key.replace('rune_','')
             const col = RUNE_COLORS[key]||'#888'
-            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\');document.getElementById(\'equipped-modal\').remove()" style="display:flex;align-items:center;gap:4px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'"><span>'+(RUNE_ICONS[key]||'?')+'</span><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></button>'
+            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\')" style="display:flex;align-items:center;gap:4px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'"><span>'+(RUNE_ICONS[key]||'?')+'</span><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></button>'
           }).join('')}
         </div>`
     }
@@ -727,9 +796,15 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     selectedId = itemId
     await load()
 
-    // Re-open rune picker if sockets still available and no runeword triggered
-    if (newUsed < sockets && !rw) {
-      setTimeout(() => openRunePicker(itemId, itemType), 200)
+    // Refresh the equipped modal so it shows updated sockets (keep it open)
+    const updatedItem = items.find(i => i.id === itemId)
+    if (updatedItem) {
+      document.getElementById('equipped-modal')?.remove()
+      showEquippedModal(updatedItem)
+      // Re-open rune picker inline if sockets still available and no runeword triggered
+      if (newUsed < sockets && !rw) {
+        setTimeout(() => openRunePickerModal(itemId, itemType), 100)
+      }
     }
   }
 
