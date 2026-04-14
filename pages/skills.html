@@ -395,79 +395,74 @@ const NODES = [
     cost:3, requires:['m8'] },
 
   // ═══════════════════════════════════════════════
-  // DARK / PLANT BRANCH  (lower-left diagonal, 225° from center)
-  // Main axis: (-0.707, 0.707) — true lower-left diagonal
-  // Dark sub-path fans slightly upper of axis (more left, less down)
-  // Plant sub-path fans slightly lower of axis (more down, less left)
-  // Both stay in lower-left quadrant — mirror of how Defense forks Guard/Control
+  // DARK / PLANT BRANCH  (lower-left, 225° — tight cone, both sub-paths stay lower-left)
+  // Spine: (-0.707, +0.707) | Dark fan: (-0.500, +0.866) | Plant fan: (-0.866, +0.500)
   // ═══════════════════════════════════════════════
 
-  // Shared spine — straight lower-left
-  { id:'dp1', label:'+3 Speed',  type:'small', branch:'dark_plant', x:CX-64, y:CY+64,  cost:1, stat:'speed_bonus', val:3, requires:['center'] },
-  { id:'dp2', label:'+4 Speed',  type:'small', branch:'dark_plant', x:CX-128,y:CY+128, cost:1, stat:'speed_bonus', val:4, requires:['dp1'] },
-  { id:'dp3', label:'+3 Power',  type:'small', branch:'dark_plant', x:CX-192,y:CY+192, cost:1, stat:'power_bonus', val:3, requires:['dp2'] },
+  // Shared spine — straight lower-left, step 85px
+  { id:'dp1', label:'+3 Speed',  type:'small', branch:'dark_plant', x:CX-60, y:CY+60,  cost:1, stat:'speed_bonus', val:3, requires:['center'] },
+  { id:'dp2', label:'+4 Speed',  type:'small', branch:'dark_plant', x:CX-120,y:CY+120, cost:1, stat:'speed_bonus', val:4, requires:['dp1'] },
+  { id:'dp3', label:'+3 Power',  type:'small', branch:'dark_plant', x:CX-180,y:CY+180, cost:1, stat:'power_bonus', val:3, requires:['dp2'] },
 
-  // ── DARK sub-path — fans upper of axis (more left, less down) ──
-  // Direction approx (-0.87, 0.50) — 30° above the main axis
-  { id:'dk1', label:'+4 Speed',  type:'small', branch:'dark_plant', x:CX-270,y:CY+225, cost:1, stat:'speed_bonus', val:4, requires:['dp3'] },
-  { id:'dk2', label:'+3 Luck',   type:'small', branch:'dark_plant', x:CX-348,y:CY+260, cost:1, stat:'luck_bonus',  val:3, requires:['dk1'] },
-  { id:'dk3', label:'+4 Speed',  type:'small', branch:'dark_plant', x:CX-420,y:CY+290, cost:1, stat:'speed_bonus', val:4, requires:['dk2'] },
-  { id:'dk4', label:'+3 Power',  type:'small', branch:'dark_plant', x:CX-490,y:CY+310, cost:1, stat:'power_bonus', val:3, requires:['dk3'] },
-  { id:'dk5', label:'+4 Luck',   type:'small', branch:'dark_plant', x:CX-560,y:CY+325, cost:1, stat:'luck_bonus',  val:4, requires:['dk4'] },
+  // ── DARK sub-path (-0.500, +0.866): more down, slightly left ──
+  { id:'dk1', label:'+4 Speed',  type:'small', branch:'dark_plant', x:CX-222,y:CY+254, cost:1, stat:'speed_bonus', val:4, requires:['dp3'] },
+  { id:'dk2', label:'+3 Luck',   type:'small', branch:'dark_plant', x:CX-265,y:CY+327, cost:1, stat:'luck_bonus',  val:3, requires:['dk1'] },
+  { id:'dk3', label:'+4 Speed',  type:'small', branch:'dark_plant', x:CX-307,y:CY+401, cost:1, stat:'speed_bonus', val:4, requires:['dk2'] },
+  { id:'dk4', label:'+3 Power',  type:'small', branch:'dark_plant', x:CX-350,y:CY+474, cost:1, stat:'power_bonus', val:3, requires:['dk3'] },
+  { id:'dk5', label:'+4 Luck',   type:'small', branch:'dark_plant', x:CX-392,y:CY+548, cost:1, stat:'luck_bonus',  val:4, requires:['dk4'] },
 
   // Dark notables
-  { id:'dk_n1', label:'Umbral Veil', type:'notable', branch:'dark_plant', x:CX-630,y:CY+336,
+  { id:'dk_n1', label:'Umbral Veil', type:'notable', branch:'dark_plant', x:CX-422,y:CY+622,
     desc:'+6 SPD. 15% chance to dodge any attack. On a successful dodge you deal a free counter hit for 50% ATK.',
     cost:2, stat:'speed_bonus', val:6, requires:['dk5'] },
-  { id:'dk_n2', label:'Shade Walk',  type:'notable', branch:'dark_plant', x:CX-480,y:CY+240,
+  { id:'dk_n2', label:'Shade Walk',  type:'notable', branch:'dark_plant', x:CX-307,y:CY+345,
     desc:'+5 SPD, +4 Power. On kill, gain +15 SPD for 2 turns — chain kills become a blur.',
     cost:2, stat:'speed_bonus', val:5, requires:['dk3'] },
-  { id:'dk_n3', label:'Dread Pulse', type:'notable', branch:'dark_plant', x:CX-700,y:CY+310,
+  { id:'dk_n3', label:'Dread Pulse', type:'notable', branch:'dark_plant', x:CX-452,y:CY+696,
     desc:'+8 Luck. Each hit reduces enemy ATK by 2, stacks up to 3 times. Wear them down.',
     cost:2, stat:'luck_bonus',  val:8, requires:['dk_n1'] },
 
   // Dark pre-keystone
-  { id:'dk6', label:'+5 Speed',  type:'small', branch:'dark_plant', x:CX-762,y:CY+280, cost:1, stat:'speed_bonus', val:5, requires:['dk_n3'] },
-  { id:'dk7', label:'+4 Luck',   type:'small', branch:'dark_plant', x:CX-820,y:CY+248, cost:1, stat:'luck_bonus',  val:4, requires:['dk6'] },
-  { id:'dk8', label:'+5 Power',  type:'small', branch:'dark_plant', x:CX-748,y:CY+200, cost:1, stat:'power_bonus', val:5, requires:['dk_n2','dk_n3'] },
+  { id:'dk6', label:'+5 Speed',  type:'small', branch:'dark_plant', x:CX-477,y:CY+762, cost:1, stat:'speed_bonus', val:5, requires:['dk_n3'] },
+  { id:'dk7', label:'+4 Luck',   type:'small', branch:'dark_plant', x:CX-502,y:CY+828, cost:1, stat:'luck_bonus',  val:4, requires:['dk6'] },
+  { id:'dk8', label:'+5 Power',  type:'small', branch:'dark_plant', x:CX-392,y:CY+695, cost:1, stat:'power_bonus', val:5, requires:['dk_n2','dk_n3'] },
 
   // Dark keystones
-  { id:'ks_nightfall',  label:'Nightfall',  type:'keystone', branch:'dark_plant', x:CX-880,y:CY+210,
-    desc:'KEYSTONE: Your first attack each combat, if the enemy has not yet acted, deals ×3 damage. Strike from the dark — or not at all.',
+  { id:'ks_nightfall',  label:'Nightfall',  type:'keystone', branch:'dark_plant', x:CX-527,y:CY+895,
+    desc:'KEYSTONE: Your first attack each combat, if the enemy has not yet acted, deals x3 damage. Strike from the dark — or not at all.',
     cost:3, requires:['dk7'] },
-  { id:'ks_soul_sever', label:'Soul Sever', type:'keystone', branch:'dark_plant', x:CX-820,y:CY+130,
+  { id:'ks_soul_sever', label:'Soul Sever', type:'keystone', branch:'dark_plant', x:CX-415,y:CY+762,
     desc:'KEYSTONE: Every kill restores 20% of your max HP. The more enemies fall, the more dangerous you become. Momentum is survival.',
     cost:3, requires:['dk8'] },
 
-  // ── PLANT sub-path — fans lower of axis (more down, less left) ──
-  // Direction approx (-0.50, 0.87) — 30° below the main axis
-  { id:'pl1', label:'+3 Guard',   type:'small', branch:'dark_plant', x:CX-225,y:CY+270, cost:1, stat:'guard_bonus',   val:3, requires:['dp3'] },
-  { id:'pl2', label:'+4 Guard',   type:'small', branch:'dark_plant', x:CX-260,y:CY+348, cost:1, stat:'guard_bonus',   val:4, requires:['pl1'] },
-  { id:'pl3', label:'+3 Control', type:'small', branch:'dark_plant', x:CX-290,y:CY+420, cost:1, stat:'control_bonus', val:3, requires:['pl2'] },
-  { id:'pl4', label:'+4 Guard',   type:'small', branch:'dark_plant', x:CX-310,y:CY+490, cost:1, stat:'guard_bonus',   val:4, requires:['pl3'] },
-  { id:'pl5', label:'+3 Insight', type:'small', branch:'dark_plant', x:CX-325,y:CY+560, cost:1, stat:'insight_bonus', val:3, requires:['pl4'] },
+  // ── PLANT sub-path (-0.866, +0.500): more left, slightly down ──
+  { id:'pl1', label:'+3 Guard',   type:'small', branch:'dark_plant', x:CX-254,y:CY+222, cost:1, stat:'guard_bonus',   val:3, requires:['dp3'] },
+  { id:'pl2', label:'+4 Guard',   type:'small', branch:'dark_plant', x:CX-327,y:CY+265, cost:1, stat:'guard_bonus',   val:4, requires:['pl1'] },
+  { id:'pl3', label:'+3 Control', type:'small', branch:'dark_plant', x:CX-401,y:CY+307, cost:1, stat:'control_bonus', val:3, requires:['pl2'] },
+  { id:'pl4', label:'+4 Guard',   type:'small', branch:'dark_plant', x:CX-474,y:CY+350, cost:1, stat:'guard_bonus',   val:4, requires:['pl3'] },
+  { id:'pl5', label:'+3 Insight', type:'small', branch:'dark_plant', x:CX-548,y:CY+392, cost:1, stat:'insight_bonus', val:3, requires:['pl4'] },
 
   // Plant notables
-  { id:'pl_n1', label:'Thornwall',     type:'notable', branch:'dark_plant', x:CX-336,y:CY+630,
+  { id:'pl_n1', label:'Thornwall',     type:'notable', branch:'dark_plant', x:CX-622,y:CY+422,
     desc:'+8 Guard. When you Defend, reflect 15% of absorbed damage back to the attacker as thorns.',
     cost:2, stat:'guard_bonus', val:8, requires:['pl5'] },
-  { id:'pl_n2', label:'Still Growth',  type:'notable', branch:'dark_plant', x:CX-240,y:CY+480,
+  { id:'pl_n2', label:'Still Growth',  type:'notable', branch:'dark_plant', x:CX-401,y:CY+245,
     desc:'+5 Control, +4 Insight. On any turn you do not attack, restore 8 HP. Patience is healing.',
     cost:2, stat:'control_bonus', val:5, requires:['pl3'] },
-  { id:'pl_n3', label:'Enduring Root', type:'notable', branch:'dark_plant', x:CX-310,y:CY+700,
+  { id:'pl_n3', label:'Enduring Root', type:'notable', branch:'dark_plant', x:CX-696,y:CY+452,
     desc:'+10 Guard. You cannot be stunned or rooted by enemy skills. Your roots hold deeper.',
     cost:2, stat:'guard_bonus', val:10, requires:['pl_n1'] },
 
   // Plant pre-keystone
-  { id:'pl6', label:'+5 Guard',   type:'small', branch:'dark_plant', x:CX-280,y:CY+762, cost:1, stat:'guard_bonus',   val:5, requires:['pl_n3'] },
-  { id:'pl7', label:'+4 Control', type:'small', branch:'dark_plant', x:CX-248,y:CY+820, cost:1, stat:'control_bonus', val:4, requires:['pl6'] },
-  { id:'pl8', label:'+5 Insight', type:'small', branch:'dark_plant', x:CX-200,y:CY+748, cost:1, stat:'insight_bonus', val:5, requires:['pl_n2','pl_n3'] },
+  { id:'pl6', label:'+5 Guard',   type:'small', branch:'dark_plant', x:CX-762,y:CY+477, cost:1, stat:'guard_bonus',   val:5, requires:['pl_n3'] },
+  { id:'pl7', label:'+4 Control', type:'small', branch:'dark_plant', x:CX-828,y:CY+502, cost:1, stat:'control_bonus', val:4, requires:['pl6'] },
+  { id:'pl8', label:'+5 Insight', type:'small', branch:'dark_plant', x:CX-695,y:CY+395, cost:1, stat:'insight_bonus', val:5, requires:['pl_n2','pl_n3'] },
 
   // Plant keystones
-  { id:'ks_ancient_root', label:'Ancient Root', type:'keystone', branch:'dark_plant', x:CX-210,y:CY+880,
+  { id:'ks_ancient_root', label:'Ancient Root', type:'keystone', branch:'dark_plant', x:CX-895,y:CY+527,
     desc:'KEYSTONE: Your maximum HP is doubled permanently. However, you always act last in turn order — unkillable, patient, unstoppable given time.',
     cost:3, requires:['pl7'] },
-  { id:'ks_verdant_soul', label:'Verdant Soul', type:'keystone', branch:'dark_plant', x:CX-130,y:CY+820,
+  { id:'ks_verdant_soul', label:'Verdant Soul', type:'keystone', branch:'dark_plant', x:CX-762,y:CY+415,
     desc:'KEYSTONE: At the start of each turn you survive, restore 8% of your max HP. The longer the battle, the more nature fights for you.',
     cost:3, requires:['pl8'] },
 
@@ -492,8 +487,8 @@ const NODES = [
   { id:'el_light',     label:'Light',     type:'elemental', branch:'elemental', color:'#ffd700', x:CX+900,y:CY-140, requires:['m7','m8'] },
 
   // DARK/PLANT branch lower-left — Dark + Plant gateways
-  { id:'el_dark',      label:'Dark',      type:'elemental', branch:'elemental', color:'#b06eff', x:CX-960,y:CY+170, requires:['ks_nightfall','ks_soul_sever'] },
-  { id:'el_plant',     label:'Plant',     type:'elemental', branch:'elemental', color:'#5ec45e', x:CX-170,y:CY+960, requires:['ks_ancient_root','ks_verdant_soul'] },
+  { id:'el_dark',      label:'Dark',      type:'elemental', branch:'elemental', color:'#b06eff', x:CX-560,y:CY+990, requires:['ks_nightfall','ks_soul_sever'] },
+  { id:'el_plant',     label:'Plant',     type:'elemental', branch:'elemental', color:'#5ec45e', x:CX-990,y:CY+560, requires:['ks_ancient_root','ks_verdant_soul'] },
 ]
 
 // ── Colors ──────────────────────────────────────────
