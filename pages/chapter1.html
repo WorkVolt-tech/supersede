@@ -785,16 +785,25 @@ async function checkLevelUp(oldXp, newXp, oldLevel) {
   const statPtsGained = levelsGained * 3
   const newStatPts  = (player.stat_points || 0) + statPtsGained
 
+  // ── Award 2 Skill Points per level gained ──────────────
+  const spGained  = levelsGained * 2
+  const newSP     = (player.skill_points || 0) + spGained
+  player.skill_points = newSP
+
+  // Track sp_claimed so the Claim button on skills page stays accurate
+  const newClaimed = (player.sp_claimed || 0) + spGained
+  player.sp_claimed = newClaimed
+
   currentHp = newHp
   player.max_hp = newMaxHp
   player.stat_points = newStatPts
 
   player.level = level
   player.xp    = newXp   // xp within this level (already subtracted thresholds in while loop)
-  showToast('LEVEL UP! Lvl ' + level + ' — Full HP restored! +' + statPtsGained + ' stat points to spend!')
+  showToast('LEVEL UP! Lvl ' + level + ' — Full HP restored! +' + statPtsGained + ' stat points · +' + spGained + ' skill points!')
   renderHUD()
 
-  return { level, max_hp: newMaxHp, hp: newHp, stat_points: newStatPts, xp: newXp }
+  return { level, max_hp: newMaxHp, hp: newHp, stat_points: newStatPts, xp: newXp, skill_points: newSP, sp_claimed: newClaimed }
 }
 
 // ── HUD ──────────────────────────────────────────
@@ -1749,6 +1758,14 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         if (isBoss) {
           const unlocked = player.chapters_unlocked || [1]
           if (!unlocked.includes(2)) updates.chapters_unlocked = [...unlocked, 2]
+          // ── Award 4 SP for completing Chapter 1 (one-time) ──
+          const ch1Bonus = 4
+          updates.skill_points = (player.skill_points || 0) + ch1Bonus
+          // Advance sp_claimed so the Claim button stays in sync
+          updates.sp_claimed   = (player.sp_claimed  || 0) + ch1Bonus
+          player.skill_points  = updates.skill_points
+          player.sp_claimed    = updates.sp_claimed
+          showToast('Chapter 1 Complete — +' + ch1Bonus + ' Skill Points awarded!')
         }
         // Gold drop for story fights
         const sGoldDrop = Math.floor(Math.random() * 40) + 5
