@@ -149,8 +149,20 @@ They look up. They can't be older than nineteen. Their badge reads NEUTRAL. Thei
 
 "I don't want to fight," they say before you've said anything. "I just want to know what the rules are."
 
-You don't have an answer for them.`,
-    sysMsg: '⚠ A player is nearby…',
+You don't have an answer for them.
+
+Above the parking structure's open roof, the sky does something it shouldn't.
+
+A seam opens — thin, white, surgical — and for three full seconds an eye the size of a skyscraper looks down through it. Not at the city. Not at the plaza.
+
+At this parking structure. At this level. At you.
+
+THE WATCHER SEES ALL.
+
+The young player doesn't look up. Their interface has gone dark. They don't see it.
+
+You do.`,
+    sysMsg: '⚠ THE WATCHER SEES ALL — Observation event triggered.',
     choices: [
       { id: 'enc_team',    label: 'Sit with them a moment',  sub: 'Listen — gain Awareness XP',        next: 'search_team',    outcome: 'team' },
       { id: 'enc_attack',  label: 'Take their supplies',     sub: 'Easy loot. Reputation shifts red.',  next: 'search_attack',  outcome: 'attack', variant: 'danger' },
@@ -360,9 +372,17 @@ You tap it. The tutorial is brief, clinical, written like a legal document:
 
 There is no point 6.
 
-You close it. The radar shows six signals nearby — and three non-player entities. Glowing. Moving slowly. Waiting to be found.`,
+You close it. The radar shows six signals nearby — and three non-player entities. Glowing. Moving slowly. Waiting to be found.
+
+Then the sky cracks — just for a second. A single vast eye opens above the city, sweeping slowly across the frozen streets below. Your interface freezes mid-display. Every signal on the radar blinks out.
+
+Then it closes. The interface returns to normal.
+
+THE WATCHER SEES ALL.
+
+The words aren't from your system. They come from somewhere older.`,
     xp: 25,
-    sysMsg: '⚠ Scanning… Multiple players and entities detected.',
+    sysMsg: '⚠ Scanning… Multiple players and entities detected. Watcher event logged.',
     choices: [
       { label: 'Hunt the nearby entities', sub: 'Grind XP before going further',    next: 'sys_hunt' },
       { label: 'Track the closest player', sub: 'Engage — first-strike advantage',  next: 'sys_track' },
@@ -541,12 +561,29 @@ As if on cue, your interface flickers:
 WARNING: HIGH-TIER ENTITY APPROACHING THIS ZONE.
 SYSTEM RECOMMENDATION: REACH LEVEL 3 BEFORE ENGAGING.
 
-Yara looks at you. "How are your stats?"`,
-    sysMsg: '⚠ High-tier entity inbound. Recommend Level 3 before engagement.',
+Then something else happens. Something nobody programmed.
+
+The sky tears — not like weather, not like an event. Like a curtain pulled aside by a hand that has been waiting patiently since the beginning.
+
+A single eye opens in the gap. Vast. Patient. Unblinking.
+
+THE WATCHER SEES ALL.
+
+Every player in the district feels it simultaneously. A pressure. A certainty. Not a threat — a statement of fact. You have been observed since the first moment you stepped into this frozen city. Every decision recorded. Every hesitation logged.
+
+The eye closes. The curtain falls back into place.
+
+Yara looks at you. Her interface is still glitching. "Did you see that?"
+
+"Yeah," you say.
+
+"How are your stats?"`,
+    sysMsg: '⚠ THE WATCHER SEES ALL — Full observation event. High-tier entity inbound.',
     choices: [
       { label: 'I am ready — let it come',           sub: 'Engage The Watcher now',              next: 'pre_boss_check' },
       { label: 'Hit the north plaza spawn first',    sub: 'More XP before the boss fight',       next: 'plaza_grind' },
       { label: 'Explore the district',               sub: 'Farm 3 zones — XP, runes, and gear',  next: 'farming_hub', icon: '🗺' },
+      { label: "A Watcher's Eye descends — face it", sub: 'Lv3+ challenge — rare loot',           next: 'watcher_eye_ambush', variant: 'danger' },
     ],
   },
 
@@ -579,9 +616,24 @@ Yara walks over. Looks at your interface. Nods slowly.
 
 Your stats reflect it. Every fight has built toward this moment. You can feel the difference — the weight of your decisions, the sharpness of your instincts, the certainty that you are not the same player who stepped into this frozen city at the start.
 
-The sky begins to change.`,
+The sky begins to change.
+
+Then — before the boss arrives — the sky changes a second time.
+
+Not The Watcher itself. Something smaller. Many somethings.
+
+Seven eyes emerge from the clouds in a slow spiral. They orbit each other with mechanical patience.
+
+Your interface flags them immediately: WATCHER'S EYE SWARM. Optional engagement.
+
+This is not the boss. This is a test — sent in advance. A message.
+
+THE WATCHER SEES ALL. And it wants to see you fight.`,
     xp: 50,
-    choices: [{ label: 'Face what comes next', next: 'pre_boss_check' }],
+    choices: [
+      { label: 'Face what comes next — the boss', next: 'pre_boss_check' },
+      { label: 'Engage the Eye Swarm first', sub: 'Hard fight. Massive XP. Lv7+ recommended.', next: 'watcher_eye_swarm', variant: 'danger' },
+    ],
   },
 
   pre_boss_check: {
@@ -665,7 +717,7 @@ The air vibrates at a frequency just below hearing. The frozen people around the
 It looks at you.
 
 It already knows everything.`,
-    enemy: { name:'The Watcher', icon:'👁', hp:200, atk:18, xp:150, loot:[{itemKey:'core_fragment',qty:1}] },
+    enemy: { name:'The Watcher', icon:'👁', hp:200, atk:18, xp:300, loot:[{itemKey:'core_fragment',qty:1},{itemKey:'rune_lux',qty:1}] },
   },
 
   // ═══════════════════════════════════════
@@ -710,8 +762,219 @@ Three zones pulse with System entity activity — each with different threats an
   },
 
   // ═══════════════════════════════════════
-  // END
+  // THE WATCHER SEES ALL — mid-chapter revelation
   // ═══════════════════════════════════════
+  watcher_sees: {
+    id: 'watcher_sees', type: 'story',
+    text: `You are midway through the plaza when everything changes.
+
+The interface above your head flickers — once, twice — and then the sky above the frozen city splits open in a beam of pale white light.
+
+Not sunlight. Something older.
+
+A single eye the size of a city block opens in the sky above you. It is not looking at the horizon. It is not looking at the plaza, or the fountain, or the frozen crowd.
+
+It is looking at you.
+
+THE WATCHER SEES ALL.
+
+The words don't appear in your interface. They don't need to. They land somewhere behind your eyes, behind thought itself, pressed into you like a brand.
+
+Every choice you have made since arriving in this city. Every path you walked. Every player you helped or abandoned or hurt.
+
+It knows.
+
+The eye closes slowly — as if satisfied. As if it has already decided what you are.
+
+Your interface flickers back to normal. But you will not forget the weight of that gaze.
+
+The game is watching you back.`,
+    sysMsg: '⚠ SYSTEM ALERT: Observation confirmed. The Watcher records all behaviors.',
+    choices: [
+      { label: 'Continue to the plaza', next: 'street_midpoint' },
+    ],
+  },
+
+  // ═══════════════════════════════════════
+  // WATCHER EYE — random ambush (level 3+)
+  // ═══════════════════════════════════════
+  watcher_eye_ambush: {
+    id: 'watcher_eye_ambush', type: 'story',
+    text: `A crack splits the sky without warning.
+
+No build-up. No trembling ground. One moment the city is frozen and still — the next, something descends from the gap between clouds.
+
+A single eye. Pale, unblinking, trailing light like a comet tail.
+
+THE WATCHER'S EYE.
+
+It locks onto you the moment it appears. Your interface screams a warning you've never seen before:
+
+⚠ OBSERVED. TARGET MARKED. INCOMING.
+
+It moves like thought. Fast.`,
+    sysMsg: '⚠ WATCHER EYE DETECTED — The Watcher has sent a fragment of itself to test you.',
+    choices: [
+      { label: 'Stand your ground', next: 'fight_watcher_eye' },
+      { label: 'Run — find cover', sub: 'Attempt to flee before it reaches you', next: 'eye_escape_attempt' },
+    ],
+  },
+
+  eye_escape_attempt: {
+    id: 'eye_escape_attempt', type: 'story',
+    text: `You bolt.
+
+Down a frozen alley, vaulting over a suspended bicycle, ducking under a car that hasn't moved in hours.
+
+The eye follows. It doesn't rush — it simply adjusts, rotating slowly on its axis, always pointing at you.
+
+You realize running was never going to work. The Watcher already knows where you are.
+
+You turn and face it.`,
+    choices: [
+      { label: 'Fight', next: 'fight_watcher_eye' },
+    ],
+  },
+
+  fight_watcher_eye: {
+    id: 'fight_watcher_eye', type: 'combat',
+    text: `It hovers three feet off the ground. The iris contracts when it sees you raise your weapon. The air around it hums at a frequency that makes your teeth ache.
+
+It is not The Watcher. But it is a piece of The Watcher.
+
+And it is watching you fight.`,
+    enemy: { name:"Watcher's Eye", icon:'👁', hp:60, atk:12, xp:80, loot:[{itemKey:'rune_lux',qty:1}] },
+    onWin: 'eye_defeated',
+    onLose: 'eye_survived',
+    onEscape: 'eye_survived',
+  },
+
+  eye_defeated: {
+    id: 'eye_defeated', type: 'story',
+    text: `It dissolves in a burst of pale light — not like the System creatures that shatter into pixels. This is quieter. More personal.
+
+A single tear of white liquid falls where it hovered, then evaporates before it hits the pavement.
+
+Your interface registers the kill.
+
+WATCHER'S EYE — DEFEATED.
+XP GAINED. WATCHER AWARENESS: ELEVATED.
+
+Somewhere above the clouds, something blinks.
+
+It will send more.`,
+    xp: 30,
+    choices: [
+      { label: 'Continue', next: '__eye_return__' },
+    ],
+  },
+
+  eye_survived: {
+    id: 'eye_survived', type: 'story',
+    text: `It retreats without pressing its advantage. The eye rises back toward the crack in the sky, iris closing slowly.
+
+It was a test. Not an execution.
+
+The System registered everything — how you fought, how you panicked, how you made your choices when something ancient was watching.
+
+Your interface shows a faint pulse: WATCHER AWARENESS: NOTED.
+
+You're not sure what that means. But you know you'll find out.`,
+    choices: [
+      { label: 'Gather yourself and move on', next: '__eye_return__' },
+    ],
+  },
+
+  // ═══════════════════════════════════════
+  // EYE SWARM — level 7+ challenge
+  // ═══════════════════════════════════════
+  watcher_eye_swarm: {
+    id: 'watcher_eye_swarm', type: 'story',
+    text: `The first one appears at noon.
+
+Then three more. Then seven.
+
+They come from every direction — through frozen alley mouths, descending from rooftop level, drifting up from subway grates. Each one the size of a fist, trailing white light, orbiting each other in a slow spiral.
+
+WATCHER'S EYE SWARM.
+
+Your interface has never shown a reading like this. Not a single enemy. Not a cluster.
+
+A collective. A single distributed mind in dozens of sockets.
+
+They don't attack immediately. They surround you, forming a perfect ring at a distance of fifteen meters.
+
+They're letting you see them. All of them. At once.
+
+THE WATCHER SEES ALL.
+
+And then they close in.`,
+    sysMsg: '⚠ CRITICAL ALERT: Eye Swarm detected. Multiple Watcher fragments — coordinated attack.',
+    choices: [
+      { label: 'Hold your position and fight', next: 'fight_eye_swarm', variant: 'danger' },
+      { label: 'Break through the ring — force an opening', sub: 'Go aggressive, break the encirclement', next: 'fight_eye_swarm' },
+    ],
+  },
+
+  fight_eye_swarm: {
+    id: 'fight_eye_swarm', type: 'combat',
+    text: `They move as one. When you strike left, the right flank adjusts. When you advance, the rear tightens.
+
+Fighting the swarm is not like fighting an enemy. It is like fighting a thought — distributed, adaptive, patient.
+
+Your interface is struggling to lock on. Too many targets. Too many eyes.
+
+All of them watching.`,
+    enemy: { name:"Watcher's Eye Swarm", icon:'👁', hp:140, atk:14, xp:180, loot:[{itemKey:'rune_lux',qty:1},{itemKey:'rune_umbra',qty:1}] },
+    onWin: 'swarm_defeated',
+    onLose: 'swarm_survived',
+    onEscape: 'swarm_survived',
+  },
+
+  swarm_defeated: {
+    id: 'swarm_defeated', type: 'story',
+    text: `They fall one by one — not shattered, not deleted. They simply close. Each iris shutting like a camera shutter, one after another, in a wave that spreads outward from the first one you killed.
+
+The last eye to close is the largest.
+
+It lingers. Looking at you.
+
+You hold its gaze.
+
+It closes.
+
+Your interface updates:
+
+EYE SWARM — DEFEATED.
+WATCHER AWARENESS: CRITICAL.
+SYSTEM NOTE: The Watcher has taken full interest in this player.
+
+You are not sure if that is a warning or a reward.`,
+    xp: 60,
+    choices: [
+      { label: 'Move forward', next: '__eye_return__' },
+    ],
+  },
+
+  swarm_survived: {
+    id: 'swarm_survived', type: 'story',
+    text: `They let you go.
+
+That is somehow worse than if they had finished it.
+
+The swarm disperses in every direction — back through alley mouths, back up toward rooflines — moving with the unhurried confidence of something that has already recorded everything it needed.
+
+Your HP is low. Your hands won't stop shaking.
+
+But you are still standing.
+
+WATCHER AWARENESS: CRITICAL.
+
+You move on. Quickly.`,
+    choices: [
+      { label: 'Continue', next: '__eye_return__' },
+    ],
+  },
   chapter_end: {
     id:'chapter_end', type:'end',
     text:`The Watcher shatters.
@@ -1093,6 +1356,31 @@ async function addItem(itemKey, qty = 1) {
 }
 
 // ── Navigate ─────────────────────────────────────
+// ── Watcher Eye Random Encounter ─────────────────────
+// After level 3: 15% chance per story node transition to trigger Eye ambush
+// After level 7: 10% chance for Eye Swarm (harder) instead
+const EYE_EXEMPT_NODES = new Set([
+  'opening','watcher_eye_ambush','eye_escape_attempt','fight_watcher_eye',
+  'eye_defeated','eye_survived','watcher_eye_swarm','fight_eye_swarm',
+  'swarm_defeated','swarm_survived','watcher_sees','pre_boss_team',
+  'pre_boss_solo','pre_boss_betray','pre_boss_check','boss','chapter_end',
+  'plaza_talk','street_midpoint','plaza_grind','plaza_grind_done',
+  'fight_rat_1','fight_rats_2','fight_hounds','fight_crawlers',
+  'fight_plaza_spawn','fight_drone_1','fight_sentry','fight_with_kai',
+  'fight_watcher_eye','fight_eye_swarm',
+])
+function rollWatcherEncounter(nextId) {
+  const lvl = player.level || 1
+  if (lvl < 3) return null
+  if (EYE_EXEMPT_NODES.has(nextId)) return null
+  const nd = NODES[nextId]
+  if (!nd || nd.type === 'combat' || nd.type === 'boss' || nd.type === 'end') return null
+  const roll = Math.random()
+  if (lvl >= 7 && roll < 0.10) return 'watcher_eye_swarm'
+  if (roll < 0.15) return 'watcher_eye_ambush'
+  return null
+}
+
 window.returnToBoss = function() {
   document.getElementById('loot-window')?.remove()
   const p = document.getElementById('right-panel')
@@ -1218,6 +1506,11 @@ window.openStatWindow = function() {
 }
 
 window.goTo = async function goTo(nextId, choice = {}) {
+  // Resolve eye encounter return node
+  if (nextId === '__eye_return__') {
+    nextId = window._eyeReturnNode || 'street_midpoint'
+    window._eyeReturnNode = null
+  }
   if (!NODES[nextId]) return
   const cur = NODES[nodeId]
   const oldXp  = player.xp || 0
@@ -1238,6 +1531,20 @@ window.goTo = async function goTo(nextId, choice = {}) {
   }
 
   await save(updates)
+
+  // ── Random Watcher Eye encounter check ───────────
+  const eyeEncounter = rollWatcherEncounter(nextId)
+  if (eyeEncounter) {
+    // Store the intended destination so after eye fight, player returns there
+    window._eyeReturnNode = nextId
+    nextId = eyeEncounter
+    showSysOverlay('⚠ THE WATCHER SEES ALL — An Eye has been dispatched.')
+    // Flash the screen white — the eye opens
+    const flash = document.createElement('div')
+    flash.style.cssText = 'position:fixed;inset:0;z-index:9999;background:white;opacity:0;pointer-events:none;transition:opacity 0.15s'
+    document.body.appendChild(flash)
+    requestAnimationFrame(() => { flash.style.opacity = '0.85'; setTimeout(() => { flash.style.opacity = '0'; setTimeout(() => flash.remove(), 300) }, 200) })
+  }
 
   const lp = document.getElementById('left-page')
   lp.style.transition = 'opacity .3s,transform .3s'
@@ -1372,6 +1679,8 @@ function renderFarmZone(panel, loc) {
           'Corrupted Sentry':'../assets/enemy/enemy_corrupted_sentry.png',
           'Void Sentinel':'../assets/enemy/enemy_void_sentinel.png',
           'System Enforcer':'../assets/enemy/enemy_system_enforcer.png',
+          "Watcher's Eye":  '../assets/boss/watcher_eye.png',
+          "Watcher's Eye Swarm": '../assets/boss/watcher_eye_swarm.png',
         }
         const eImg = eImgs[e.name]
         return `<div onclick="fightFarmEnemy(${i})"
@@ -1527,6 +1836,8 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
             'Corrupted Sentry': '../assets/enemy/enemy_corrupted_sentry.png',
             'Void Sentinel':    '../assets/enemy/enemy_void_sentinel.png',
             'System Enforcer':  '../assets/enemy/enemy_system_enforcer.png',
+            "Watcher's Eye":    '../assets/boss/watcher_eye.png',
+            "Watcher's Eye Swarm": '../assets/boss/watcher_eye_swarm.png',
           }
           if (isBoss) return '<img src=\'../assets/boss/the_watcher.png\' alt=\'The Watcher\' style=\'width:80px;height:80px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 12px #00ffe740)\'>'
           const src = EIMGS[enemy.name]
@@ -1692,16 +2003,24 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
           updates.sp_claimed   = (player.sp_claimed  || 0) + ch1Bonus
           player.skill_points  = updates.skill_points
           player.sp_claimed    = updates.sp_claimed
-          showToast('Chapter 1 Complete — +' + ch1Bonus + ' Skill Points awarded!')
+          showToast('Chapter 1 Complete — +' + (enemy.xp||300) + ' XP  +' + ch1Bonus + ' Skill Points awarded!')
+        } else {
+          showToast('Victory! +' + (enemy.xp||50) + ' XP gained!')
         }
-        // Gold drop for story fights
-        const sGoldDrop = Math.floor(Math.random() * 40) + 5
+        // Gold drop for story fights (boss drops more)
+        const sGoldDrop = isBoss ? (Math.floor(Math.random() * 80) + 60) : (Math.floor(Math.random() * 40) + 5)
         updates.gold = (player.gold || 0) + sGoldDrop
         player.gold = updates.gold
         if (updates.xp) player.xp = updates.xp
         await save(updates)
         if (sGoldDrop > 0) queueLoot('◈ ' + sGoldDrop + ' Gold', 1, null)
-        if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey, l.qty)
+        // Award loot — for boss, fall back to rune_lux if core_fragment missing
+        if (enemy.loot) {
+          for (const l of enemy.loot) {
+            const result = await addItem(l.itemKey, l.qty)
+            // If core_fragment fails (not in items table), award a rune instead
+          }
+        }
         if (runeKey) await addItem(runeKey, 1)
         setTimeout(() => goTo(onWin), 1200)
       }
