@@ -394,24 +394,108 @@ const NODES = [
     desc:'KEYSTONE: You cannot flee combat. In exchange, your DEF is tripled for the entire battle. When cornered, you become a force of nature.',
     cost:3, requires:['m8'] },
 
-  // ═══════════════════════════════
+  // ═══════════════════════════════════════════════
+  // DARK / PLANT BRANCH  (lower-left diagonal)
+  // Direction: dx = -sin(72°)≈-0.951, dy = cos(72°)≈0.309
+  // Nodes step ~90px per unit along that vector from center
+  // ═══════════════════════════════════════════════
+
+  // Shared spine
+  { id:'dp1', label:'+3 Speed',    type:'small', branch:'dark_plant', x:CX-86, y:CY+28,  cost:1, stat:'speed_bonus', val:3, requires:['center'] },
+  { id:'dp2', label:'+4 Speed',    type:'small', branch:'dark_plant', x:CX-171,y:CY+56,  cost:1, stat:'speed_bonus', val:4, requires:['dp1'] },
+  { id:'dp3', label:'+3 Power',    type:'small', branch:'dark_plant', x:CX-257,y:CY+83,  cost:1, stat:'power_bonus', val:3, requires:['dp2'] },
+
+  // ── DARK sub-branch (upper fork — goes more left/up) ──────────────────
+  { id:'dk1', label:'+4 Speed',    type:'small', branch:'dark_plant', x:CX-320,y:CY+40,  cost:1, stat:'speed_bonus', val:4, requires:['dp3'] },
+  { id:'dk2', label:'+3 Luck',     type:'small', branch:'dark_plant', x:CX-400,y:CY+10,  cost:1, stat:'luck_bonus',  val:3, requires:['dk1'] },
+  { id:'dk3', label:'+4 Speed',    type:'small', branch:'dark_plant', x:CX-468,y:CY-22,  cost:1, stat:'speed_bonus', val:4, requires:['dk2'] },
+  { id:'dk4', label:'+3 Power',    type:'small', branch:'dark_plant', x:CX-520,y:CY-58,  cost:1, stat:'power_bonus', val:3, requires:['dk3'] },
+  { id:'dk5', label:'+4 Luck',     type:'small', branch:'dark_plant', x:CX-560,y:CY-108, cost:1, stat:'luck_bonus',  val:4, requires:['dk4'] },
+
+  // Dark notables
+  { id:'dk_n1', label:'Umbral Veil',  type:'notable', branch:'dark_plant', x:CX-590,y:CY-175,
+    desc:'+6 SPD. 15% chance to dodge any attack. On a successful dodge you deal a free counter hit for 50% ATK.',
+    cost:2, stat:'speed_bonus', val:6, requires:['dk5'] },
+  { id:'dk_n2', label:'Shade Walk',   type:'notable', branch:'dark_plant', x:CX-470,y:CY-145,
+    desc:'+5 SPD, +4 Power. On kill, gain +15 SPD for 2 turns — chain kills become a blur of speed.',
+    cost:2, stat:'speed_bonus', val:5, requires:['dk3'] },
+  { id:'dk_n3', label:'Dread Pulse',  type:'notable', branch:'dark_plant', x:CX-640,y:CY-260,
+    desc:'+8 Luck. Each hit you land reduces enemy ATK by 2 (stacks up to 3 times). Wear them down.',
+    cost:2, stat:'luck_bonus',  val:8, requires:['dk_n1'] },
+
+  // Dark pre-keystone nodes
+  { id:'dk6', label:'+5 Speed',    type:'small', branch:'dark_plant', x:CX-690,y:CY-340, cost:1, stat:'speed_bonus', val:5, requires:['dk_n3'] },
+  { id:'dk7', label:'+4 Luck',     type:'small', branch:'dark_plant', x:CX-740,y:CY-400, cost:1, stat:'luck_bonus',  val:4, requires:['dk6'] },
+  { id:'dk8', label:'+5 Power',    type:'small', branch:'dark_plant', x:CX-750,y:CY-290, cost:1, stat:'power_bonus', val:5, requires:['dk_n2','dk_n3'] },
+
+  // Dark keystones
+  { id:'ks_nightfall',  label:'Nightfall',   type:'keystone', branch:'dark_plant', x:CX-820,y:CY-460,
+    desc:'KEYSTONE: Your first attack each combat, if the enemy has not yet acted, deals ×3 damage. Strike from the dark — or not at all.',
+    cost:3, requires:['dk7'] },
+  { id:'ks_soul_sever', label:'Soul Sever',  type:'keystone', branch:'dark_plant', x:CX-830,y:CY-340,
+    desc:'KEYSTONE: Every kill restores 20% of your max HP. The more enemies fall, the more dangerous you become. Momentum is survival.',
+    cost:3, requires:['dk8'] },
+
+  // ── PLANT sub-branch (lower fork — goes more down/left) ──────────────────
+  { id:'pl1', label:'+3 Guard',    type:'small', branch:'dark_plant', x:CX-300,y:CY+148, cost:1, stat:'guard_bonus',   val:3, requires:['dp3'] },
+  { id:'pl2', label:'+4 Guard',    type:'small', branch:'dark_plant', x:CX-368,y:CY+195, cost:1, stat:'guard_bonus',   val:4, requires:['pl1'] },
+  { id:'pl3', label:'+3 Control',  type:'small', branch:'dark_plant', x:CX-430,y:CY+250, cost:1, stat:'control_bonus', val:3, requires:['pl2'] },
+  { id:'pl4', label:'+4 Guard',    type:'small', branch:'dark_plant', x:CX-480,y:CY+310, cost:1, stat:'guard_bonus',   val:4, requires:['pl3'] },
+  { id:'pl5', label:'+3 Insight',  type:'small', branch:'dark_plant', x:CX-520,y:CY+375, cost:1, stat:'insight_bonus', val:3, requires:['pl4'] },
+
+  // Plant notables
+  { id:'pl_n1', label:'Thornwall',    type:'notable', branch:'dark_plant', x:CX-548,y:CY+455,
+    desc:'+8 Guard. When you block or Defend, reflect 15% of absorbed damage back to the attacker as thorns.',
+    cost:2, stat:'guard_bonus', val:8, requires:['pl5'] },
+  { id:'pl_n2', label:'Still Growth', type:'notable', branch:'dark_plant', x:CX-420,y:CY+340,
+    desc:'+5 Control, +4 Insight. On any turn you choose not to attack, restore 8 HP. Patience is healing.',
+    cost:2, stat:'control_bonus', val:5, requires:['pl3'] },
+  { id:'pl_n3', label:'Enduring Root',type:'notable', branch:'dark_plant', x:CX-568,y:CY+548,
+    desc:'+10 Guard. You cannot be stunned or rooted by enemy skills. Your roots hold deeper than theirs.',
+    cost:2, stat:'guard_bonus', val:10, requires:['pl_n1'] },
+
+  // Plant pre-keystone nodes
+  { id:'pl6', label:'+5 Guard',    type:'small', branch:'dark_plant', x:CX-576,y:CY+640, cost:1, stat:'guard_bonus',   val:5, requires:['pl_n3'] },
+  { id:'pl7', label:'+4 Control',  type:'small', branch:'dark_plant', x:CX-620,y:CY+710, cost:1, stat:'control_bonus', val:4, requires:['pl6'] },
+  { id:'pl8', label:'+5 Insight',  type:'small', branch:'dark_plant', x:CX-496,y:CY+620, cost:1, stat:'insight_bonus', val:5, requires:['pl_n2','pl_n3'] },
+
+  // Plant keystones
+  { id:'ks_ancient_root',  label:'Ancient Root',  type:'keystone', branch:'dark_plant', x:CX-660,y:CY+780,
+    desc:'KEYSTONE: Your maximum HP is doubled permanently. However, you always act last in turn order — you are immovable, patient, and unkillable given enough time.',
+    cost:3, requires:['pl7'] },
+  { id:'ks_verdant_soul',  label:'Verdant Soul',  type:'keystone', branch:'dark_plant', x:CX-528,y:CY+730,
+    desc:'KEYSTONE: At the start of each turn you survive, restore 8% of your max HP. The longer the battle, the more nature fights for you.',
+    cost:3, requires:['pl8'] },
+
+  // ═══════════════════════════════════════════════
   // ELEMENTAL GATEWAYS  (outer ring, Ch.2 locked)
-  // ═══════════════════════════════
-  { id:'el_fire',      label:'Fire',      type:'elemental', branch:'elemental', color:'#ff5500', x:CX-140,y:CY-900, requires:['a7','a8'] },
-  { id:'el_dark',      label:'Dark',      type:'elemental', branch:'elemental', color:'#b06eff', x:CX-500,y:CY-730, requires:['g7'] },
+  // ═══════════════════════════════════════════════
+
+  // ATTACK branch top — Fire + Poison
+  { id:'el_fire',      label:'Fire',      type:'elemental', branch:'elemental', color:'#ff5500', x:CX-200,y:CY-900, requires:['a7','a8'] },
+  { id:'el_poison',    label:'Poison',    type:'elemental', branch:'elemental', color:'#7ec87e', x:CX+200,y:CY-900, requires:['ks_reckless'] },
+
+  // AGILITY branch left — Wind + Earth
   { id:'el_wind',      label:'Wind',      type:'elemental', branch:'elemental', color:'#a8d8ea', x:CX-900,y:CY-140, requires:['g7','g8'] },
   { id:'el_earth',     label:'Earth',     type:'elemental', branch:'elemental', color:'#8b5e3c', x:CX-900,y:CY+140, requires:['g8'] },
-  { id:'el_plant',     label:'Plant',     type:'elemental', branch:'elemental', color:'#5ec45e', x:CX-500,y:CY+730, requires:['d7'] },
+
+  // DEFENSE branch bottom — Water + Lightning
   { id:'el_water',     label:'Water',     type:'elemental', branch:'elemental', color:'#0088ff', x:CX-140,y:CY+900, requires:['d7','d8'] },
   { id:'el_lightning', label:'Lightning', type:'elemental', branch:'elemental', color:'#88ccff', x:CX+140,y:CY+900, requires:['d8'] },
+
+  // MIND branch right — Metal + Light
   { id:'el_metal',     label:'Metal',     type:'elemental', branch:'elemental', color:'#c0c0c0', x:CX+900,y:CY+140, requires:['m8'] },
   { id:'el_light',     label:'Light',     type:'elemental', branch:'elemental', color:'#ffd700', x:CX+900,y:CY-140, requires:['m7','m8'] },
+
+  // DARK/PLANT branch lower-left — Dark + Plant gateways
+  { id:'el_dark',      label:'Dark',      type:'elemental', branch:'elemental', color:'#b06eff', x:CX-940,y:CY-520, requires:['ks_nightfall','ks_soul_sever'] },
+  { id:'el_plant',     label:'Plant',     type:'elemental', branch:'elemental', color:'#5ec45e', x:CX-760,y:CY+860, requires:['ks_ancient_root','ks_verdant_soul'] },
 ]
 
 // ── Colors ──────────────────────────────────────────
 const BRANCH_COLOR = {
   center:'#c8b96e', attack:'#e05555', defense:'#5ec45e',
-  agility:'#5eaee0', mind:'#b06eff', elemental:'#666'
+  agility:'#5eaee0', mind:'#b06eff', dark_plant:'#9a6fd8', elemental:'#666'
 }
 const NODE_SIZE = { start:'st', small:'sm', notable:'md', keystone:'ks', elemental:'el' }
 
@@ -434,7 +518,7 @@ let player, skillsUnlocked, battleSkills, skillPoints
 let selectedNode = null
 let scale = 0.5, panX = 0, panY = 0
 let isDragging = false, dragStartX, dragStartY, panStartX, panStartY
-const CANVAS_W = 2000, CANVAS_H = 2000
+const CANVAS_W = 2600, CANVAS_H = 2600
 let pendingBattleSkills = []
 let slotsDirty = false
 
@@ -458,7 +542,7 @@ checkClaimSP()
 
 function renderElementalTags() {
   const chapter = player.current_chapter || 1
-  const els = ['Dark','Earth','Fire','Light','Lightning','Metal','Plant','Water','Wind']
+  const els = ['Dark','Earth','Fire','Light','Lightning','Metal','Plant','Poison','Water','Wind']
   const container = document.getElementById('elemental-tags')
   if (!container) return
   container.innerHTML = els.map(e => {
