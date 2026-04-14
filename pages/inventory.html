@@ -695,18 +695,21 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     'aero+terra+acc':           {n:2,name:'Dust Band',          rarity:'uncommon',  slot:'accessory', stats:{speed_bonus:2,guard_bonus:1}},
     'lux+umbra+acc':            {n:2,name:'Twilight Loop',      rarity:'rare',      slot:'accessory', stats:{insight_bonus:2,power_bonus:1,guard_bonus:1}},
   }
-  function findRuneword(runes, slot) {
+  function findRuneword(runes, slot, socketsTotal) {
     const count = runes.length
     const key   = [...runes].sort().join('+')
 
-    // Only match if the runeword requires EXACTLY this many runes
-    if (RUNEWORDS[key] && RUNEWORDS[key].n === count) return RUNEWORDS[key]
+    // Runeword only triggers when:
+    // 1. The rune combo matches exactly
+    // 2. The runeword requires exactly this many runes
+    // 3. The item has exactly this many sockets total (no partial fills on larger items)
+    if (RUNEWORDS[key] && RUNEWORDS[key].n === count && count === socketsTotal) return RUNEWORDS[key]
 
     // Try with slot suffix (armor/uni) — suffix adds to key but not rune count
     const suffixes = ['uni', slot==='accessory'?'acc':null, slot==='armor'?'armor':null].filter(Boolean)
     for (const s of suffixes) {
       const k2 = [...runes, s].sort().join('+')
-      if (RUNEWORDS[k2] && RUNEWORDS[k2].n === count) return RUNEWORDS[k2]
+      if (RUNEWORDS[k2] && RUNEWORDS[k2].n === count && count === socketsTotal) return RUNEWORDS[k2]
     }
     return null
   }
@@ -764,9 +767,9 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     const newRunes  = [...(item.socketed_runes||[]), runeKey]
     const newUsed   = used + 1
 
-    // Check for runeword
+    // Check for runeword — only triggers if rune count fills ALL sockets exactly
     const slot = itemType === 'armor' ? 'armor' : itemType === 'weapon' ? 'weapon' : 'accessory'
-    const rw   = findRuneword(newRunes, slot)
+    const rw   = findRuneword(newRunes, slot, sockets)
 
     // Build stat updates from runeword
     const statUpdates = {}
