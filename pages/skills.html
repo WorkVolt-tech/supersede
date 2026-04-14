@@ -395,105 +395,105 @@ const NODES = [
     cost:3, requires:['m8'] },
 
   // ═══════════════════════════════════════════════
-  // DARK / PLANT BRANCH  (lower-left — mirrors Attack branch structure)
-  // Each step: X-=64, Y+=64 (45° diagonal, 90px spacing)
-  // Dark sub-path (left fork):  X shifts more, Y shifts less
-  // Plant sub-path (right fork): Y shifts more, X shifts less
-  // Completely self-contained — only connects to 'center'
+  // DARK / PLANT BRANCH  (lower-left — exact Agility structure rotated 45°)
+  // Every coordinate = Agility coord rotated 45° clockwise
+  // Dark = Agility upper fork | Plant = Agility lower fork
   // ═══════════════════════════════════════════════
 
-  // ── Shared spine (mirrors a1, a2, a3) ──
-  { id:'dp1', label:'+3 Speed',  type:'small',   branch:'dark_plant', x:CX-64, y:CY+64,  cost:1, stat:'speed_bonus', val:3, requires:['center'] },
-  { id:'dp2', label:'+4 Speed',  type:'small',   branch:'dark_plant', x:CX-128,y:CY+128, cost:1, stat:'speed_bonus', val:4, requires:['dp1'] },
-  { id:'dp3', label:'+3 Power',  type:'small',   branch:'dark_plant', x:CX-192,y:CY+192, cost:1, stat:'power_bonus', val:3, requires:['dp2'] },
+  // Shared spine (mirrors g1, g2, g3)
+  { id:'dp1', label:'+3 Speed',  type:'small', branch:'dark_plant', x:CX-64, y:CY+64,  cost:1, stat:'speed_bonus', val:3, requires:['center'] },
+  { id:'dp2', label:'+4 Speed',  type:'small', branch:'dark_plant', x:CX-120,y:CY+120, cost:1, stat:'speed_bonus', val:4, requires:['dp1'] },
+  { id:'dp3', label:'+3 Power',  type:'small', branch:'dark_plant', x:CX-177,y:CY+177, cost:1, stat:'power_bonus', val:3, requires:['dp2'] },
 
-  // ── Dark left fork (mirrors ap1,ap2,ap3 — shifts more in X) ──
-  { id:'dk_f1', label:'+3 Speed', type:'small',  branch:'dark_plant', x:CX-270,y:CY+225, cost:1, stat:'speed_bonus', val:3, requires:['dp2'] },
-  { id:'dk_f2', label:'+4 Luck',  type:'small',  branch:'dark_plant', x:CX-348,y:CY+258, cost:1, stat:'luck_bonus',  val:4, requires:['dk_f1'] },
-  { id:'dk_f3', label:'+3 Power', type:'small',  branch:'dark_plant', x:CX-410,y:CY+278, cost:1, stat:'power_bonus', val:3, requires:['dk_f2'] },
+  // Dark fork — upper in Agility, becomes upper-left here (mirrors gu1-gu4)
+  { id:'dk_f1', label:'+4 Speed', type:'small', branch:'dark_plant', x:CX-198,y:CY+64,  cost:1, stat:'speed_bonus', val:4, requires:['dp2'] },
+  { id:'dk_f2', label:'+3 Luck',  type:'small', branch:'dark_plant', x:CX-255,y:CY+120, cost:1, stat:'luck_bonus',  val:3, requires:['dk_f1'] },
+  { id:'dk_f3', label:'+4 Speed', type:'small', branch:'dark_plant', x:CX-322,y:CY+74,  cost:1, stat:'speed_bonus', val:4, requires:['dk_f2'] },
+  { id:'dk_f4', label:'+3 Luck',  type:'small', branch:'dark_plant', x:CX-375,y:CY+120, cost:1, stat:'luck_bonus',  val:3, requires:['dk_f3'] },
 
-  // ── Plant right fork (mirrors ac1,ac2,ac3 — shifts more in Y) ──
-  { id:'pl_f1', label:'+3 Guard',   type:'small', branch:'dark_plant', x:CX-225,y:CY+270, cost:1, stat:'guard_bonus',   val:3, requires:['dp2'] },
-  { id:'pl_f2', label:'+4 Guard',   type:'small', branch:'dark_plant', x:CX-258,y:CY+348, cost:1, stat:'guard_bonus',   val:4, requires:['pl_f1'] },
-  { id:'pl_f3', label:'+3 Control', type:'small', branch:'dark_plant', x:CX-278,y:CY+410, cost:1, stat:'control_bonus', val:3, requires:['pl_f2'] },
+  // Plant fork — lower in Agility, becomes lower-down here (mirrors gl1-gl4)
+  { id:'pl_f1', label:'+3 Guard',   type:'small', branch:'dark_plant', x:CX-64, y:CY+198, cost:1, stat:'guard_bonus',   val:3, requires:['dp2'] },
+  { id:'pl_f2', label:'+4 Guard',   type:'small', branch:'dark_plant', x:CX-120,y:CY+255, cost:1, stat:'guard_bonus',   val:4, requires:['pl_f1'] },
+  { id:'pl_f3', label:'+3 Control', type:'small', branch:'dark_plant', x:CX-74, y:CY+322, cost:1, stat:'control_bonus', val:3, requires:['pl_f2'] },
+  { id:'pl_f4', label:'+4 Guard',   type:'small', branch:'dark_plant', x:CX-120,y:CY+375, cost:1, stat:'guard_bonus',   val:4, requires:['pl_f3'] },
 
-  // ── Notable tier 1 (mirrors an1, an2, an3) ──
-  { id:'dp_n1', label:'Nightshroud',  type:'notable', branch:'dark_plant', x:CX-256,y:CY+300,
-    desc:'+8 SPD. On the first turn of combat, gain a free dodge that cannot miss. Opening strikes fear the shadow.',
+  // Notable tier 1 (mirrors gn1 center, gn2 upper, gn3 lower)
+  { id:'dpn1', label:'Nightshroud', type:'notable', branch:'dark_plant', x:CX-260,y:CY+215,
+    desc:'+8 Speed. On the first turn of combat gain a free dodge. Opening strikes fear the shadow.',
     cost:2, stat:'speed_bonus', val:8, requires:['dp3'] },
-  { id:'dk_n1', label:'Umbral Veil',  type:'notable', branch:'dark_plant', x:CX-460,y:CY+285,
-    desc:'+6 SPD. 15% chance to dodge any attack. On a dodge, deal a free counter hit for 50% ATK.',
-    cost:2, stat:'speed_bonus', val:6, requires:['dk_f3'] },
-  { id:'pl_n1', label:'Thornwall',    type:'notable', branch:'dark_plant', x:CX-285,y:CY+460,
+  { id:'dkn1', label:'Umbral Veil', type:'notable', branch:'dark_plant', x:CX-414,y:CY+138,
+    desc:'+6 SPD. 15% chance to dodge. On a dodge, deal a free counter hit for 50% ATK.',
+    cost:2, stat:'speed_bonus', val:6, requires:['dk_f4'] },
+  { id:'pln1', label:'Thornwall',   type:'notable', branch:'dark_plant', x:CX-138,y:CY+414,
     desc:'+8 Guard. When you Defend, reflect 15% of absorbed damage back as thorns.',
-    cost:2, stat:'guard_bonus', val:8, requires:['pl_f3'] },
+    cost:2, stat:'guard_bonus', val:8, requires:['pl_f4'] },
 
-  // ── Deeper spine (mirrors a4, a5, a6) ──
-  { id:'dp4', label:'+4 Speed',  type:'small',   branch:'dark_plant', x:CX-358,y:CY+358, cost:1, stat:'speed_bonus', val:4, requires:['dp_n1'] },
-  { id:'dp5', label:'+3 Guard',  type:'small',   branch:'dark_plant', x:CX-422,y:CY+422, cost:1, stat:'guard_bonus', val:3, requires:['dp4'] },
-  { id:'dp6', label:'+4 Power',  type:'small',   branch:'dark_plant', x:CX-486,y:CY+486, cost:1, stat:'power_bonus', val:4, requires:['dp5'] },
+  // Spine continues (mirrors g4, g5, g6)
+  { id:'dp4', label:'+4 Speed', type:'small', branch:'dark_plant', x:CX-297,y:CY+297, cost:1, stat:'speed_bonus', val:4, requires:['dpn1'] },
+  { id:'dp5', label:'+3 Guard', type:'small', branch:'dark_plant', x:CX-353,y:CY+354, cost:1, stat:'guard_bonus', val:3, requires:['dp4'] },
+  { id:'dp6', label:'+4 Power', type:'small', branch:'dark_plant', x:CX-410,y:CY+410, cost:1, stat:'power_bonus', val:4, requires:['dp5'] },
 
-  // ── Dark deep fork (mirrors ap5, ap6) ──
-  { id:'dk1', label:'+4 Luck',   type:'small',   branch:'dark_plant', x:CX-536,y:CY+445, cost:1, stat:'luck_bonus',  val:4, requires:['dk_n1','dp4'] },
-  { id:'dk2', label:'+5 Speed',  type:'small',   branch:'dark_plant', x:CX-604,y:CY+465, cost:1, stat:'speed_bonus', val:5, requires:['dk1'] },
+  // Dark deep fork (mirrors gu5, gu6)
+  { id:'dk1', label:'+4 Luck',  type:'small', branch:'dark_plant', x:CX-403,y:CY+262, cost:1, stat:'luck_bonus',  val:4, requires:['dkn1','dp4'] },
+  { id:'dk2', label:'+5 Speed', type:'small', branch:'dark_plant', x:CX-460,y:CY+318, cost:1, stat:'speed_bonus', val:5, requires:['dk1'] },
 
-  // ── Plant deep fork (mirrors ac5, ac6) ──
-  { id:'pl1', label:'+4 Guard',   type:'small',  branch:'dark_plant', x:CX-445,y:CY+536, cost:1, stat:'guard_bonus',   val:4, requires:['pl_n1','dp4'] },
-  { id:'pl2', label:'+4 Control', type:'small',  branch:'dark_plant', x:CX-465,y:CY+604, cost:1, stat:'control_bonus', val:4, requires:['pl1'] },
+  // Plant deep fork (mirrors gl5, gl6)
+  { id:'pl1', label:'+4 Guard',   type:'small', branch:'dark_plant', x:CX-262,y:CY+403, cost:1, stat:'guard_bonus',   val:4, requires:['pln1','dp4'] },
+  { id:'pl2', label:'+4 Control', type:'small', branch:'dark_plant', x:CX-318,y:CY+460, cost:1, stat:'control_bonus', val:4, requires:['pl1'] },
 
-  // ── Notable tier 2 (mirrors an4, an5, an6) ──
-  { id:'dk_n2', label:'Shade Walk',   type:'notable', branch:'dark_plant', x:CX-650,y:CY+460,
-    desc:'+5 SPD, +4 Power. On kill, gain +15 SPD for 2 turns — chain kills become a blur.',
+  // Notable tier 2 (mirrors gn4, gn5, gn6)
+  { id:'dkn2', label:'Shade Walk',    type:'notable', branch:'dark_plant', x:CX-523,y:CY+354,
+    desc:'+5 SPD, +4 Power. On kill gain +15 SPD for 2 turns — chain kills become a blur.',
     cost:2, stat:'speed_bonus', val:5, requires:['dk2'] },
-  { id:'pl_n2', label:'Enduring Root',type:'notable', branch:'dark_plant', x:CX-460,y:CY+650,
+  { id:'pln2', label:'Enduring Root', type:'notable', branch:'dark_plant', x:CX-354,y:CY+523,
     desc:'+10 Guard. You cannot be stunned or rooted by enemy skills. Your roots hold deeper.',
     cost:2, stat:'guard_bonus', val:10, requires:['pl2'] },
-  { id:'dp_n2', label:'Dread Pulse',  type:'notable', branch:'dark_plant', x:CX-558,y:CY+558,
+  { id:'dpn2', label:'Dread Pulse',   type:'notable', branch:'dark_plant', x:CX-460,y:CY+460,
     desc:'+8 Luck. Each hit reduces enemy ATK by 2, stacks up to 3 times. Wear them down.',
     cost:2, stat:'luck_bonus',  val:8, requires:['dp6'] },
 
-  // ── Pre-keystone (mirrors a7, a8) ──
-  { id:'dk3', label:'+5 Speed',  type:'small',   branch:'dark_plant', x:CX-710,y:CY+540, cost:1, stat:'speed_bonus', val:5, requires:['dk_n2','dp_n2'] },
-  { id:'pl3', label:'+5 Guard',  type:'small',   branch:'dark_plant', x:CX-540,y:CY+710, cost:1, stat:'guard_bonus', val:5, requires:['pl_n2','dp_n2'] },
+  // Pre-keystone (mirrors g7, g8)
+  { id:'dp7', label:'+5 Speed', type:'small', branch:'dark_plant', x:CX-559,y:CY+460, cost:1, stat:'speed_bonus', val:5, requires:['dkn2','dpn2'] },
+  { id:'dp8', label:'+5 Guard', type:'small', branch:'dark_plant', x:CX-460,y:CY+559, cost:1, stat:'guard_bonus', val:5, requires:['pln2','dpn2'] },
 
-  // ── Dark keystones (mirrors ks_bloodthirst, ks_reckless) ──
-  { id:'ks_nightfall',  label:'Nightfall',  type:'keystone', branch:'dark_plant', x:CX-790,y:CY+570,
+  // Dark keystones
+  { id:'ks_soul_sever',  label:'Soul Sever',  type:'keystone', branch:'dark_plant', x:CX-672,y:CY+474,
+    desc:'KEYSTONE: Every kill restores 20% of your max HP. The more enemies fall, the stronger you become.',
+    cost:3, requires:['dp7'] },
+  { id:'ks_nightfall',   label:'Nightfall',   type:'keystone', branch:'dark_plant', x:CX-590,y:CY+414,
     desc:'KEYSTONE: Your first attack each combat, if the enemy has not yet acted, deals x3 damage. Strike from the dark — or not at all.',
-    cost:3, requires:['dk3'] },
-  { id:'ks_soul_sever', label:'Soul Sever', type:'keystone', branch:'dark_plant', x:CX-730,y:CY+640,
-    desc:'KEYSTONE: Every kill restores 20% of your max HP. The more enemies fall, the more dangerous you become.',
-    cost:3, requires:['dk3'] },
+    cost:3, requires:['dp7'] },
 
-  // ── Plant keystones ──
-  { id:'ks_ancient_root', label:'Ancient Root', type:'keystone', branch:'dark_plant', x:CX-570,y:CY+790,
-    desc:'KEYSTONE: Your maximum HP is doubled. However, you always act last in turn order — unkillable, patient, unstoppable.',
-    cost:3, requires:['pl3'] },
-  { id:'ks_verdant_soul', label:'Verdant Soul', type:'keystone', branch:'dark_plant', x:CX-640,y:CY+730,
+  // Plant keystones
+  { id:'ks_ancient_root', label:'Ancient Root', type:'keystone', branch:'dark_plant', x:CX-414,y:CY+590,
+    desc:'KEYSTONE: Your maximum HP is doubled. However you always act last in turn order — unkillable, patient, unstoppable given time.',
+    cost:3, requires:['dp8'] },
+  { id:'ks_verdant_soul', label:'Verdant Soul', type:'keystone', branch:'dark_plant', x:CX-474,y:CY+672,
     desc:'KEYSTONE: At the start of each turn you survive, restore 8% of your max HP. The longer the battle, the more nature fights for you.',
-    cost:3, requires:['pl3'] },
+    cost:3, requires:['dp8'] },
   // ═══════════════════════════════════════════════
   // ELEMENTAL GATEWAYS  (outer ring, Ch.2 locked)
   // ═══════════════════════════════════════════════
 
   // ATTACK branch top — Fire + Poison
-  { id:'el_fire',      label:'Fire',      type:'elemental', branch:'elemental', color:'#ff5500', x:CX-200,y:CY-900, requires:['a7','a8'] },
+  { id:'el_fire',      label:'Fire',      type:'elemental', branch:'elemental', color:'#ff5500', x:CX-200,y:CY-900, requires:['a7'] },
   { id:'el_poison',    label:'Poison',    type:'elemental', branch:'elemental', color:'#7ec87e', x:CX+200,y:CY-900, requires:['ks_reckless'] },
 
   // AGILITY branch left — Wind + Earth
-  { id:'el_wind',      label:'Wind',      type:'elemental', branch:'elemental', color:'#a8d8ea', x:CX-900,y:CY-140, requires:['g7','g8'] },
+  { id:'el_wind',      label:'Wind',      type:'elemental', branch:'elemental', color:'#a8d8ea', x:CX-900,y:CY-140, requires:['g7'] },
   { id:'el_earth',     label:'Earth',     type:'elemental', branch:'elemental', color:'#8b5e3c', x:CX-900,y:CY+140, requires:['g8'] },
 
   // DEFENSE branch bottom — Water + Lightning
-  { id:'el_water',     label:'Water',     type:'elemental', branch:'elemental', color:'#0088ff', x:CX-140,y:CY+900, requires:['d7','d8'] },
+  { id:'el_water',     label:'Water',     type:'elemental', branch:'elemental', color:'#0088ff', x:CX-140,y:CY+900, requires:['d7'] },
   { id:'el_lightning', label:'Lightning', type:'elemental', branch:'elemental', color:'#88ccff', x:CX+140,y:CY+900, requires:['d8'] },
 
   // MIND branch right — Metal + Light
   { id:'el_metal',     label:'Metal',     type:'elemental', branch:'elemental', color:'#c0c0c0', x:CX+900,y:CY+140, requires:['m8'] },
-  { id:'el_light',     label:'Light',     type:'elemental', branch:'elemental', color:'#ffd700', x:CX+900,y:CY-140, requires:['m7','m8'] },
+  { id:'el_light',     label:'Light',     type:'elemental', branch:'elemental', color:'#ffd700', x:CX+900,y:CY-140, requires:['m7'] },
 
-  // DARK/PLANT branch lower-left — Dark + Plant gateways
-  { id:'el_dark',  label:'Dark',  type:'elemental', branch:'elemental', color:'#b06eff', x:CX-870,y:CY+610, requires:['ks_nightfall','ks_soul_sever'] },
-  { id:'el_plant', label:'Plant', type:'elemental', branch:'elemental', color:'#5ec45e', x:CX-610,y:CY+870, requires:['ks_ancient_root','ks_verdant_soul'] },
+  // DARK/PLANT branch — elemental gateways sit just beyond the keystones
+  { id:'el_dark',  label:'Dark',  type:'elemental', branch:'elemental', color:'#b06eff', x:CX-760,y:CY+538, requires:['ks_soul_sever'] },
+  { id:'el_plant', label:'Plant', type:'elemental', branch:'elemental', color:'#5ec45e', x:CX-538,y:CY+760, requires:['ks_ancient_root'] },
 ]
 
 // ── Colors ──────────────────────────────────────────
