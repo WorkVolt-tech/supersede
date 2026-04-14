@@ -6,38 +6,73 @@
   <title>SuperSede — Skill Tree</title>
   <link rel="stylesheet" href="../styles/main.css">
   <style>
-    .tree-wrap { overflow-x:auto; padding-bottom: 1rem; }
-    .element-tab { font-family:'Share Tech Mono',monospace; font-size:.58rem; letter-spacing:.06em;
-      padding:4px 10px; border-radius:20px; cursor:pointer; border:.5px solid; transition:all .15s; white-space:nowrap; }
-    .skill-node {
-      position:relative; display:flex; flex-direction:column; align-items:center;
-      cursor:pointer; transition:transform .15s;
+    #tree-overlay {
+      display:none; position:fixed; inset:0; z-index:900;
+      background:#0d0b08; flex-direction:column;
     }
-    .skill-node:hover { transform:scale(1.05); }
-    .skill-node.locked .skill-img-wrap { opacity:.35; filter:grayscale(1); }
-    .skill-node.unlocked .skill-img-wrap { box-shadow:0 0 10px var(--glow,#c8b96e88); }
-    .skill-node.active .skill-img-wrap { box-shadow:0 0 16px var(--glow,#c8b96e), 0 0 4px var(--glow,#c8b96e); }
-    .skill-img-wrap {
-      width:52px; height:52px; border-radius:8px; border:2px solid; overflow:hidden;
-      display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.25);
-      transition:all .2s;
+    #tree-overlay.open { display:flex; }
+    #tree-topbar {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:.5rem 1rem; background:#1a1208;
+      border-bottom:1px solid rgba(200,184,128,.2);
+      flex-shrink:0; gap:.75rem; flex-wrap:wrap;
     }
-    .skill-img-wrap img { width:44px; height:44px; object-fit:contain; }
-    .skill-label { font-family:'Share Tech Mono',monospace; font-size:.48rem; color:#1a1208;
-      margin-top:3px; text-align:center; max-width:64px; line-height:1.2; }
-    .skill-tag { font-size:.4rem; font-family:'Share Tech Mono',monospace; padding:1px 4px;
-      border-radius:8px; margin-top:2px; }
-    .connector-v { width:2px; height:18px; background:rgba(139,106,32,.3); margin:0 auto; }
-    .connector-h { height:2px; background:rgba(139,106,32,.3); flex:1; }
-    .branch-row { display:flex; align-items:flex-start; gap:0; }
-    .slot-box { border:.5px solid rgba(139,106,32,.35); border-radius:5px; padding:.5rem;
-      background:rgba(0,0,0,.04); min-height:70px; display:flex; align-items:center;
-      justify-content:center; transition:all .2s; position:relative; }
-    .slot-box.filled { background:rgba(200,184,128,.15); border-color:rgba(139,106,32,.6); }
-    .slot-box.drop-target { border-color:#c8b96e; background:rgba(200,184,128,.2); }
-    .battle-skill-chip { display:flex; align-items:center; gap:5px; width:100%; }
-    .remove-slot { position:absolute; top:3px; right:3px; background:none; border:none;
-      font-size:.7rem; cursor:pointer; color:#c04040; padding:0; line-height:1; }
+    #tree-topbar h2 { font-family:'Cinzel',serif; font-size:.95rem; color:#c8b96e; margin:0; }
+    .sp-badge { font-family:'Share Tech Mono',monospace; font-size:.72rem; color:#c8b96e;
+      background:rgba(200,184,128,.1); border:.5px solid rgba(200,184,128,.3);
+      padding:3px 10px; border-radius:20px; }
+    .tree-close-btn, .tree-reset-btn, .tree-slots-btn {
+      font-family:'Share Tech Mono',monospace; font-size:.6rem;
+      padding:4px 10px; cursor:pointer; border-radius:3px; }
+    .tree-close-btn { color:#7a6435; background:none; border:.5px solid rgba(139,106,32,.3); }
+    .tree-reset-btn { color:#c04040; background:rgba(192,64,64,.08); border:.5px solid rgba(192,64,64,.3); }
+    .tree-slots-btn { color:#c8b96e; background:rgba(200,184,128,.1); border:.5px solid rgba(200,184,128,.3); }
+    #tree-canvas-wrap {
+      flex:1; overflow:hidden; position:relative; cursor:grab;
+    }
+    #tree-canvas-wrap.dragging { cursor:grabbing; }
+    #tree-canvas { position:absolute; top:0; left:0; transform-origin:0 0; }
+    #tree-svg    { position:absolute; top:0; left:0; transform-origin:0 0; pointer-events:none; overflow:visible; }
+    .sn { position:absolute; display:flex; flex-direction:column; align-items:center;
+      cursor:pointer; user-select:none; }
+    .sn-ring { border-radius:50%; border:2px solid; display:flex; align-items:center;
+      justify-content:center; transition:box-shadow .2s, transform .15s;
+      background:rgba(13,11,8,.9); flex-shrink:0; }
+    .sn:hover .sn-ring { transform:scale(1.12); }
+    .sn.unlocked .sn-ring { background:rgba(30,22,8,.95); }
+    .sn.selected .sn-ring { outline:2px solid #c8b96e; outline-offset:3px; }
+    .sn-sm .sn-ring { width:28px; height:28px; }
+    .sn-md .sn-ring { width:40px; height:40px; }
+    .sn-ks .sn-ring { width:64px; height:64px; border-width:3px; }
+    .sn-el .sn-ring { width:46px; height:46px; border-style:dashed; }
+    .sn-st .sn-ring { width:52px; height:52px; border-width:2.5px; }
+    .sn-lbl { font-family:'Share Tech Mono',monospace; font-size:9px; text-align:center;
+      max-width:74px; line-height:1.2; margin-top:3px;
+      text-shadow:0 1px 4px rgba(0,0,0,1); pointer-events:none; }
+    .sn-ks .sn-lbl { font-size:10px; font-family:'Cinzel',serif; }
+    #node-detail {
+      position:fixed; bottom:0; left:0; right:0; z-index:910;
+      background:#140f08; border-top:1px solid rgba(200,184,128,.25);
+      padding:.75rem 1rem; display:none; max-height:42vh; overflow-y:auto;
+    }
+    #node-detail.open { display:block; }
+    #detail-close { position:absolute; top:.6rem; right:.75rem;
+      background:none; border:none; color:#7a6435; font-size:1rem; cursor:pointer; }
+    #slots-bar {
+      position:fixed; top:0; right:0; bottom:0; width:210px; z-index:905;
+      background:#140f08; border-left:1px solid rgba(200,184,128,.2);
+      display:none; flex-direction:column; padding:.75rem; gap:5px;
+    }
+    #slots-bar.open { display:flex; }
+    .slot-item { border:.5px solid rgba(139,106,32,.25); border-radius:4px;
+      padding:.4rem .5rem; display:flex; align-items:center; gap:.4rem;
+      background:rgba(0,0,0,.2); min-height:44px; }
+    .slot-item.filled { border-color:rgba(200,184,128,.45); background:rgba(200,184,128,.05); }
+    .slot-remove { background:none; border:none; color:#c04040; font-size:.75rem;
+      cursor:pointer; padding:0; margin-left:auto; flex-shrink:0; }
+    #minimap { position:fixed; bottom:12px; left:12px; z-index:912;
+      width:130px; height:100px; background:rgba(13,11,8,.9);
+      border:.5px solid rgba(139,106,32,.3); border-radius:4px; }
   </style>
 </head>
 <body>
@@ -49,22 +84,26 @@
         <p class="chapter-label">Character</p>
         <h1 class="page-title">Skill Tree</h1>
         <hr class="ink-divider">
-
-        <!-- Points & Reset -->
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
           <div>
-            <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;margin:0">SKILL POINTS</p>
-            <p id="sp-display" style="font-family:'Cinzel',serif;font-size:1.3rem;font-weight:600;color:#c8b96e;margin:0">0</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#3a2008;margin:0">SKILL POINTS</p>
+            <p id="sp-display" style="font-family:'Cinzel',serif;font-size:1.4rem;font-weight:600;color:#c8b96e;margin:0">0</p>
           </div>
-          <button onclick="openResetConfirm()" style="font-family:'Share Tech Mono',monospace;font-size:.55rem;padding:4px 10px;border-radius:3px;cursor:pointer;background:rgba(192,64,64,.1);border:.5px solid rgba(192,64,64,.4);color:#c04040">↺ Reset Skills</button>
+          <div style="display:flex;flex-direction:column;gap:5px;align-items:flex-end">
+            <button onclick="openTree()" style="font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(200,184,128,.5);border:1px solid rgba(139,106,32,.6);border-radius:3px;padding:.45rem 1rem;cursor:pointer">⬡ Open Skill Tree</button>
+            <button onclick="openResetConfirm()" style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040;background:rgba(192,64,64,.08);border:.5px solid rgba(192,64,64,.3);border-radius:3px;padding:.3rem .75rem;cursor:pointer">↺ Reset Skills</button>
+          </div>
         </div>
         <hr class="ink-divider">
-
-        <!-- Element tabs -->
-        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.75rem" id="element-tabs"></div>
-
-        <!-- Skill tree display -->
-        <div class="tree-wrap" id="skill-tree"></div>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#3a2008;margin-bottom:.4rem">Unlocked nodes</p>
+        <div id="unlocked-summary" style="display:flex;flex-wrap:wrap;gap:4px;min-height:28px;margin-bottom:.75rem"></div>
+        <hr class="ink-divider">
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#3a2008;margin-bottom:.4rem">Elemental paths — sealed until Chapter 2</p>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          ${['Dark','Earth','Fire','Light','Lightning','Metal','Plant','Water','Wind'].map(e =>
+            `<span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;padding:2px 7px;border-radius:12px;border:.5px solid rgba(139,106,32,.15);color:#4a3a18;background:rgba(0,0,0,.1)">🔒 ${e}</span>`
+          ).join('')}
+        </div>
       </div>
     </div>
 
@@ -75,384 +114,721 @@
         <p class="chapter-label">Battle Setup</p>
         <h2 class="page-title">Combat Skills</h2>
         <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.8rem;color:#3a2008;margin-bottom:.5rem">
-          Assign unlocked skills to battle slots. Up to 4 active skills usable in combat.
+          Assign unlocked skills to battle slots. Max 4 active skills in combat.
         </p>
         <hr class="ink-divider">
-
-        <!-- Battle slots -->
-        <div id="battle-slots" style="display:flex;flex-direction:column;gap:6px;margin-bottom:.75rem"></div>
-
+        <div id="battle-slots-page" style="display:flex;flex-direction:column;gap:6px;margin-bottom:.75rem"></div>
         <hr class="ink-divider">
-
-        <!-- Skill detail panel -->
-        <div id="skill-detail" style="min-height:80px"></div>
+        <div id="skill-detail-page" style="min-height:60px"></div>
       </div>
     </div>
   </div>
+</div>
+
+<!-- Fullscreen overlay -->
+<div id="tree-overlay">
+  <div id="tree-topbar">
+    <h2>⬡ Skill Tree</h2>
+    <span class="sp-badge" id="sp-badge">0 SP</span>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#5a4a20">Scroll to zoom · Drag to pan</span>
+      <button class="tree-reset-btn" onclick="openResetConfirm()">↺ Reset</button>
+      <button class="tree-slots-btn" onclick="toggleSlotsBar()">⚔ Battle Slots</button>
+      <button class="tree-close-btn" onclick="closeTree()">✕ Close</button>
+    </div>
+  </div>
+  <div id="tree-canvas-wrap">
+    <svg id="tree-svg"></svg>
+    <div id="tree-canvas"></div>
+  </div>
+  <canvas id="minimap" width="130" height="100"></canvas>
+</div>
+
+<!-- Slots sidebar -->
+<div id="slots-bar">
+  <p style="font-family:'Cinzel',serif;font-size:.85rem;color:#c8b96e;margin:0 0 .5rem">⚔ Battle Slots</p>
+  <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#5a4a20;margin:0 0 .6rem">Max 4 active skills in combat</p>
+  <div id="slots-list"></div>
+</div>
+
+<!-- Node detail panel -->
+<div id="node-detail">
+  <button id="detail-close" onclick="closeDetail()">✕</button>
+  <div id="detail-inner"></div>
 </div>
 
 <script type="module">
 import { supabase } from '../supabase.js'
 import { renderNav, showToast } from '../components/nav.js'
 
-// ── Skill Definitions ────────────────────────────────────────
-const ELEMENTS = {
-  dark:      { label:'Dark',      color:'#b06eff', glow:'#b06eff88', bg:'rgba(176,110,255,.08)' },
-  earth:     { label:'Earth',     color:'#8b5e3c', glow:'#8b5e3c88', bg:'rgba(139,94,60,.08)'  },
-  fire:      { label:'Fire',      color:'#ff5500', glow:'#ff550088', bg:'rgba(255,85,0,.08)'    },
-  light:     { label:'Light',     color:'#ffd700', glow:'#ffd70088', bg:'rgba(255,215,0,.08)'   },
-  lightning: { label:'Lightning', color:'#88ccff', glow:'#88ccff88', bg:'rgba(136,204,255,.08)' },
-  metal:     { label:'Metal',     color:'#c0c0c0', glow:'#c0c0c088', bg:'rgba(192,192,192,.08)' },
-  plant:     { label:'Plant',     color:'#5ec45e', glow:'#5ec45e88', bg:'rgba(94,196,94,.08)'   },
-  water:     { label:'Water',     color:'#0088ff', glow:'#0088ff88', bg:'rgba(0,136,255,.08)'   },
-  wind:      { label:'Wind',      color:'#a8d8ea', glow:'#a8d8ea88', bg:'rgba(168,216,234,.08)' },
+// ════════════════════════════════════════════════════
+// NODE DEFINITIONS — 150 nodes, 4 branches + elementals
+// ════════════════════════════════════════════════════
+const CX = 900, CY = 900   // canvas center
+
+const NODES = [
+  // ── CENTER ──
+  { id:'center', label:'Origin', type:'start', branch:'center', x:CX, y:CY, cost:0, requires:[] },
+
+  // ═══════════════════════════════
+  // ATTACK  (upward)
+  // ═══════════════════════════════
+  { id:'a1',  label:'+3 ATK',        type:'small',   branch:'attack', x:CX,    y:CY-90,  cost:1, stat:'atk_bonus',  val:3,  requires:['center'] },
+  { id:'a2',  label:'+5 ATK',        type:'small',   branch:'attack', x:CX,    y:CY-170, cost:1, stat:'atk_bonus',  val:5,  requires:['a1'] },
+  { id:'a3',  label:'+4 ATK',        type:'small',   branch:'attack', x:CX,    y:CY-250, cost:1, stat:'atk_bonus',  val:4,  requires:['a2'] },
+  // Left sub — Power
+  { id:'ap1', label:'+3 Power',      type:'small',   branch:'attack', x:CX-100,y:CY-185, cost:1, stat:'power_bonus',val:3,  requires:['a2'] },
+  { id:'ap2', label:'+4 Power',      type:'small',   branch:'attack', x:CX-100,y:CY-265, cost:1, stat:'power_bonus',val:4,  requires:['ap1'] },
+  { id:'ap3', label:'+5 Power',      type:'small',   branch:'attack', x:CX-175,y:CY-285, cost:1, stat:'power_bonus',val:5,  requires:['ap2'] },
+  { id:'ap4', label:'+3 ATK',        type:'small',   branch:'attack', x:CX-190,y:CY-355, cost:1, stat:'atk_bonus',  val:3,  requires:['ap3'] },
+  // Right sub — Speed/ATK
+  { id:'ac1', label:'+3 ATK',        type:'small',   branch:'attack', x:CX+100,y:CY-185, cost:1, stat:'atk_bonus',  val:3,  requires:['a2'] },
+  { id:'ac2', label:'+5 ATK',        type:'small',   branch:'attack', x:CX+100,y:CY-265, cost:1, stat:'atk_bonus',  val:5,  requires:['ac1'] },
+  { id:'ac3', label:'+3 Power',      type:'small',   branch:'attack', x:CX+175,y:CY-285, cost:1, stat:'power_bonus',val:3,  requires:['ac2'] },
+  { id:'ac4', label:'+4 ATK',        type:'small',   branch:'attack', x:CX+190,y:CY-355, cost:1, stat:'atk_bonus',  val:4,  requires:['ac3'] },
+  // Notable tier 1
+  { id:'an1', label:'Warbound',      type:'notable', branch:'attack', x:CX,    y:CY-330,
+    desc:'Your attacks deal bonus damage equal to 15% of your ATK. Stacks with Power.',
+    cost:2, stat:'atk_bonus', val:8, requires:['a3'] },
+  { id:'an2', label:'Iron Fist',     type:'notable', branch:'attack', x:CX-220,y:CY-375,
+    desc:'Power now contributes an extra ×0.4 to ATK. Invest in Power to hit harder.',
+    cost:2, stat:'power_bonus', val:6, requires:['ap4'] },
+  { id:'an3', label:'Viper Strike',  type:'notable', branch:'attack', x:CX+220,y:CY-375,
+    desc:'+12 ATK. Your basic Strike has a 10% chance to hit twice in one turn.',
+    cost:2, stat:'atk_bonus', val:12, requires:['ac4'] },
+  // Spine continues
+  { id:'a4',  label:'+5 ATK',        type:'small',   branch:'attack', x:CX,    y:CY-420, cost:1, stat:'atk_bonus',  val:5,  requires:['an1'] },
+  { id:'a5',  label:'+4 ATK',        type:'small',   branch:'attack', x:CX,    y:CY-500, cost:1, stat:'atk_bonus',  val:4,  requires:['a4'] },
+  { id:'a6',  label:'+6 ATK',        type:'small',   branch:'attack', x:CX,    y:CY-580, cost:1, stat:'atk_bonus',  val:6,  requires:['a5'] },
+  { id:'ap5', label:'+4 Power',      type:'small',   branch:'attack', x:CX-90, y:CY-470, cost:1, stat:'power_bonus',val:4,  requires:['an2','a4'] },
+  { id:'ap6', label:'+5 Power',      type:'small',   branch:'attack', x:CX-90, y:CY-550, cost:1, stat:'power_bonus',val:5,  requires:['ap5'] },
+  { id:'ac5', label:'+5 ATK',        type:'small',   branch:'attack', x:CX+90, y:CY-470, cost:1, stat:'atk_bonus',  val:5,  requires:['an3','a4'] },
+  { id:'ac6', label:'+4 Power',      type:'small',   branch:'attack', x:CX+90, y:CY-550, cost:1, stat:'power_bonus',val:4,  requires:['ac5'] },
+  // Notable tier 2
+  { id:'an4', label:'Executioner',   type:'notable', branch:'attack', x:CX-140,y:CY-620,
+    desc:'+10 ATK. Deal 25% more damage to enemies below 30% HP. Finish them faster.',
+    cost:2, stat:'atk_bonus', val:10, requires:['ap6'] },
+  { id:'an5', label:'Sundering Blow',type:'notable', branch:'attack', x:CX+140,y:CY-620,
+    desc:'+10 ATK. Heavy Strike now ignores all enemy DEF. Raw power breaks armor.',
+    cost:2, stat:'atk_bonus', val:10, requires:['ac6'] },
+  { id:'an6', label:'Predator',      type:'notable', branch:'attack', x:CX,    y:CY-650,
+    desc:'+8 ATK, +5 Power. Gain +20 ATK for 2 turns after an enemy falls.',
+    cost:2, stat:'atk_bonus', val:8, requires:['a6'] },
+  // Pre-keystone
+  { id:'a7',  label:'+5 ATK',        type:'small',   branch:'attack', x:CX-70, y:CY-720, cost:1, stat:'atk_bonus',  val:5,  requires:['an4','an6'] },
+  { id:'a8',  label:'+6 ATK',        type:'small',   branch:'attack', x:CX+70, y:CY-720, cost:1, stat:'atk_bonus',  val:6,  requires:['an5','an6'] },
+  // Keystones
+  { id:'ks_bloodthirst', label:'Bloodthirst',      type:'keystone', branch:'attack', x:CX-150,y:CY-800,
+    desc:'KEYSTONE: Your ATK scales with missing HP. For every 10% HP missing, gain +8% ATK. At low HP you deal nearly double damage. High risk, explosive payoff.',
+    cost:3, requires:['a7'] },
+  { id:'ks_reckless',    label:'Reckless Assault', type:'keystone', branch:'attack', x:CX+150,y:CY-800,
+    desc:'KEYSTONE: Every attack strikes twice. The second hit deals 60% damage. However, each attack cycle deals 5 recoil damage to you. Extreme offense, real cost.',
+    cost:3, requires:['a8'] },
+
+  // ═══════════════════════════════
+  // DEFENSE  (downward)
+  // ═══════════════════════════════
+  { id:'d1',  label:'+4 DEF',        type:'small',   branch:'defense', x:CX,    y:CY+90,  cost:1, stat:'def_bonus',    val:4,  requires:['center'] },
+  { id:'d2',  label:'+5 DEF',        type:'small',   branch:'defense', x:CX,    y:CY+170, cost:1, stat:'def_bonus',    val:5,  requires:['d1'] },
+  { id:'d3',  label:'+4 DEF',        type:'small',   branch:'defense', x:CX,    y:CY+250, cost:1, stat:'def_bonus',    val:4,  requires:['d2'] },
+  // Left — Guard
+  { id:'dg1', label:'+3 Guard',      type:'small',   branch:'defense', x:CX-100,y:CY+185, cost:1, stat:'guard_bonus',  val:3,  requires:['d2'] },
+  { id:'dg2', label:'+4 Guard',      type:'small',   branch:'defense', x:CX-100,y:CY+265, cost:1, stat:'guard_bonus',  val:4,  requires:['dg1'] },
+  { id:'dg3', label:'+5 Guard',      type:'small',   branch:'defense', x:CX-175,y:CY+285, cost:1, stat:'guard_bonus',  val:5,  requires:['dg2'] },
+  { id:'dg4', label:'+4 Guard',      type:'small',   branch:'defense', x:CX-190,y:CY+355, cost:1, stat:'guard_bonus',  val:4,  requires:['dg3'] },
+  // Right — Control
+  { id:'dc1', label:'+3 Control',    type:'small',   branch:'defense', x:CX+100,y:CY+185, cost:1, stat:'control_bonus',val:3,  requires:['d2'] },
+  { id:'dc2', label:'+4 Control',    type:'small',   branch:'defense', x:CX+100,y:CY+265, cost:1, stat:'control_bonus',val:4,  requires:['dc1'] },
+  { id:'dc3', label:'+5 DEF',        type:'small',   branch:'defense', x:CX+175,y:CY+285, cost:1, stat:'def_bonus',    val:5,  requires:['dc2'] },
+  { id:'dc4', label:'+4 Control',    type:'small',   branch:'defense', x:CX+190,y:CY+355, cost:1, stat:'control_bonus',val:4,  requires:['dc3'] },
+  // Notable tier 1
+  { id:'dn1', label:'Stalwart',      type:'notable', branch:'defense', x:CX,    y:CY+330,
+    desc:'+10 DEF. While HP is above 75%, gain an extra +15 DEF. A wall when healthy.',
+    cost:2, stat:'def_bonus', val:10, requires:['d3'] },
+  { id:'dn2', label:'Bulwark',       type:'notable', branch:'defense', x:CX-220,y:CY+375,
+    desc:'+8 DEF, +6 Guard. Guard now reduces damage from all sources including skills.',
+    cost:2, stat:'guard_bonus', val:6, requires:['dg4'] },
+  { id:'dn3', label:'Ironclad',      type:'notable', branch:'defense', x:CX+220,y:CY+375,
+    desc:'+8 DEF, +6 Control. Control now gives a 10% chance to fully negate any hit.',
+    cost:2, stat:'def_bonus', val:8, requires:['dc4'] },
+  // Spine continues
+  { id:'d4',  label:'+5 DEF',        type:'small',   branch:'defense', x:CX,    y:CY+420, cost:1, stat:'def_bonus',    val:5,  requires:['dn1'] },
+  { id:'d5',  label:'+6 DEF',        type:'small',   branch:'defense', x:CX,    y:CY+500, cost:1, stat:'def_bonus',    val:6,  requires:['d4'] },
+  { id:'d6',  label:'+5 DEF',        type:'small',   branch:'defense', x:CX,    y:CY+580, cost:1, stat:'def_bonus',    val:5,  requires:['d5'] },
+  { id:'dg5', label:'+4 Guard',      type:'small',   branch:'defense', x:CX-90, y:CY+470, cost:1, stat:'guard_bonus',  val:4,  requires:['dn2','d4'] },
+  { id:'dg6', label:'+5 Guard',      type:'small',   branch:'defense', x:CX-90, y:CY+550, cost:1, stat:'guard_bonus',  val:5,  requires:['dg5'] },
+  { id:'dc5', label:'+4 Control',    type:'small',   branch:'defense', x:CX+90, y:CY+470, cost:1, stat:'control_bonus',val:4,  requires:['dn3','d4'] },
+  { id:'dc6', label:'+5 DEF',        type:'small',   branch:'defense', x:CX+90, y:CY+550, cost:1, stat:'def_bonus',    val:5,  requires:['dc5'] },
+  // Notable tier 2
+  { id:'dn4', label:'Unbreakable',   type:'notable', branch:'defense', x:CX-140,y:CY+620,
+    desc:'+12 DEF. When a hit would drop you below 20% HP, gain +30 DEF for 1 turn.',
+    cost:2, stat:'def_bonus', val:12, requires:['dg6'] },
+  { id:'dn5', label:'Voidshell',     type:'notable', branch:'defense', x:CX+140,y:CY+620,
+    desc:'+10 DEF. Every 3 hits absorbed, your next attack deals bonus damage equal to your DEF.',
+    cost:2, stat:'def_bonus', val:10, requires:['dc6'] },
+  { id:'dn6', label:'Aegis Wall',    type:'notable', branch:'defense', x:CX,    y:CY+650,
+    desc:'+10 DEF. The Defend action now reduces incoming damage by 80% instead of 75%.',
+    cost:2, stat:'def_bonus', val:10, requires:['d6'] },
+  // Pre-keystone
+  { id:'d7',  label:'+6 DEF',        type:'small',   branch:'defense', x:CX-70, y:CY+720, cost:1, stat:'def_bonus',    val:6,  requires:['dn4','dn6'] },
+  { id:'d8',  label:'+5 Guard',      type:'small',   branch:'defense', x:CX+70, y:CY+720, cost:1, stat:'guard_bonus',  val:5,  requires:['dn5','dn6'] },
+  // Keystones
+  { id:'ks_iron_fortress', label:'Iron Fortress',  type:'keystone', branch:'defense', x:CX-150,y:CY+800,
+    desc:'KEYSTONE: Your DEF is doubled permanently. However your SPD is halved. You become an immovable wall — slow as stone, tough as iron.',
+    cost:3, requires:['d7'] },
+  { id:'ks_warlord',       label:"Warlord's Grip", type:'keystone', branch:'defense', x:CX+150,y:CY+800,
+    desc:'KEYSTONE: Both ATK and DEF now scale off your Guard stat (×1.5 per Guard point). Pure Guard investment powers your entire build.',
+    cost:3, requires:['d8'] },
+
+  // ═══════════════════════════════
+  // AGILITY  (leftward)
+  // ═══════════════════════════════
+  { id:'g1',  label:'+3 SPD',        type:'small',   branch:'agility', x:CX-90, y:CY,     cost:1, stat:'speed_bonus', val:3,  requires:['center'] },
+  { id:'g2',  label:'+4 SPD',        type:'small',   branch:'agility', x:CX-170,y:CY,     cost:1, stat:'speed_bonus', val:4,  requires:['g1'] },
+  { id:'g3',  label:'+4 SPD',        type:'small',   branch:'agility', x:CX-250,y:CY,     cost:1, stat:'speed_bonus', val:4,  requires:['g2'] },
+  // Upper fork
+  { id:'gu1', label:'+3 SPD',        type:'small',   branch:'agility', x:CX-185,y:CY-95,  cost:1, stat:'speed_bonus', val:3,  requires:['g2'] },
+  { id:'gu2', label:'+4 SPD',        type:'small',   branch:'agility', x:CX-265,y:CY-95,  cost:1, stat:'speed_bonus', val:4,  requires:['gu1'] },
+  { id:'gu3', label:'+3 SPD',        type:'small',   branch:'agility', x:CX-280,y:CY-175, cost:1, stat:'speed_bonus', val:3,  requires:['gu2'] },
+  { id:'gu4', label:'+4 SPD',        type:'small',   branch:'agility', x:CX-350,y:CY-180, cost:1, stat:'speed_bonus', val:4,  requires:['gu3'] },
+  // Lower fork
+  { id:'gl1', label:'+3 SPD',        type:'small',   branch:'agility', x:CX-185,y:CY+95,  cost:1, stat:'speed_bonus', val:3,  requires:['g2'] },
+  { id:'gl2', label:'+4 SPD',        type:'small',   branch:'agility', x:CX-265,y:CY+95,  cost:1, stat:'speed_bonus', val:4,  requires:['gl1'] },
+  { id:'gl3', label:'+3 SPD',        type:'small',   branch:'agility', x:CX-280,y:CY+175, cost:1, stat:'speed_bonus', val:3,  requires:['gl2'] },
+  { id:'gl4', label:'+4 SPD',        type:'small',   branch:'agility', x:CX-350,y:CY+180, cost:1, stat:'speed_bonus', val:4,  requires:['gl3'] },
+  // Notable tier 1
+  { id:'gn1', label:'Razor Tempo',   type:'notable', branch:'agility', x:CX-335,y:CY,
+    desc:'+8 SPD. Strike always goes first regardless of enemy speed. You set the tempo.',
+    cost:2, stat:'speed_bonus', val:8, requires:['g3'] },
+  { id:'gn2', label:'Ghost Step',    type:'notable', branch:'agility', x:CX-390,y:CY-195,
+    desc:'+6 SPD. 15% chance to dodge any attack. On dodge, deal a free counter hit.',
+    cost:2, stat:'speed_bonus', val:6, requires:['gu4'] },
+  { id:'gn3', label:'Slip Away',     type:'notable', branch:'agility', x:CX-390,y:CY+195,
+    desc:'+6 SPD. Flee chance raised to 60%. On successful flee you take no damage that turn.',
+    cost:2, stat:'speed_bonus', val:6, requires:['gl4'] },
+  // Spine continues
+  { id:'g4',  label:'+5 SPD',        type:'small',   branch:'agility', x:CX-420,y:CY,     cost:1, stat:'speed_bonus', val:5,  requires:['gn1'] },
+  { id:'g5',  label:'+5 SPD',        type:'small',   branch:'agility', x:CX-500,y:CY,     cost:1, stat:'speed_bonus', val:5,  requires:['g4'] },
+  { id:'g6',  label:'+6 SPD',        type:'small',   branch:'agility', x:CX-580,y:CY,     cost:1, stat:'speed_bonus', val:6,  requires:['g5'] },
+  { id:'gu5', label:'+4 SPD',        type:'small',   branch:'agility', x:CX-470,y:CY-100, cost:1, stat:'speed_bonus', val:4,  requires:['gn2','g4'] },
+  { id:'gu6', label:'+5 SPD',        type:'small',   branch:'agility', x:CX-550,y:CY-100, cost:1, stat:'speed_bonus', val:5,  requires:['gu5'] },
+  { id:'gl5', label:'+4 SPD',        type:'small',   branch:'agility', x:CX-470,y:CY+100, cost:1, stat:'speed_bonus', val:4,  requires:['gn3','g4'] },
+  { id:'gl6', label:'+5 SPD',        type:'small',   branch:'agility', x:CX-550,y:CY+100, cost:1, stat:'speed_bonus', val:5,  requires:['gl5'] },
+  // Notable tier 2
+  { id:'gn4', label:'Flicker',       type:'notable', branch:'agility', x:CX-620,y:CY-120,
+    desc:'+10 SPD. When you dodge, your next Strike deals double damage. Dodge becomes offense.',
+    cost:2, stat:'speed_bonus', val:10, requires:['gu6'] },
+  { id:'gn5', label:'Evasion Master',type:'notable', branch:'agility', x:CX-620,y:CY+120,
+    desc:'+8 SPD. Your dodge chance cap rises from 40% to 55%. More SPD, more untouchable.',
+    cost:2, stat:'speed_bonus', val:8, requires:['gl6'] },
+  { id:'gn6', label:'Blur',          type:'notable', branch:'agility', x:CX-650,y:CY,
+    desc:'+10 SPD. Enemies with lower SPD than you have a 20% chance to miss their attack.',
+    cost:2, stat:'speed_bonus', val:10, requires:['g6'] },
+  // Pre-keystone
+  { id:'g7',  label:'+5 SPD',        type:'small',   branch:'agility', x:CX-720,y:CY-70,  cost:1, stat:'speed_bonus', val:5,  requires:['gn4','gn6'] },
+  { id:'g8',  label:'+6 SPD',        type:'small',   branch:'agility', x:CX-720,y:CY+70,  cost:1, stat:'speed_bonus', val:6,  requires:['gn5','gn6'] },
+  // Keystones
+  { id:'ks_phantom',       label:'Phantom Step',   type:'keystone', branch:'agility', x:CX-800,y:CY-150,
+    desc:'KEYSTONE: Dodge chance becomes a flat 45%. However max HP is reduced by 30%. Nearly untouchable — but fragile when hit.',
+    cost:3, requires:['g7'] },
+  { id:'ks_shadow_reflex', label:'Shadow Reflex',  type:'keystone', branch:'agility', x:CX-800,y:CY+150,
+    desc:'KEYSTONE: When you dodge, automatically deal 80% of your ATK as reflected damage. Dodge becomes a weapon.',
+    cost:3, requires:['g8'] },
+
+  // ═══════════════════════════════
+  // MIND  (rightward)
+  // ═══════════════════════════════
+  { id:'m1',  label:'+3 Insight',    type:'small',   branch:'mind', x:CX+90, y:CY,     cost:1, stat:'insight_bonus',val:3,  requires:['center'] },
+  { id:'m2',  label:'+4 Insight',    type:'small',   branch:'mind', x:CX+170,y:CY,     cost:1, stat:'insight_bonus',val:4,  requires:['m1'] },
+  { id:'m3',  label:'+4 Insight',    type:'small',   branch:'mind', x:CX+250,y:CY,     cost:1, stat:'insight_bonus',val:4,  requires:['m2'] },
+  // Upper fork — Insight
+  { id:'mu1', label:'+3 Insight',    type:'small',   branch:'mind', x:CX+185,y:CY-95,  cost:1, stat:'insight_bonus',val:3,  requires:['m2'] },
+  { id:'mu2', label:'+4 Insight',    type:'small',   branch:'mind', x:CX+265,y:CY-95,  cost:1, stat:'insight_bonus',val:4,  requires:['mu1'] },
+  { id:'mu3', label:'+3 Insight',    type:'small',   branch:'mind', x:CX+280,y:CY-175, cost:1, stat:'insight_bonus',val:3,  requires:['mu2'] },
+  { id:'mu4', label:'+4 Insight',    type:'small',   branch:'mind', x:CX+350,y:CY-180, cost:1, stat:'insight_bonus',val:4,  requires:['mu3'] },
+  // Lower fork — Luck
+  { id:'ml1', label:'+3 Luck',       type:'small',   branch:'mind', x:CX+185,y:CY+95,  cost:1, stat:'luck_bonus',  val:3,  requires:['m2'] },
+  { id:'ml2', label:'+4 Luck',       type:'small',   branch:'mind', x:CX+265,y:CY+95,  cost:1, stat:'luck_bonus',  val:4,  requires:['ml1'] },
+  { id:'ml3', label:'+5 Luck',       type:'small',   branch:'mind', x:CX+280,y:CY+175, cost:1, stat:'luck_bonus',  val:5,  requires:['ml2'] },
+  { id:'ml4', label:'+4 Luck',       type:'small',   branch:'mind', x:CX+350,y:CY+180, cost:1, stat:'luck_bonus',  val:4,  requires:['ml3'] },
+  // Notable tier 1
+  { id:'mn1', label:'Sharp Mind',    type:'notable', branch:'mind', x:CX+335,y:CY,
+    desc:'+8 Insight. Insight now grants +1 ATK per 3 Insight points. Clever fighters hit harder.',
+    cost:2, stat:'insight_bonus',val:8,  requires:['m3'] },
+  { id:'mn2', label:'Foresight',     type:'notable', branch:'mind', x:CX+390,y:CY-195,
+    desc:'+6 Insight. Once per combat, predict an attack — reduce damage by 90% for that one hit.',
+    cost:2, stat:'insight_bonus',val:6,  requires:['mu4'] },
+  { id:'mn3', label:"Fortune's Edge",type:'notable', branch:'mind', x:CX+390,y:CY+195,
+    desc:'+6 Luck. Luck now also improves item drop quality from defeated enemies.',
+    cost:2, stat:'luck_bonus',  val:6,  requires:['ml4'] },
+  // Spine continues
+  { id:'m4',  label:'+5 Insight',    type:'small',   branch:'mind', x:CX+420,y:CY,     cost:1, stat:'insight_bonus',val:5,  requires:['mn1'] },
+  { id:'m5',  label:'+5 Insight',    type:'small',   branch:'mind', x:CX+500,y:CY,     cost:1, stat:'insight_bonus',val:5,  requires:['m4'] },
+  { id:'m6',  label:'+6 Insight',    type:'small',   branch:'mind', x:CX+580,y:CY,     cost:1, stat:'insight_bonus',val:6,  requires:['m5'] },
+  { id:'mu5', label:'+4 Insight',    type:'small',   branch:'mind', x:CX+470,y:CY-100, cost:1, stat:'insight_bonus',val:4,  requires:['mn2','m4'] },
+  { id:'mu6', label:'+5 Insight',    type:'small',   branch:'mind', x:CX+550,y:CY-100, cost:1, stat:'insight_bonus',val:5,  requires:['mu5'] },
+  { id:'ml5', label:'+4 Luck',       type:'small',   branch:'mind', x:CX+470,y:CY+100, cost:1, stat:'luck_bonus',  val:4,  requires:['mn3','m4'] },
+  { id:'ml6', label:'+5 Luck',       type:'small',   branch:'mind', x:CX+550,y:CY+100, cost:1, stat:'luck_bonus',  val:5,  requires:['ml5'] },
+  // Notable tier 2
+  { id:'mn4', label:'Prescience',    type:'notable', branch:'mind', x:CX+620,y:CY-120,
+    desc:'+10 Insight. Insight now reduces enemy crit chance by 2% per Insight point.',
+    cost:2, stat:'insight_bonus',val:10, requires:['mu6'] },
+  { id:'mn5', label:'Windfall',      type:'notable', branch:'mind', x:CX+620,y:CY+120,
+    desc:'+8 Luck. Luck contributes to gold drops from enemies (×1.5 multiplier).',
+    cost:2, stat:'luck_bonus',  val:8,  requires:['ml6'] },
+  { id:'mn6', label:'Precise Strike',type:'notable', branch:'mind', x:CX+650,y:CY,
+    desc:'+10 Insight. Attacks have crit chance = Insight÷5%. Crits deal ×1.75 damage.',
+    cost:2, stat:'insight_bonus',val:10, requires:['m6'] },
+  // Pre-keystone
+  { id:'m7',  label:'+6 Insight',    type:'small',   branch:'mind', x:CX+720,y:CY-70,  cost:1, stat:'insight_bonus',val:6,  requires:['mn4','mn6'] },
+  { id:'m8',  label:'+5 Luck',       type:'small',   branch:'mind', x:CX+720,y:CY+70,  cost:1, stat:'luck_bonus',  val:5,  requires:['mn5','mn6'] },
+  // Keystones
+  { id:'ks_sixth_sense', label:'Sixth Sense', type:'keystone', branch:'mind', x:CX+800,y:CY-150,
+    desc:'KEYSTONE: Insight now directly boosts ATK at +2 ATK per Insight point. A mind build can out-damage brute force.',
+    cost:3, requires:['m7'] },
+  { id:'ks_immovable',   label:'Immovable',   type:'keystone', branch:'mind', x:CX+800,y:CY+150,
+    desc:'KEYSTONE: You cannot flee combat. In exchange, your DEF is tripled for the entire battle. When cornered, you become a force of nature.',
+    cost:3, requires:['m8'] },
+
+  // ═══════════════════════════════
+  // ELEMENTAL GATEWAYS  (outer ring, Ch.2 locked)
+  // ═══════════════════════════════
+  { id:'el_fire',      label:'Fire',      type:'elemental', branch:'elemental', color:'#ff5500', x:CX-140,y:CY-900, requires:['a7','a8'] },
+  { id:'el_dark',      label:'Dark',      type:'elemental', branch:'elemental', color:'#b06eff', x:CX-500,y:CY-730, requires:['g7'] },
+  { id:'el_wind',      label:'Wind',      type:'elemental', branch:'elemental', color:'#a8d8ea', x:CX-900,y:CY-140, requires:['g7','g8'] },
+  { id:'el_earth',     label:'Earth',     type:'elemental', branch:'elemental', color:'#8b5e3c', x:CX-900,y:CY+140, requires:['g8'] },
+  { id:'el_plant',     label:'Plant',     type:'elemental', branch:'elemental', color:'#5ec45e', x:CX-500,y:CY+730, requires:['d7'] },
+  { id:'el_water',     label:'Water',     type:'elemental', branch:'elemental', color:'#0088ff', x:CX-140,y:CY+900, requires:['d7','d8'] },
+  { id:'el_lightning', label:'Lightning', type:'elemental', branch:'elemental', color:'#88ccff', x:CX+140,y:CY+900, requires:['d8'] },
+  { id:'el_metal',     label:'Metal',     type:'elemental', branch:'elemental', color:'#c0c0c0', x:CX+900,y:CY+140, requires:['m8'] },
+  { id:'el_light',     label:'Light',     type:'elemental', branch:'elemental', color:'#ffd700', x:CX+900,y:CY-140, requires:['m7','m8'] },
+]
+
+// ── Colors ──────────────────────────────────────────
+const BRANCH_COLOR = {
+  center:'#c8b96e', attack:'#e05555', defense:'#5ec45e',
+  agility:'#5eaee0', mind:'#b06eff', elemental:'#666'
 }
+const NODE_SIZE = { start:'st', small:'sm', notable:'md', keystone:'ks', elemental:'el' }
 
-// Each element: passive → skill → ultimate
-// key matches png filename in assets/ability/
-const SKILL_TREE = {
-  dark: [
-    { key:'darkness_passive_backstab',  type:'passive',  label:'Backstab',      desc:'Passive: 15% chance to deal double damage on strike.',  cost:1, requires:null },
-    { key:'darkness_skill_shadow_step', type:'active',   label:'Shadow Step',   desc:'Active: Teleport behind enemy, next attack ignores DEF.', cost:2, requires:'darkness_passive_backstab' },
-    { key:'darkness_ultimate_void_zone',type:'ultimate', label:'Void Zone',     desc:'Ultimate: Create a zone of darkness — enemy ATK -30% for 3 turns.', cost:3, requires:'darkness_skill_shadow_step' },
-  ],
-  earth: [
-    { key:'earth_passive_damage_reduction', type:'passive',  label:'Stone Skin',     desc:'Passive: Reduce all incoming damage by 5.',        cost:1, requires:null },
-    { key:'earth_skill_rock_armor',         type:'active',   label:'Rock Armor',     desc:'Active: Gain +20 DEF for 2 turns. Absorbs one hit.', cost:2, requires:'earth_passive_damage_reduction' },
-    { key:'earth_ultimate_earthquake',      type:'ultimate', label:'Earthquake',     desc:'Ultimate: Deal massive earth damage to all enemies. Stuns for 1 turn.', cost:3, requires:'earth_skill_rock_armor' },
-  ],
-  fire: [
-    { key:'fire_passive_burn',        type:'passive',  label:'Burn',          desc:'Passive: Attacks apply Burn — 3 damage/turn for 2 turns.', cost:1, requires:null },
-    { key:'fire_skill_fire_blast',    type:'active',   label:'Fire Blast',    desc:'Active: Deal 25 fire damage. Ignores 50% of enemy DEF.',    cost:2, requires:'fire_passive_burn' },
-    { key:'fire_ultimate_inferno_zone',type:'ultimate',label:'Inferno Zone',  desc:'Ultimate: Engulf the area in flames — 40 dmg/turn for 3 turns.', cost:3, requires:'fire_skill_fire_blast' },
-  ],
-  light: [
-    { key:'light_passive_boost_allies', type:'passive',  label:'Radiance',       desc:'Passive: Allies gain +5 ATK while you are alive.',         cost:1, requires:null },
-    { key:'light_skill_heal_pulse',     type:'active',   label:'Heal Pulse',     desc:'Active: Restore 25 HP to yourself or an ally.',             cost:2, requires:'light_passive_boost_allies' },
-    { key:'light_ultimate_divine_barrier',type:'ultimate',label:'Divine Barrier',desc:'Ultimate: Become invulnerable for 1 turn. Reflect damage.', cost:3, requires:'light_skill_heal_pulse' },
-  ],
-  lightning: [
-    { key:'lightning_passive_chain_damage', type:'passive',  label:'Chain',          desc:'Passive: 20% chance attack chains to deal 50% dmg to a second enemy.', cost:1, requires:null },
-    { key:'lightning_skill_lightning_strike',type:'active',  label:'Lightning Strike',desc:'Active: Strike for 30 lightning damage. Ignores shields.', cost:2, requires:'lightning_passive_chain_damage' },
-    { key:'lightning_ultimate_thunderstorm', type:'ultimate',label:'Thunderstorm',   desc:'Ultimate: Call a storm — 5 lightning bolts each dealing 15 damage.', cost:3, requires:'lightning_skill_lightning_strike' },
-  ],
-  metal: [
-    { key:'metal_passive_reflect',    type:'passive',  label:'Reflect',       desc:'Passive: Reflect 10% of received damage back to attacker.', cost:1, requires:null },
-    { key:'metal_skill_blade_form',   type:'active',   label:'Blade Form',    desc:'Active: Enter blade form — ATK +20, SPD +5 for 2 turns.',  cost:2, requires:'metal_passive_reflect' },
-    { key:'metal_ultimate_iron_domain',type:'ultimate',label:'Iron Domain',   desc:'Ultimate: Lock the battlefield — neither side can flee for 3 turns. Your ATK doubles.', cost:3, requires:'metal_skill_blade_form' },
-  ],
-  plant: [
-    { key:'plant_passive_heal_still', type:'passive',  label:'Regrowth',      desc:'Passive: Restore 3 HP at the start of each turn when not taking damage.', cost:1, requires:null },
-    { key:'plant_skill_root_trap',    type:'active',   label:'Root Trap',     desc:'Active: Root enemy — they skip next attack turn.',          cost:2, requires:'plant_passive_heal_still' },
-    { key:'plant_ultimate_nature_overgrowth',type:'ultimate',label:'Overgrowth',desc:'Ultimate: Nature overwhelms — heal 40 HP and deal 30 damage.', cost:3, requires:'plant_skill_root_trap' },
-  ],
-  water: [
-    { key:'water_passive_regen',     type:'passive',  label:'Flow',          desc:'Passive: Recover 5 HP per turn.',                            cost:1, requires:null },
-    { key:'water_skill_water_shield',type:'active',   label:'Water Shield',  desc:'Active: Create a water barrier — absorb next 30 damage.',   cost:2, requires:'water_passive_regen' },
-    { key:'water_ultimate_tsunami',  type:'ultimate', label:'Tsunami',       desc:'Ultimate: Unleash a tidal wave — 50 damage, knocks enemy back 1 turn.', cost:3, requires:'water_skill_water_shield' },
-  ],
-  wind: [
-    { key:'wind_passive_dodge',      type:'passive',  label:'Gust',          desc:'Passive: 20% chance to dodge any incoming attack.',         cost:1, requires:null },
-    { key:'wind_skill_dash_strike',  type:'active',   label:'Dash Strike',   desc:'Active: Dash into enemy — deal ATK×2 and go first next turn.', cost:2, requires:'wind_passive_dodge' },
-    { key:'wind_ultimate_tornado_field',type:'ultimate',label:'Tornado Field',desc:'Ultimate: Tornado engulfs battlefield — -10 enemy ATK, your SPD ×2 for 3 turns.', cost:3, requires:'wind_skill_dash_strike' },
-  ],
-}
+// ── State ────────────────────────────────────────────
+let player, skillsUnlocked, battleSkills, skillPoints
+let selectedNode = null
+let scale = 0.5, panX = 0, panY = 0
+let isDragging = false, dragStartX, dragStartY, panStartX, panStartY
+const CANVAS_W = 2000, CANVAS_H = 2000
 
-const TYPE_COLORS = { passive:'#9a8050', active:'#5eaee0', ultimate:'#c8b96e' }
-const TYPE_LABELS = { passive:'PASSIVE', active:'ACTIVE', ultimate:'ULTIMATE' }
-
-const MAX_BATTLE_SLOTS = 4
-
-let player = await renderNav('nav')
+// ── Init ─────────────────────────────────────────────
+player = await renderNav('nav')
 if (!player) throw new Error('no player')
 
-// ── Load skill state from DB ──────────────────────────────
-// skills_unlocked: array of skill keys
-// battle_skills: array of up to 4 skill keys for battle
-let skillsUnlocked = player.skills_unlocked || []
-let battleSkills   = player.battle_skills   || []
-let skillPoints    = player.skill_points    || 0
-let activeElement  = 'fire'
+skillsUnlocked = player.skills_unlocked || []
+battleSkills   = player.battle_skills   || []
+skillPoints    = player.skill_points    || 0
 
-document.getElementById('sp-display').textContent = skillPoints
+updateSPDisplay()
+renderPageSummary()
+renderBattleSlotsPage()
 
-// ── Render element tabs ───────────────────────────────────
-function renderTabs() {
-  document.getElementById('element-tabs').innerHTML = Object.entries(ELEMENTS).map(([key, el]) => {
-    const count = (SKILL_TREE[key]||[]).filter(s => skillsUnlocked.includes(s.key)).length
-    const active = key === activeElement
-    return `<button class="element-tab" onclick="setElement('${key}')"
-      style="color:${el.color};border-color:${active?el.color:el.color+'40'};background:${active?el.bg:'transparent'};font-weight:${active?'600':'400'}">
-      ${el.label}${count>0?` <span style="opacity:.7">${count}/3</span>`:''}
-    </button>`
+// ── Open/Close ───────────────────────────────────────
+window.openTree = () => {
+  document.getElementById('tree-overlay').classList.add('open')
+  document.body.style.overflow = 'hidden'
+  buildTree()
+  centerView()
+}
+window.closeTree = () => {
+  document.getElementById('tree-overlay').classList.remove('open')
+  document.getElementById('slots-bar').classList.remove('open')
+  document.getElementById('node-detail').classList.remove('open')
+  document.body.style.overflow = ''
+}
+window.closeDetail = () => {
+  document.getElementById('node-detail').classList.remove('open')
+  selectedNode = null
+  refreshSelected()
+}
+window.toggleSlotsBar = () => {
+  document.getElementById('slots-bar').classList.toggle('open')
+  renderSlotsBar()
+}
+
+function centerView() {
+  const wrap = document.getElementById('tree-canvas-wrap')
+  panX = wrap.clientWidth  / 2 - CX * scale
+  panY = wrap.clientHeight / 2 - CY * scale
+  applyTransform()
+}
+
+function updateSPDisplay() {
+  document.getElementById('sp-display').textContent = skillPoints
+  document.getElementById('sp-badge').textContent   = skillPoints + ' SP'
+}
+
+// ── Build tree ───────────────────────────────────────
+function buildTree() {
+  const canvas = document.getElementById('tree-canvas')
+  const svg    = document.getElementById('tree-svg')
+  canvas.innerHTML = ''
+  svg.innerHTML    = ''
+  svg.setAttribute('width',  CANVAS_W)
+  svg.setAttribute('height', CANVAS_H)
+
+  // Connectors
+  let lines = ''
+  NODES.forEach(nd => {
+    nd.requires.forEach(req => {
+      const par = NODES.find(n => n.id === req)
+      if (!par) return
+      const lit = skillsUnlocked.includes(nd.id) && skillsUnlocked.includes(req)
+      const col = lit ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.18)'
+      const sw  = lit ? 2.5 : 1.5
+      lines += `<line x1="${par.x}" y1="${par.y}" x2="${nd.x}" y2="${nd.y}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"/>`
+    })
+  })
+  svg.innerHTML = lines
+
+  // Nodes
+  NODES.forEach(nd => {
+    const el = document.createElement('div')
+    el.className = buildNodeClass(nd)
+    el.id = 'sn-' + nd.id
+    el.style.cssText = `left:${nd.x}px;top:${nd.y}px;transform:translate(-50%,-50%)`
+    el.innerHTML = buildNodeHTML(nd)
+    el.addEventListener('click', () => onNodeClick(nd))
+    canvas.appendChild(el)
+  })
+
+  setupPanZoom()
+}
+
+function buildNodeClass(nd) {
+  const sz  = NODE_SIZE[nd.type] || 'sm'
+  const unl = isUnlocked(nd)
+  const sel = selectedNode === nd.id
+  return `sn sn-${sz}${unl?' unlocked':''}${sel?' selected':''}`
+}
+
+function buildNodeHTML(nd) {
+  const col    = nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e'
+  const locked = !isUnlocked(nd) && nd.type !== 'start'
+  const chapter= player.current_chapter || 1
+
+  let inner = ''
+  if (nd.type === 'start') {
+    inner = `<span style="font-size:1.3rem;color:#c8b96e;line-height:1">⬡</span>`
+  } else if (nd.type === 'elemental') {
+    const avail = chapter >= 2
+    inner = `<span style="font-family:'Cinzel',serif;font-size:.65rem;color:${avail?col:'#3a2008'};font-weight:600">${nd.label[0]}</span>`
+  } else if (nd.type === 'keystone') {
+    inner = `<span style="font-family:'Cinzel',serif;font-size:.55rem;color:${locked?'rgba(139,106,32,.25)':col};font-weight:700;text-align:center;line-height:1.2;max-width:52px;word-break:break-word">★</span>`
+  } else {
+    const letter = nd.stat ? nd.stat.charAt(0).toUpperCase() : '+'
+    inner = `<span style="font-family:'Share Tech Mono',monospace;font-size:${nd.type==='notable'?'.65rem':'.58rem'};color:${locked?'rgba(139,106,32,.25)':col};font-weight:600">${letter}</span>`
+  }
+
+  const glowStyle = isUnlocked(nd) && nd.type !== 'start' ? `box-shadow:0 0 ${nd.type==='keystone'?12:7}px ${col}55;` : ''
+  const ring = `<div class="sn-ring" style="border-color:${locked?'rgba(139,106,32,.18)':col};${glowStyle}">${inner}</div>`
+  const lbl  = nd.type !== 'start'
+    ? `<div class="sn-lbl" style="color:${locked?'#3a2008':col}">${nd.label}</div>`
+    : ''
+  return ring + lbl
+}
+
+function isUnlocked(nd) {
+  return nd.id === 'center' || skillsUnlocked.includes(nd.id)
+}
+function canUnlock(nd) {
+  if (nd.type === 'elemental') return false
+  if (isUnlocked(nd)) return false
+  if (skillPoints < (nd.cost || 1)) return false
+  return nd.requires.every(r => r === 'center' || skillsUnlocked.includes(r))
+}
+
+function refreshSelected() {
+  document.querySelectorAll('.sn').forEach(el => {
+    el.classList.toggle('selected', el.id === 'sn-' + selectedNode)
+  })
+}
+
+// ── Node click ───────────────────────────────────────
+function onNodeClick(nd) {
+  selectedNode = nd.id
+  refreshSelected()
+  showNodeDetail(nd)
+}
+
+function showNodeDetail(nd) {
+  const col     = nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e'
+  const chapter = player.current_chapter || 1
+  const isEl    = nd.type === 'elemental'
+
+  let body = ''
+  if (nd.type === 'start') {
+    body = `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:#c8b96e;margin:0">Your journey begins here. Choose a path and grow.</p>`
+  } else if (isEl) {
+    body = `
+      <p style="font-family:'Cinzel',serif;font-size:1rem;color:${col};margin:0 0 4px;font-weight:600">${nd.label} — Elemental Gateway</p>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#5a4a20;margin:0 0 .5rem;letter-spacing:.06em">CHAPTER 2 REQUIRED</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:${chapter>=2?'#c8b96e':'#4a3a18'}">
+        ${chapter>=2 ? 'This elemental path is now open. Visit the elemental skill tabs to unlock abilities.' : 'These paths are sealed. Master the physical arts first. Return in Chapter 2.'}
+      </p>`
+  } else {
+    const typeLabel = nd.type==='keystone' ? '★ KEYSTONE' : nd.type==='notable' ? '◆ NOTABLE' : '· NODE'
+    const prereqsMet = nd.requires.every(r => r==='center' || skillsUnlocked.includes(r))
+    const statLine   = nd.stat && nd.val ? `+${nd.val} ${nd.stat.replace('_bonus','').replace('_',' ')}` : ''
+    const inBattle   = battleSkills.includes(nd.id)
+    const battleFull = battleSkills.length >= 4
+
+    body = `
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem">
+        <div>
+          <p style="font-family:'Cinzel',serif;font-size:1rem;color:${col};margin:0 0 2px;font-weight:600">${nd.label}</p>
+          <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#5a4a20;margin:0;letter-spacing:.05em">${typeLabel} · ${nd.cost} SP${statLine?' · '+statLine:''}</p>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
+          ${canUnlock(nd) ? `<button onclick="doUnlock('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(200,184,128,.55);border:1px solid rgba(139,106,32,.7);border-radius:3px;padding:.3rem .8rem;cursor:pointer">✦ Unlock (${nd.cost} SP)</button>` : ''}
+          ${!isUnlocked(nd) && !canUnlock(nd) && !prereqsMet ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#4a3a18">🔒 Unlock path first</span>` : ''}
+          ${!isUnlocked(nd) && !canUnlock(nd) && prereqsMet && skillPoints < nd.cost ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Need ${nd.cost} SP</span>` : ''}
+          ${isUnlocked(nd) && nd.type !== 'small' && nd.type !== 'start' && nd.type !== 'keystone' && !inBattle && !battleFull
+            ? `<button onclick="addToBattle('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(94,174,224,.3);border:1px solid rgba(94,174,224,.5);border-radius:3px;padding:.3rem .8rem;cursor:pointer">⚔ Add to Battle</button>` : ''}
+          ${isUnlocked(nd) && inBattle
+            ? `<button onclick="removeFromBattle('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#c04040;background:rgba(192,64,64,.1);border:.5px solid rgba(192,64,64,.3);border-radius:3px;padding:.3rem .8rem;cursor:pointer">✕ Remove from Battle</button>` : ''}
+          ${isUnlocked(nd) && nd.type !== 'small' && nd.type !== 'start' && nd.type !== 'keystone' && !inBattle && battleFull
+            ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Battle slots full</span>` : ''}
+        </div>
+      </div>
+      ${nd.desc ? `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.84rem;color:#c8b96e;margin:0;line-height:1.55">${nd.desc}</p>` : ''}`
+  }
+
+  document.getElementById('detail-inner').innerHTML = body
+  document.getElementById('node-detail').classList.add('open')
+}
+
+// ── Unlock ───────────────────────────────────────────
+window.doUnlock = async (id) => {
+  const nd = NODES.find(n => n.id === id)
+  if (!nd || !canUnlock(nd)) return
+  skillsUnlocked = [...skillsUnlocked, id]
+  skillPoints -= nd.cost
+  if (nd.stat && nd.val) player[nd.stat] = (player[nd.stat] || 0) + nd.val
+  const update = { skills_unlocked: skillsUnlocked, skill_points: skillPoints }
+  if (nd.stat && nd.val) update[nd.stat] = player[nd.stat]
+  await supabase.from('players').update(update).eq('id', player.id)
+  Object.assign(player, { skills_unlocked: skillsUnlocked, skill_points: skillPoints })
+  updateSPDisplay()
+  showToast('✦ ' + nd.label + ' unlocked!')
+  buildTree()
+  showNodeDetail(nd)
+  renderPageSummary()
+  renderBattleSlotsPage()
+}
+
+// ── Battle slots ─────────────────────────────────────
+window.addToBattle = async (id) => {
+  if (battleSkills.length >= 4) { showToast('Battle slots full!', true); return }
+  if (battleSkills.includes(id)) return
+  battleSkills = [...battleSkills, id]
+  await supabase.from('players').update({ battle_skills: battleSkills }).eq('id', player.id)
+  player.battle_skills = battleSkills
+  showToast('Added to battle slots!')
+  renderSlotsBar(); renderBattleSlotsPage()
+  const nd = NODES.find(n => n.id === id)
+  if (nd) showNodeDetail(nd)
+}
+window.removeFromBattle = async (id) => {
+  battleSkills = battleSkills.filter(k => k !== id)
+  await supabase.from('players').update({ battle_skills: battleSkills }).eq('id', player.id)
+  player.battle_skills = battleSkills
+  renderSlotsBar(); renderBattleSlotsPage()
+  const nd = NODES.find(n => n.id === id)
+  if (nd) showNodeDetail(nd)
+}
+
+function renderSlotsBar() {
+  const list = document.getElementById('slots-list')
+  let html = ''
+  for (let i = 0; i < 4; i++) {
+    const id = battleSkills[i] || null
+    const nd = id ? NODES.find(n => n.id === id) : null
+    const col= nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
+    html += `<div class="slot-item${nd?' filled':''}">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#5a4a20;min-width:16px">S${i+1}</span>
+      ${nd
+        ? `<span style="font-family:'Cinzel',serif;font-size:.72rem;color:${col};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nd.label}</span>
+           <button class="slot-remove" onclick="removeFromBattle('${id}')">✕</button>`
+        : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.7rem;color:#3a2008;flex:1">Empty</span>`}
+    </div>`
+  }
+  list.innerHTML = html
+}
+
+function renderBattleSlotsPage() {
+  const c = document.getElementById('battle-slots-page')
+  let html = ''
+  for (let i = 0; i < 4; i++) {
+    const id = battleSkills[i] || null
+    const nd = id ? NODES.find(n => n.id === id) : null
+    const col= nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
+    html += `<div style="border:.5px solid ${nd?col+'55':'rgba(139,106,32,.22)'};border-radius:4px;padding:.45rem .6rem;display:flex;align-items:center;gap:.5rem;min-height:44px;background:${nd?'rgba(0,0,0,.05)':''}">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;min-width:16px">S${i+1}</span>
+      ${nd
+        ? `<div style="flex:1;min-width:0">
+             <p style="font-family:'Cinzel',serif;font-size:.78rem;color:${col};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nd.label}</p>
+             <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#7a6435;margin:0">${nd.branch.toUpperCase()} · ${nd.type.toUpperCase()}</p>
+           </div>
+           <button onclick="removeFromBattle('${id}')" style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040;background:none;border:none;cursor:pointer;flex-shrink:0">✕</button>`
+        : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435">Empty — unlock and assign a skill</span>`}
+    </div>`
+  }
+  c.innerHTML = html
+}
+
+function renderPageSummary() {
+  const c = document.getElementById('unlocked-summary')
+  const unlocked = NODES.filter(n => skillsUnlocked.includes(n.id))
+  if (!unlocked.length) {
+    c.innerHTML = `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#5a4a20">No nodes unlocked yet.</span>`
+    return
+  }
+  c.innerHTML = unlocked.map(nd => {
+    const col = nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e'
+    return `<span style="font-family:'Share Tech Mono',monospace;font-size:.48rem;padding:2px 6px;border-radius:10px;border:.5px solid ${col}35;color:${col};background:${col}10">${nd.label}</span>`
   }).join('')
 }
 
-window.setElement = (key) => {
-  activeElement = key
-  renderTabs()
-  renderTree()
-}
-
-// ── Render skill tree for active element ─────────────────
-function renderTree() {
-  const el     = ELEMENTS[activeElement]
-  const skills = SKILL_TREE[activeElement] || []
-  const wrap   = document.getElementById('skill-tree')
-
-  wrap.innerHTML = `
-    <div style="padding:.5rem 0;background:${el.bg};border-radius:6px;border:.5px solid ${el.color}30">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:0">
-        ${skills.map((sk, i) => {
-          const isUnlocked = skillsUnlocked.includes(sk.key)
-          const prereqMet  = !sk.requires || skillsUnlocked.includes(sk.requires)
-          const canUnlock  = !isUnlocked && prereqMet && skillPoints >= sk.cost
-          const isActive   = battleSkills.includes(sk.key)
-          const stateClass = isUnlocked ? (isActive ? 'active' : 'unlocked') : 'locked'
-
-          return `
-            ${i > 0 ? `<div class="connector-v" style="background:${isUnlocked?el.color+'60':'rgba(139,106,32,.2)'}"></div>` : ''}
-            <div class="skill-node ${stateClass}" data-key="${sk.key}"
-              style="--glow:${el.glow}"
-              onclick="handleSkillClick('${sk.key}')">
-              <div class="skill-img-wrap" style="border-color:${isUnlocked?el.color:el.color+'40'}">
-                <img src="../assets/ability/${sk.key}.png" alt="${sk.label}"
-                  onerror="this.outerHTML='<span style=\\'font-size:1.6rem\\'>${TYPE_LABELS[sk.type][0]}</span>'">
-              </div>
-              <div class="skill-label" style="color:${isUnlocked?el.color:'#7a6435'}">${sk.label}</div>
-              <div class="skill-tag" style="background:${TYPE_COLORS[sk.type]}22;color:${TYPE_COLORS[sk.type]};border:.5px solid ${TYPE_COLORS[sk.type]}44">
-                ${TYPE_LABELS[sk.type]}
-              </div>
-              ${!isUnlocked && prereqMet && skillPoints >= sk.cost
-                ? `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:#c8b96e;margin-top:2px">${sk.cost} SP — Click to unlock</div>`
-                : !isUnlocked && !prereqMet
-                ? `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:#7a6435;margin-top:2px">🔒 Unlock previous first</div>`
-                : !isUnlocked
-                ? `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:#c04040;margin-top:2px">Need ${sk.cost} SP</div>`
-                : isActive
-                ? `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:${el.color};margin-top:2px">✦ In battle slots</div>`
-                : `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:#5ec45e;margin-top:2px">✓ Unlocked</div>`
-              }
-            </div>
-          `
-        }).join('')}
-      </div>
-    </div>
-  `
-}
-
-// ── Handle skill node click ───────────────────────────────
-window.handleSkillClick = (key) => {
-  const sk    = Object.values(SKILL_TREE).flat().find(s => s.key === key)
-  if (!sk) return
-  showSkillDetail(sk)
-}
-
-// ── Skill detail panel ────────────────────────────────────
-function showSkillDetail(sk) {
-  const el         = Object.entries(ELEMENTS).find(([k]) => SKILL_TREE[k]?.some(s => s.key === sk.key))
-  const elKey      = el?.[0] || 'fire'
-  const elData     = ELEMENTS[elKey]
-  const isUnlocked = skillsUnlocked.includes(sk.key)
-  const prereqMet  = !sk.requires || skillsUnlocked.includes(sk.requires)
-  const inBattle   = battleSkills.includes(sk.key)
-  const slotsFull  = battleSkills.length >= MAX_BATTLE_SLOTS
-
-  const panel = document.getElementById('skill-detail')
-  panel.innerHTML = `
-    <div style="border:.5px solid ${elData.color}40;border-radius:5px;padding:.75rem;background:${elData.bg}">
-      <div style="display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.5rem">
-        <div style="width:44px;height:44px;border-radius:6px;border:2px solid ${elData.color};overflow:hidden;flex-shrink:0;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center">
-          <img src="../assets/ability/${sk.key}.png" style="width:36px;height:36px;object-fit:contain"
-            onerror="this.outerHTML='<span style=\\'font-size:1.4rem\\'>${TYPE_LABELS[sk.type][0]}</span>'">
-        </div>
-        <div>
-          <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${elData.color};margin:0 0 2px">${sk.label}</p>
-          <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#3a2008;margin:0">
-            ${elData.label.toUpperCase()} · ${TYPE_LABELS[sk.type]} · Cost: ${sk.cost} SP
-          </p>
-        </div>
-      </div>
-      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.8rem;color:#1a1208;margin:0 0 .6rem">${sk.desc}</p>
-      <div style="display:flex;gap:5px;flex-wrap:wrap">
-        ${!isUnlocked && prereqMet && skillPoints >= sk.cost
-          ? `<button onclick="unlockSkill('${sk.key}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:.35rem .9rem;cursor:pointer">✦ Unlock (${sk.cost} SP)</button>`
-          : !isUnlocked && !prereqMet
-          ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#7a6435">🔒 Unlock previous skill first</span>`
-          : !isUnlocked
-          ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Not enough skill points (need ${sk.cost})</span>`
-          : ''
-        }
-        ${isUnlocked && sk.type !== 'passive' && !inBattle && !slotsFull
-          ? `<button onclick="addToBattleSlot('${sk.key}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(94,174,224,.25);border:1px solid rgba(94,174,224,.5);border-radius:3px;padding:.35rem .9rem;cursor:pointer">⚔ Add to Battle</button>`
-          : ''
-        }
-        ${isUnlocked && sk.type !== 'passive' && !inBattle && slotsFull
-          ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Battle slots full (${MAX_BATTLE_SLOTS} max)</span>`
-          : ''
-        }
-        ${isUnlocked && sk.type !== 'passive' && inBattle
-          ? `<button onclick="removeFromBattleSlot('${sk.key}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#c04040;background:rgba(192,64,64,.1);border:.5px solid rgba(192,64,64,.3);border-radius:3px;padding:.35rem .9rem;cursor:pointer">✕ Remove from Battle</button>`
-          : ''
-        }
-        ${isUnlocked && sk.type === 'passive'
-          ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#9a8050">Passive — always active when unlocked</span>`
-          : ''
-        }
-      </div>
-    </div>
-  `
-}
-
-// ── Unlock a skill ────────────────────────────────────────
-window.unlockSkill = async (key) => {
-  const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
-  if (!sk) return
-  if (skillPoints < sk.cost) { showToast('Not enough skill points', true); return }
-  if (sk.requires && !skillsUnlocked.includes(sk.requires)) { showToast('Unlock previous skill first', true); return }
-
-  skillsUnlocked = [...skillsUnlocked, key]
-  skillPoints    = skillPoints - sk.cost
-
-  await supabase.from('players').update({
-    skills_unlocked: skillsUnlocked,
-    skill_points:    skillPoints,
-  }).eq('id', player.id)
-  player.skills_unlocked = skillsUnlocked
-  player.skill_points    = skillPoints
-
-  document.getElementById('sp-display').textContent = skillPoints
-  showToast('✦ Skill unlocked: ' + sk.label + '!')
-  renderTabs()
-  renderTree()
-  showSkillDetail(sk)
-}
-
-// ── Battle slot management ────────────────────────────────
-window.addToBattleSlot = async (key) => {
-  if (battleSkills.length >= MAX_BATTLE_SLOTS) { showToast('Battle slots full!', true); return }
-  if (battleSkills.includes(key)) return
-  battleSkills = [...battleSkills, key]
-  await saveBattleSkills()
-  renderBattleSlots()
-  // refresh detail
-  const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
-  if (sk) showSkillDetail(sk)
-  showToast('Added to battle!')
-}
-
-window.removeFromBattleSlot = async (key) => {
-  battleSkills = battleSkills.filter(k => k !== key)
-  await saveBattleSkills()
-  renderBattleSlots()
-  renderTree()
-  const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
-  if (sk) showSkillDetail(sk)
-}
-
-async function saveBattleSkills() {
-  await supabase.from('players').update({ battle_skills: battleSkills }).eq('id', player.id)
-  player.battle_skills = battleSkills
-}
-
-function renderBattleSlots() {
-  const container = document.getElementById('battle-slots')
-  const slots = []
-
-  // Fill filled slots
-  for (let i = 0; i < MAX_BATTLE_SLOTS; i++) {
-    const key    = battleSkills[i] || null
-    const sk     = key ? Object.values(SKILL_TREE).flat().find(s => s.key === key) : null
-    const elKey  = sk ? Object.entries(SKILL_TREE).find(([,v]) => v.some(s=>s.key===key))?.[0] : null
-    const elData = elKey ? ELEMENTS[elKey] : null
-
-    slots.push(`
-      <div class="slot-box ${sk?'filled':''}" style="display:flex;align-items:center;gap:.6rem;${sk?`border-color:${elData?.color}60;background:${elData?.bg};`:''}" onclick="${sk?`openSlotDetail('${key}')`:``}">
-        <div style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#7a6435;min-width:16px">S${i+1}</div>
-        ${sk ? `
-          <div style="width:34px;height:34px;border-radius:5px;border:1.5px solid ${elData?.color||'#9a8050'};overflow:hidden;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-            <img src="../assets/ability/${sk.key}.png" style="width:28px;height:28px;object-fit:contain"
-              onerror="this.outerHTML='<span style=\\'font-size:1rem\\'>${TYPE_LABELS[sk.type][0]}</span>'">
-          </div>
-          <div style="flex:1;min-width:0">
-            <p style="font-family:'Cinzel',serif;font-size:.75rem;color:${elData?.color||'#9a8050'};margin:0">${sk.label}</p>
-            <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#3a2008;margin:0">${(elKey||'').toUpperCase()} · ${TYPE_LABELS[sk.type]}</p>
-          </div>
-          <button class="remove-slot" onclick="event.stopPropagation();removeFromBattleSlot('${key}')">✕</button>
-        ` : `
-          <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;flex:1">Empty slot — unlock and assign a skill</div>
-        `}
-      </div>
-    `)
-  }
-  container.innerHTML = slots.join('')
-}
-
-window.openSlotDetail = (key) => {
-  const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
-  if (sk) showSkillDetail(sk)
-}
-
-// ── Skill point reset ─────────────────────────────────────
+// ── Reset ────────────────────────────────────────────
 window.openResetConfirm = () => {
   if (!skillsUnlocked.length) { showToast('No skills to reset'); return }
-  document.getElementById('reset-modal')?.remove()
-  const totalSpent = skillsUnlocked.reduce((sum, key) => {
-    const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
-    return sum + (sk?.cost || 0)
-  }, 0)
-
+  document.getElementById('rst-modal')?.remove()
+  const spent = skillsUnlocked.reduce((s, id) => s + (NODES.find(n=>n.id===id)?.cost||0), 0)
   const m = document.createElement('div')
-  m.id = 'reset-modal'
-  m.style.cssText = 'position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7)'
+  m.id = 'rst-modal'
+  m.style.cssText = 'position:fixed;inset:0;z-index:1100;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.85)'
   m.innerHTML = `
-    <div style="background:#c4b070;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
-      <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin:0 0 .5rem">Reset Skill Points</p>
-      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.85rem;color:#1a1208;margin:0 0 1rem">
-        All ${skillsUnlocked.length} skills will be unlearned and ${totalSpent} SP refunded. Battle skills will be cleared.
+    <div style="background:#1a1208;border:1px solid rgba(200,184,128,.25);border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px">
+      <p style="font-family:'Cinzel',serif;font-size:.95rem;color:#c8b96e;margin:0 0 .5rem;font-weight:600">Reset Skill Tree</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#9a8050;margin:0 0 1rem">
+        All ${skillsUnlocked.length} nodes will be unlearned and ${spent} SP refunded. Battle skills cleared.
       </p>
       <div style="display:flex;gap:8px">
-        <button onclick="confirmReset()" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(192,64,64,.2);border:1px solid rgba(192,64,64,.5);border-radius:3px;padding:.45rem;cursor:pointer">Confirm Reset</button>
-        <button onclick="document.getElementById('reset-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
+        <button onclick="confirmReset()" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#e05555;background:rgba(192,64,64,.12);border:1px solid rgba(192,64,64,.4);border-radius:3px;padding:.45rem;cursor:pointer">Confirm Reset</button>
+        <button onclick="document.getElementById('rst-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#c8b96e;background:rgba(200,184,128,.08);border:1px solid rgba(200,184,128,.2);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
       </div>
-    </div>
-  `
+    </div>`
   m.addEventListener('click', e => { if(e.target===m) m.remove() })
   document.body.appendChild(m)
 }
 
 window.confirmReset = async () => {
-  const totalSpent = skillsUnlocked.reduce((sum, key) => {
-    const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
-    return sum + (sk?.cost || 0)
-  }, 0)
-  const newSP = skillPoints + totalSpent
-  skillsUnlocked = []
-  battleSkills   = []
-  skillPoints    = newSP
-
-  await supabase.from('players').update({
-    skills_unlocked: [],
-    battle_skills:   [],
-    skill_points:    newSP,
-  }).eq('id', player.id)
-  player.skills_unlocked = []
-  player.battle_skills   = []
-  player.skill_points    = newSP
-
-  document.getElementById('reset-modal')?.remove()
-  document.getElementById('sp-display').textContent = skillPoints
-  document.getElementById('skill-detail').innerHTML = ''
-  renderTabs()
-  renderTree()
-  renderBattleSlots()
+  const spent = skillsUnlocked.reduce((s,id) => s+(NODES.find(n=>n.id===id)?.cost||0), 0)
+  const refunds = {}
+  skillsUnlocked.forEach(id => {
+    const nd = NODES.find(n=>n.id===id)
+    if (nd?.stat && nd?.val) refunds[nd.stat] = (refunds[nd.stat]||0) + nd.val
+  })
+  const statUpdates = {}
+  Object.entries(refunds).forEach(([k,v]) => { statUpdates[k] = Math.max(0,(player[k]||0)-v) })
+  const newSP = skillPoints + spent
+  skillsUnlocked=[]; battleSkills=[]; skillPoints=newSP
+  await supabase.from('players').update({ skills_unlocked:[], battle_skills:[], skill_points:newSP, ...statUpdates }).eq('id',player.id)
+  Object.assign(player, { skills_unlocked:[], battle_skills:[], skill_points:newSP, ...statUpdates })
+  document.getElementById('rst-modal')?.remove()
+  updateSPDisplay()
+  renderPageSummary(); renderBattleSlotsPage(); renderSlotsBar()
+  if (document.getElementById('tree-overlay').classList.contains('open')) buildTree()
   showToast('Skills reset — ' + newSP + ' SP refunded')
 }
 
-// ── Init ─────────────────────────────────────────────────
-renderTabs()
-renderTree()
-renderBattleSlots()
+// ── Pan & Zoom ───────────────────────────────────────
+function applyTransform() {
+  const t = `translate(${panX}px,${panY}px) scale(${scale})`
+  document.getElementById('tree-canvas').style.transform = t
+  document.getElementById('tree-svg').style.transform    = t
+  updateMinimap()
+}
+
+function setupPanZoom() {
+  const wrap = document.getElementById('tree-canvas-wrap')
+  wrap.addEventListener('mousedown', e => {
+    if (e.target.closest('.sn')) return
+    isDragging=true; dragStartX=e.clientX; dragStartY=e.clientY; panStartX=panX; panStartY=panY
+    wrap.classList.add('dragging')
+  })
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return
+    panX = panStartX+(e.clientX-dragStartX); panY = panStartY+(e.clientY-dragStartY)
+    applyTransform()
+  })
+  window.addEventListener('mouseup', () => { isDragging=false; wrap.classList.remove('dragging') })
+  let lastDist = null
+  wrap.addEventListener('touchstart', e => {
+    if (e.touches.length===1) { isDragging=true; dragStartX=e.touches[0].clientX; dragStartY=e.touches[0].clientY; panStartX=panX; panStartY=panY }
+  },{passive:true})
+  wrap.addEventListener('touchmove', e => {
+    if (e.touches.length===2) {
+      const d = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY)
+      if (lastDist) { scale=Math.max(.18,Math.min(2,scale+(d-lastDist)*.005)); applyTransform() }
+      lastDist=d
+    } else if (isDragging&&e.touches.length===1) {
+      panX=panStartX+(e.touches[0].clientX-dragStartX); panY=panStartY+(e.touches[0].clientY-dragStartY); applyTransform()
+    }
+  },{passive:true})
+  wrap.addEventListener('touchend',()=>{isDragging=false;lastDist=null})
+  wrap.addEventListener('wheel', e => {
+    e.preventDefault()
+    const rect=wrap.getBoundingClientRect(), mx=e.clientX-rect.left, my=e.clientY-rect.top
+    const delta=e.deltaY>0?-.08:.08, ns=Math.max(.18,Math.min(2,scale+delta))
+    panX=mx-(mx-panX)*(ns/scale); panY=my-(my-panY)*(ns/scale); scale=ns; applyTransform()
+  },{passive:false})
+}
+
+// ── Minimap ──────────────────────────────────────────
+function updateMinimap() {
+  const cv = document.getElementById('minimap')
+  if (!cv) return
+  const ctx=cv.getContext('2d'), W=cv.width, H=cv.height
+  const sx=W/CANVAS_W, sy=H/CANVAS_H
+  ctx.clearRect(0,0,W,H)
+  NODES.forEach(nd => {
+    const col = nd.color||BRANCH_COLOR[nd.branch]||'#c8b96e'
+    ctx.fillStyle = skillsUnlocked.includes(nd.id) ? col : 'rgba(139,106,32,.2)'
+    const r = nd.type==='keystone'?3.5:nd.type==='notable'?2.5:1.5
+    ctx.beginPath(); ctx.arc(nd.x*sx, nd.y*sy, r, 0, Math.PI*2); ctx.fill()
+  })
+  const wrap=document.getElementById('tree-canvas-wrap')
+  if (!wrap) return
+  ctx.strokeStyle='rgba(200,184,128,.55)'; ctx.lineWidth=1
+  ctx.strokeRect((-panX/scale)*sx, (-panY/scale)*sy, (wrap.clientWidth/scale)*sx, (wrap.clientHeight/scale)*sy)
+}
+
+// ── Preserve elemental skill system ─────────────────
+const ELEMENTS = {
+  dark:{label:'Dark',color:'#b06eff',glow:'#b06eff88',bg:'rgba(176,110,255,.08)'},
+  earth:{label:'Earth',color:'#8b5e3c',glow:'#8b5e3c88',bg:'rgba(139,94,60,.08)'},
+  fire:{label:'Fire',color:'#ff5500',glow:'#ff550088',bg:'rgba(255,85,0,.08)'},
+  light:{label:'Light',color:'#ffd700',glow:'#ffd70088',bg:'rgba(255,215,0,.08)'},
+  lightning:{label:'Lightning',color:'#88ccff',glow:'#88ccff88',bg:'rgba(136,204,255,.08)'},
+  metal:{label:'Metal',color:'#c0c0c0',glow:'#c0c0c088',bg:'rgba(192,192,192,.08)'},
+  plant:{label:'Plant',color:'#5ec45e',glow:'#5ec45e88',bg:'rgba(94,196,94,.08)'},
+  water:{label:'Water',color:'#0088ff',glow:'#0088ff88',bg:'rgba(0,136,255,.08)'},
+  wind:{label:'Wind',color:'#a8d8ea',glow:'#a8d8ea88',bg:'rgba(168,216,234,.08)'},
+}
+const ELEMENTAL_SKILLS = {
+  dark:[{key:'darkness_passive_backstab',type:'passive',label:'Backstab',desc:'Passive: 15% chance to deal double damage on strike.',cost:1,requires:null},{key:'darkness_skill_shadow_step',type:'active',label:'Shadow Step',desc:'Active: Teleport behind enemy, next attack ignores DEF.',cost:2,requires:'darkness_passive_backstab'},{key:'darkness_ultimate_void_zone',type:'ultimate',label:'Void Zone',desc:'Ultimate: Enemy ATK -30% for 3 turns.',cost:3,requires:'darkness_skill_shadow_step'}],
+  earth:[{key:'earth_passive_damage_reduction',type:'passive',label:'Stone Skin',desc:'Passive: Reduce all incoming damage by 5.',cost:1,requires:null},{key:'earth_skill_rock_armor',type:'active',label:'Rock Armor',desc:'Active: +20 DEF for 2 turns.',cost:2,requires:'earth_passive_damage_reduction'},{key:'earth_ultimate_earthquake',type:'ultimate',label:'Earthquake',desc:'Ultimate: Massive damage, stuns 1 turn.',cost:3,requires:'earth_skill_rock_armor'}],
+  fire:[{key:'fire_passive_burn',type:'passive',label:'Burn',desc:'Passive: Attacks apply Burn — 3 dmg/turn for 2 turns.',cost:1,requires:null},{key:'fire_skill_fire_blast',type:'active',label:'Fire Blast',desc:'Active: 25 fire damage, ignores 50% DEF.',cost:2,requires:'fire_passive_burn'},{key:'fire_ultimate_inferno_zone',type:'ultimate',label:'Inferno Zone',desc:'Ultimate: 40 dmg/turn for 3 turns.',cost:3,requires:'fire_skill_fire_blast'}],
+  light:[{key:'light_passive_boost_allies',type:'passive',label:'Radiance',desc:'Passive: Allies gain +5 ATK while you live.',cost:1,requires:null},{key:'light_skill_heal_pulse',type:'active',label:'Heal Pulse',desc:'Active: Restore 25 HP.',cost:2,requires:'light_passive_boost_allies'},{key:'light_ultimate_divine_barrier',type:'ultimate',label:'Divine Barrier',desc:'Ultimate: Invulnerable 1 turn, reflect damage.',cost:3,requires:'light_skill_heal_pulse'}],
+  lightning:[{key:'lightning_passive_chain_damage',type:'passive',label:'Chain',desc:'Passive: 20% chance to chain attack for 50% extra damage.',cost:1,requires:null},{key:'lightning_skill_lightning_strike',type:'active',label:'Lightning Strike',desc:'Active: 30 lightning damage, ignores shields.',cost:2,requires:'lightning_passive_chain_damage'},{key:'lightning_ultimate_thunderstorm',type:'ultimate',label:'Thunderstorm',desc:'Ultimate: 5 bolts × 15 damage.',cost:3,requires:'lightning_skill_lightning_strike'}],
+  metal:[{key:'metal_passive_reflect',type:'passive',label:'Reflect',desc:'Passive: Reflect 10% of damage taken.',cost:1,requires:null},{key:'metal_skill_blade_form',type:'active',label:'Blade Form',desc:'Active: ATK +20, SPD +5 for 2 turns.',cost:2,requires:'metal_passive_reflect'},{key:'metal_ultimate_iron_domain',type:'ultimate',label:'Iron Domain',desc:'Ultimate: ATK doubles for 3 turns.',cost:3,requires:'metal_skill_blade_form'}],
+  plant:[{key:'plant_passive_heal_still',type:'passive',label:'Regrowth',desc:'Passive: Restore 3 HP/turn when not hit.',cost:1,requires:null},{key:'plant_skill_root_trap',type:'active',label:'Root Trap',desc:'Active: Enemy skips next attack.',cost:2,requires:'plant_passive_heal_still'},{key:'plant_ultimate_nature_overgrowth',type:'ultimate',label:'Overgrowth',desc:'Ultimate: Heal 40 HP and deal 30 damage.',cost:3,requires:'plant_skill_root_trap'}],
+  water:[{key:'water_passive_regen',type:'passive',label:'Flow',desc:'Passive: Recover 5 HP per turn.',cost:1,requires:null},{key:'water_skill_water_shield',type:'active',label:'Water Shield',desc:'Active: Absorb next 30 damage.',cost:2,requires:'water_passive_regen'},{key:'water_ultimate_tsunami',type:'ultimate',label:'Tsunami',desc:'Ultimate: 50 damage, skip enemy turn.',cost:3,requires:'water_skill_water_shield'}],
+  wind:[{key:'wind_passive_dodge',type:'passive',label:'Gust',desc:'Passive: 20% dodge chance.',cost:1,requires:null},{key:'wind_skill_dash_strike',type:'active',label:'Dash Strike',desc:'Active: ATK×2, go first next turn.',cost:2,requires:'wind_passive_dodge'},{key:'wind_ultimate_tornado_field',type:'ultimate',label:'Tornado Field',desc:'Ultimate: Enemy ATK -10, SPD ×2 for 3 turns.',cost:3,requires:'wind_skill_dash_strike'}],
+}
+window._ELEMENTS=ELEMENTS
+window._ELEMENTAL_SKILLS=ELEMENTAL_SKILLS
+window._SKILL_TREE_NODES=NODES
+window._skillsUnlocked=()=>skillsUnlocked
 </script>
 </body>
 </html>
