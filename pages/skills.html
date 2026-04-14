@@ -24,7 +24,7 @@
     .tree-close-btn, .tree-reset-btn, .tree-slots-btn {
       font-family:'Share Tech Mono',monospace; font-size:.6rem;
       padding:4px 10px; cursor:pointer; border-radius:3px; }
-    .tree-close-btn { color:#7a6435; background:none; border:.5px solid rgba(139,106,32,.3); }
+    .tree-close-btn { color:#a08050; background:none; border:.5px solid rgba(200,160,60,.4); }
     .tree-reset-btn { color:#c04040; background:rgba(192,64,64,.08); border:.5px solid rgba(192,64,64,.3); }
     .tree-slots-btn { color:#c8b96e; background:rgba(200,184,128,.1); border:.5px solid rgba(200,184,128,.3); }
     #tree-canvas-wrap {
@@ -48,7 +48,7 @@
     .sn-st .sn-ring { width:52px; height:52px; border-width:2.5px; }
     .sn-lbl { font-family:'Share Tech Mono',monospace; font-size:9px; text-align:center;
       max-width:74px; line-height:1.2; margin-top:3px;
-      text-shadow:0 1px 4px rgba(0,0,0,1); pointer-events:none; }
+      text-shadow:0 1px 3px rgba(0,0,0,.8); pointer-events:none; }
     .sn-ks .sn-lbl { font-size:10px; font-family:'Cinzel',serif; }
     #node-detail {
       position:fixed; bottom:0; left:0; right:0; z-index:910;
@@ -99,10 +99,14 @@
         <div id="unlocked-summary" style="display:flex;flex-wrap:wrap;gap:4px;min-height:28px;margin-bottom:.75rem"></div>
         <hr class="ink-divider">
         <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#3a2008;margin-bottom:.4rem">Elemental paths — sealed until Chapter 2</p>
-        <div style="display:flex;flex-wrap:wrap;gap:4px">
-          ${['Dark','Earth','Fire','Light','Lightning','Metal','Plant','Water','Wind'].map(e =>
-            `<span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;padding:2px 7px;border-radius:12px;border:.5px solid rgba(139,106,32,.15);color:#4a3a18;background:rgba(0,0,0,.1)">🔒 ${e}</span>`
-          ).join('')}
+        <div id="elemental-tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.75rem"></div>
+        <hr class="ink-divider">
+        <div id="claim-sp-block" style="display:none;margin-bottom:.5rem">
+          <div style="background:rgba(200,184,128,.12);border:.5px solid rgba(200,184,128,.35);border-radius:4px;padding:.6rem .75rem">
+            <p style="font-family:'Cinzel',serif;font-size:.8rem;color:#c8b96e;margin:0 0 3px;font-weight:600">⬆ Unclaimed Skill Points</p>
+            <p id="claim-sp-desc" style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#9a8050;margin:0 0 .5rem"></p>
+            <button onclick="claimSP()" style="font-family:'Cinzel',serif;font-size:.75rem;color:#1a1208;background:rgba(200,184,128,.5);border:1px solid rgba(139,106,32,.6);border-radius:3px;padding:.35rem .9rem;cursor:pointer">Claim SP</button>
+          </div>
         </div>
       </div>
     </div>
@@ -131,7 +135,7 @@
     <h2>⬡ Skill Tree</h2>
     <span class="sp-badge" id="sp-badge">0 SP</span>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#5a4a20">Scroll to zoom · Drag to pan</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#a08858">Scroll to zoom · Drag to pan</span>
       <button class="tree-reset-btn" onclick="openResetConfirm()">↺ Reset</button>
       <button class="tree-slots-btn" onclick="toggleSlotsBar()">⚔ Battle Slots</button>
       <button class="tree-close-btn" onclick="closeTree()">✕ Close</button>
@@ -147,7 +151,7 @@
 <!-- Slots sidebar -->
 <div id="slots-bar">
   <p style="font-family:'Cinzel',serif;font-size:.85rem;color:#c8b96e;margin:0 0 .5rem">⚔ Battle Slots</p>
-  <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#5a4a20;margin:0 0 .6rem">Max 4 active skills in combat</p>
+  <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a08858;margin:0 0 .6rem">Max 4 active skills in combat</p>
   <div id="slots-list"></div>
 </div>
 
@@ -429,6 +433,70 @@ skillPoints    = player.skill_points    || 0
 updateSPDisplay()
 renderPageSummary()
 renderBattleSlotsPage()
+renderElementalTags()
+checkClaimSP()
+
+function renderElementalTags() {
+  const chapter = player.current_chapter || 1
+  const els = ['Dark','Earth','Fire','Light','Lightning','Metal','Plant','Water','Wind']
+  const container = document.getElementById('elemental-tags')
+  if (!container) return
+  container.innerHTML = els.map(e => {
+    const locked = chapter < 2
+    return `<span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;padding:2px 7px;border-radius:12px;border:.5px solid rgba(139,106,32,.15);color:${locked?'#a08858':'#c8b96e'};background:rgba(0,0,0,.1)">${locked?'🔒':''} ${e}</span>`
+  }).join('')
+}
+
+// ── Claim unclaimed SP ────────────────────────────────────
+// SP formula: 2 per level gained (from level 2 onward) + 4 if chapter 1 complete
+// sp_claimed tracks how many SP have already been auto-granted
+function calcOwedSP() {
+  const level   = player.level || 1
+  const chapter = player.current_chapter || 1
+  const chapDone= (player.chapters_unlocked || [1]).includes(2) || chapter >= 2
+
+  const spFromLevels  = Math.max(0, level - 1) * 2   // 2 SP per level, starting at level 2
+  const spFromChapter = chapDone ? 4 : 0              // 4 SP for completing chapter 1
+  const totalOwed     = spFromLevels + spFromChapter
+  const alreadyClaimed= player.sp_claimed || 0
+  return Math.max(0, totalOwed - alreadyClaimed)
+}
+
+function checkClaimSP() {
+  const owed = calcOwedSP()
+  const block = document.getElementById('claim-sp-block')
+  const desc  = document.getElementById('claim-sp-desc')
+  if (!block || !desc) return
+  if (owed > 0) {
+    const level   = player.level || 1
+    const chapDone= (player.chapters_unlocked||[1]).includes(2) || (player.current_chapter||1)>=2
+    const fromLvl = Math.max(0, level - 1) * 2 - Math.min(Math.max(0,level-1)*2, player.sp_claimed||0)
+    desc.textContent = `${owed} SP waiting — from your level (${level}) and${chapDone?' chapter 1 completion':' leveling up'}.`
+    block.style.display = 'block'
+  } else {
+    block.style.display = 'none'
+  }
+}
+
+window.claimSP = async () => {
+  const owed = calcOwedSP()
+  if (owed <= 0) return
+  const totalOwed     = (Math.max(0,(player.level||1)-1)*2) + ((player.chapters_unlocked||[1]).includes(2)||(player.current_chapter||1)>=2?4:0)
+  const newClaimed    = totalOwed
+  const newSP         = skillPoints + owed
+  skillPoints         = newSP
+  player.skill_points = newSP
+  player.sp_claimed   = newClaimed
+
+  await supabase.from('players').update({
+    skill_points: newSP,
+    sp_claimed:   newClaimed,
+  }).eq('id', player.id)
+
+  updateSPDisplay()
+  checkClaimSP()
+  showToast('✦ Claimed ' + owed + ' Skill Points!')
+}
 
 // ── Open/Close ───────────────────────────────────────
 window.openTree = () => {
@@ -481,7 +549,7 @@ function buildTree() {
       const par = NODES.find(n => n.id === req)
       if (!par) return
       const lit = skillsUnlocked.includes(nd.id) && skillsUnlocked.includes(req)
-      const col = lit ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.18)'
+      const col = lit ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(180,140,60,.45)'
       const sw  = lit ? 2.5 : 1.5
       lines += `<line x1="${par.x}" y1="${par.y}" x2="${nd.x}" y2="${nd.y}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"/>`
     })
@@ -519,18 +587,18 @@ function buildNodeHTML(nd) {
     inner = `<span style="font-size:1.3rem;color:#c8b96e;line-height:1">⬡</span>`
   } else if (nd.type === 'elemental') {
     const avail = chapter >= 2
-    inner = `<span style="font-family:'Cinzel',serif;font-size:.65rem;color:${avail?col:'#3a2008'};font-weight:600">${nd.label[0]}</span>`
+    inner = `<span style="font-family:'Cinzel',serif;font-size:.65rem;color:${avail?col:'#a08858'};font-weight:600">${nd.label[0]}</span>`
   } else if (nd.type === 'keystone') {
-    inner = `<span style="font-family:'Cinzel',serif;font-size:.55rem;color:${locked?'rgba(139,106,32,.25)':col};font-weight:700;text-align:center;line-height:1.2;max-width:52px;word-break:break-word">★</span>`
+    inner = `<span style="font-family:'Cinzel',serif;font-size:.55rem;color:${locked?'rgba(200,160,60,.5)':col};font-weight:700;text-align:center;line-height:1.2;max-width:52px;word-break:break-word">★</span>`
   } else {
     const letter = nd.stat ? nd.stat.charAt(0).toUpperCase() : '+'
-    inner = `<span style="font-family:'Share Tech Mono',monospace;font-size:${nd.type==='notable'?'.65rem':'.58rem'};color:${locked?'rgba(139,106,32,.25)':col};font-weight:600">${letter}</span>`
+    inner = `<span style="font-family:'Share Tech Mono',monospace;font-size:${nd.type==='notable'?'.65rem':'.58rem'};color:${locked?'rgba(200,160,60,.5)':col};font-weight:600">${letter}</span>`
   }
 
-  const glowStyle = isUnlocked(nd) && nd.type !== 'start' ? `box-shadow:0 0 ${nd.type==='keystone'?12:7}px ${col}55;` : ''
-  const ring = `<div class="sn-ring" style="border-color:${locked?'rgba(139,106,32,.18)':col};${glowStyle}">${inner}</div>`
+  const glowStyle = isUnlocked(nd) && nd.type !== 'start' ? `box-shadow:0 0 ${nd.type==='keystone'?14:8}px ${col}88;` : ''
+  const ring = `<div class="sn-ring" style="border-color:${locked?'rgba(180,140,60,.4)':col};${glowStyle}">${inner}</div>`
   const lbl  = nd.type !== 'start'
-    ? `<div class="sn-lbl" style="color:${locked?'#3a2008':col}">${nd.label}</div>`
+    ? `<div class="sn-lbl" style="color:${locked?'#a08858':col}">${nd.label}</div>`
     : ''
   return ring + lbl
 }
@@ -569,8 +637,8 @@ function showNodeDetail(nd) {
   } else if (isEl) {
     body = `
       <p style="font-family:'Cinzel',serif;font-size:1rem;color:${col};margin:0 0 4px;font-weight:600">${nd.label} — Elemental Gateway</p>
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#5a4a20;margin:0 0 .5rem;letter-spacing:.06em">CHAPTER 2 REQUIRED</p>
-      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:${chapter>=2?'#c8b96e':'#4a3a18'}">
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a08858;margin:0 0 .5rem;letter-spacing:.06em">CHAPTER 2 REQUIRED</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:${chapter>=2?'#c8b96e':'#b09060'}">
         ${chapter>=2 ? 'This elemental path is now open. Visit the elemental skill tabs to unlock abilities.' : 'These paths are sealed. Master the physical arts first. Return in Chapter 2.'}
       </p>`
   } else {
@@ -584,11 +652,11 @@ function showNodeDetail(nd) {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem">
         <div>
           <p style="font-family:'Cinzel',serif;font-size:1rem;color:${col};margin:0 0 2px;font-weight:600">${nd.label}</p>
-          <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#5a4a20;margin:0;letter-spacing:.05em">${typeLabel} · ${nd.cost} SP${statLine?' · '+statLine:''}</p>
+          <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a08858;margin:0;letter-spacing:.05em">${typeLabel} · ${nd.cost} SP${statLine?' · '+statLine:''}</p>
         </div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
           ${canUnlock(nd) ? `<button onclick="doUnlock('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(200,184,128,.55);border:1px solid rgba(139,106,32,.7);border-radius:3px;padding:.3rem .8rem;cursor:pointer">✦ Unlock (${nd.cost} SP)</button>` : ''}
-          ${!isUnlocked(nd) && !canUnlock(nd) && !prereqsMet ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#4a3a18">🔒 Unlock path first</span>` : ''}
+          ${!isUnlocked(nd) && !canUnlock(nd) && !prereqsMet ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a08858">🔒 Unlock path first</span>` : ''}
           ${!isUnlocked(nd) && !canUnlock(nd) && prereqsMet && skillPoints < nd.cost ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Need ${nd.cost} SP</span>` : ''}
           ${isUnlocked(nd) && nd.type !== 'small' && nd.type !== 'start' && nd.type !== 'keystone' && !inBattle && !battleFull
             ? `<button onclick="addToBattle('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(94,174,224,.3);border:1px solid rgba(94,174,224,.5);border-radius:3px;padding:.3rem .8rem;cursor:pointer">⚔ Add to Battle</button>` : ''}
@@ -653,7 +721,7 @@ function renderSlotsBar() {
     const nd = id ? NODES.find(n => n.id === id) : null
     const col= nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
     html += `<div class="slot-item${nd?' filled':''}">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#5a4a20;min-width:16px">S${i+1}</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a08858;min-width:16px">S${i+1}</span>
       ${nd
         ? `<span style="font-family:'Cinzel',serif;font-size:.72rem;color:${col};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nd.label}</span>
            <button class="slot-remove" onclick="removeFromBattle('${id}')">✕</button>`
@@ -688,7 +756,7 @@ function renderPageSummary() {
   const c = document.getElementById('unlocked-summary')
   const unlocked = NODES.filter(n => skillsUnlocked.includes(n.id))
   if (!unlocked.length) {
-    c.innerHTML = `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#5a4a20">No nodes unlocked yet.</span>`
+    c.innerHTML = `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#a08858">No nodes unlocked yet.</span>`
     return
   }
   c.innerHTML = unlocked.map(nd => {
