@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperSede — Skill Tree</title>
+  <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .tree-wrap { overflow-x:auto; padding-bottom: 1rem; }
+    .element-tab { font-family:'Share Tech Mono',monospace; font-size:.58rem; letter-spacing:.06em;
+      padding:4px 10px; border-radius:20px; cursor:pointer; border:.5px solid; transition:all .15s; white-space:nowrap; }
+    .skill-node {
+      position:relative; display:flex; flex-direction:column; align-items:center;
+      cursor:pointer; transition:transform .15s;
+    }
+    .skill-node:hover { transform:scale(1.05); }
+    .skill-node.locked .skill-img-wrap { opacity:.35; filter:grayscale(1); }
+    .skill-node.unlocked .skill-img-wrap { box-shadow:0 0 10px var(--glow,#c8b96e88); }
+    .skill-node.active .skill-img-wrap { box-shadow:0 0 16px var(--glow,#c8b96e), 0 0 4px var(--glow,#c8b96e); }
+    .skill-img-wrap {
+      width:52px; height:52px; border-radius:8px; border:2px solid; overflow:hidden;
+      display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.25);
+      transition:all .2s;
+    }
+    .skill-img-wrap img { width:44px; height:44px; object-fit:contain; }
+    .skill-label { font-family:'Share Tech Mono',monospace; font-size:.48rem; color:#1a1208;
+      margin-top:3px; text-align:center; max-width:64px; line-height:1.2; }
+    .skill-tag { font-size:.4rem; font-family:'Share Tech Mono',monospace; padding:1px 4px;
+      border-radius:8px; margin-top:2px; }
+    .connector-v { width:2px; height:18px; background:rgba(139,106,32,.3); margin:0 auto; }
+    .connector-h { height:2px; background:rgba(139,106,32,.3); flex:1; }
+    .branch-row { display:flex; align-items:flex-start; gap:0; }
+    .slot-box { border:.5px solid rgba(139,106,32,.35); border-radius:5px; padding:.5rem;
+      background:rgba(0,0,0,.04); min-height:70px; display:flex; align-items:center;
+      justify-content:center; transition:all .2s; position:relative; }
+    .slot-box.filled { background:rgba(200,184,128,.15); border-color:rgba(139,106,32,.6); }
+    .slot-box.drop-target { border-color:#c8b96e; background:rgba(200,184,128,.2); }
+    .battle-skill-chip { display:flex; align-items:center; gap:5px; width:100%; }
+    .remove-slot { position:absolute; top:3px; right:3px; background:none; border:none;
+      font-size:.7rem; cursor:pointer; color:#c04040; padding:0; line-height:1; }
+  </style>
+</head>
+<body>
+<div class="book-wrap">
+  <div id="nav"></div>
+  <div class="book animate-in">
+    <div class="page-left parchment">
+      <div class="page-inner">
+        <p class="chapter-label">Character</p>
+        <h1 class="page-title">Skill Tree</h1>
+        <hr class="ink-divider">
+
+        <!-- Points & Reset -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+          <div>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;margin:0">SKILL POINTS</p>
+            <p id="sp-display" style="font-family:'Cinzel',serif;font-size:1.3rem;font-weight:600;color:#c8b96e;margin:0">0</p>
+          </div>
+          <button onclick="openResetConfirm()" style="font-family:'Share Tech Mono',monospace;font-size:.55rem;padding:4px 10px;border-radius:3px;cursor:pointer;background:rgba(192,64,64,.1);border:.5px solid rgba(192,64,64,.4);color:#c04040">↺ Reset Skills</button>
+        </div>
+        <hr class="ink-divider">
+
+        <!-- Element tabs -->
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.75rem" id="element-tabs"></div>
+
+        <!-- Skill tree display -->
+        <div class="tree-wrap" id="skill-tree"></div>
+      </div>
+    </div>
+
+    <div class="spine"></div>
+
+    <div class="page-right parchment">
+      <div class="page-inner">
+        <p class="chapter-label">Battle Setup</p>
+        <h2 class="page-title">Combat Skills</h2>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.8rem;color:#3a2008;margin-bottom:.5rem">
+          Assign unlocked skills to battle slots. Up to 4 active skills usable in combat.
+        </p>
+        <hr class="ink-divider">
+
+        <!-- Battle slots -->
+        <div id="battle-slots" style="display:flex;flex-direction:column;gap:6px;margin-bottom:.75rem"></div>
+
+        <hr class="ink-divider">
+
+        <!-- Skill detail panel -->
+        <div id="skill-detail" style="min-height:80px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { supabase } from '../supabase.js'
+import { renderNav, showToast } from '../components/nav.js'
+
+// ── Skill Definitions ────────────────────────────────────────
+const ELEMENTS = {
+  dark:      { label:'Dark',      color:'#b06eff', glow:'#b06eff88', bg:'rgba(176,110,255,.08)' },
+  earth:     { label:'Earth',     color:'#8b5e3c', glow:'#8b5e3c88', bg:'rgba(139,94,60,.08)'  },
+  fire:      { label:'Fire',      color:'#ff5500', glow:'#ff550088', bg:'rgba(255,85,0,.08)'    },
+  light:     { label:'Light',     color:'#ffd700', glow:'#ffd70088', bg:'rgba(255,215,0,.08)'   },
+  lightning: { label:'Lightning', color:'#88ccff', glow:'#88ccff88', bg:'rgba(136,204,255,.08)' },
+  metal:     { label:'Metal',     color:'#c0c0c0', glow:'#c0c0c088', bg:'rgba(192,192,192,.08)' },
+  plant:     { label:'Plant',     color:'#5ec45e', glow:'#5ec45e88', bg:'rgba(94,196,94,.08)'   },
+  water:     { label:'Water',     color:'#0088ff', glow:'#0088ff88', bg:'rgba(0,136,255,.08)'   },
+  wind:      { label:'Wind',      color:'#a8d8ea', glow:'#a8d8ea88', bg:'rgba(168,216,234,.08)' },
+}
+
+// Each element: passive → skill → ultimate
+// key matches png filename in assets/ability/
+const SKILL_TREE = {
+  dark: [
+    { key:'darkness_passive_backstab',  type:'passive',  label:'Backstab',      desc:'Passive: 15% chance to deal double damage on strike.',  cost:1, requires:null },
+    { key:'darkness_skill_shadow_step', type:'active',   label:'Shadow Step',   desc:'Active: Teleport behind enemy, next attack ignores DEF.', cost:2, requires:'darkness_passive_backstab' },
+    { key:'darkness_ultimate_void_zone',type:'ultimate', label:'Void Zone',     desc:'Ultimate: Create a zone of darkness — enemy ATK -30% for 3 turns.', cost:3, requires:'darkness_skill_shadow_step' },
+  ],
+  earth: [
+    { key:'earth_passive_damage_reduction', type:'passive',  label:'Stone Skin',     desc:'Passive: Reduce all incoming damage by 5.',        cost:1, requires:null },
+    { key:'earth_skill_rock_armor',         type:'active',   label:'Rock Armor',     desc:'Active: Gain +20 DEF for 2 turns. Absorbs one hit.', cost:2, requires:'earth_passive_damage_reduction' },
+    { key:'earth_ultimate_earthquake',      type:'ultimate', label:'Earthquake',     desc:'Ultimate: Deal massive earth damage to all enemies. Stuns for 1 turn.', cost:3, requires:'earth_skill_rock_armor' },
+  ],
+  fire: [
+    { key:'fire_passive_burn',        type:'passive',  label:'Burn',          desc:'Passive: Attacks apply Burn — 3 damage/turn for 2 turns.', cost:1, requires:null },
+    { key:'fire_skill_fire_blast',    type:'active',   label:'Fire Blast',    desc:'Active: Deal 25 fire damage. Ignores 50% of enemy DEF.',    cost:2, requires:'fire_passive_burn' },
+    { key:'fire_ultimate_inferno_zone',type:'ultimate',label:'Inferno Zone',  desc:'Ultimate: Engulf the area in flames — 40 dmg/turn for 3 turns.', cost:3, requires:'fire_skill_fire_blast' },
+  ],
+  light: [
+    { key:'light_passive_boost_allies', type:'passive',  label:'Radiance',       desc:'Passive: Allies gain +5 ATK while you are alive.',         cost:1, requires:null },
+    { key:'light_skill_heal_pulse',     type:'active',   label:'Heal Pulse',     desc:'Active: Restore 25 HP to yourself or an ally.',             cost:2, requires:'light_passive_boost_allies' },
+    { key:'light_ultimate_divine_barrier',type:'ultimate',label:'Divine Barrier',desc:'Ultimate: Become invulnerable for 1 turn. Reflect damage.', cost:3, requires:'light_skill_heal_pulse' },
+  ],
+  lightning: [
+    { key:'lightning_passive_chain_damage', type:'passive',  label:'Chain',          desc:'Passive: 20% chance attack chains to deal 50% dmg to a second enemy.', cost:1, requires:null },
+    { key:'lightning_skill_lightning_strike',type:'active',  label:'Lightning Strike',desc:'Active: Strike for 30 lightning damage. Ignores shields.', cost:2, requires:'lightning_passive_chain_damage' },
+    { key:'lightning_ultimate_thunderstorm', type:'ultimate',label:'Thunderstorm',   desc:'Ultimate: Call a storm — 5 lightning bolts each dealing 15 damage.', cost:3, requires:'lightning_skill_lightning_strike' },
+  ],
+  metal: [
+    { key:'metal_passive_reflect',    type:'passive',  label:'Reflect',       desc:'Passive: Reflect 10% of received damage back to attacker.', cost:1, requires:null },
+    { key:'metal_skill_blade_form',   type:'active',   label:'Blade Form',    desc:'Active: Enter blade form — ATK +20, SPD +5 for 2 turns.',  cost:2, requires:'metal_passive_reflect' },
+    { key:'metal_ultimate_iron_domain',type:'ultimate',label:'Iron Domain',   desc:'Ultimate: Lock the battlefield — neither side can flee for 3 turns. Your ATK doubles.', cost:3, requires:'metal_skill_blade_form' },
+  ],
+  plant: [
+    { key:'plant_passive_heal_still', type:'passive',  label:'Regrowth',      desc:'Passive: Restore 3 HP at the start of each turn when not taking damage.', cost:1, requires:null },
+    { key:'plant_skill_root_trap',    type:'active',   label:'Root Trap',     desc:'Active: Root enemy — they skip next attack turn.',          cost:2, requires:'plant_passive_heal_still' },
+    { key:'plant_ultimate_nature_overgrowth',type:'ultimate',label:'Overgrowth',desc:'Ultimate: Nature overwhelms — heal 40 HP and deal 30 damage.', cost:3, requires:'plant_skill_root_trap' },
+  ],
+  water: [
+    { key:'water_passive_regen',     type:'passive',  label:'Flow',          desc:'Passive: Recover 5 HP per turn.',                            cost:1, requires:null },
+    { key:'water_skill_water_shield',type:'active',   label:'Water Shield',  desc:'Active: Create a water barrier — absorb next 30 damage.',   cost:2, requires:'water_passive_regen' },
+    { key:'water_ultimate_tsunami',  type:'ultimate', label:'Tsunami',       desc:'Ultimate: Unleash a tidal wave — 50 damage, knocks enemy back 1 turn.', cost:3, requires:'water_skill_water_shield' },
+  ],
+  wind: [
+    { key:'wind_passive_dodge',      type:'passive',  label:'Gust',          desc:'Passive: 20% chance to dodge any incoming attack.',         cost:1, requires:null },
+    { key:'wind_skill_dash_strike',  type:'active',   label:'Dash Strike',   desc:'Active: Dash into enemy — deal ATK×2 and go first next turn.', cost:2, requires:'wind_passive_dodge' },
+    { key:'wind_ultimate_tornado_field',type:'ultimate',label:'Tornado Field',desc:'Ultimate: Tornado engulfs battlefield — -10 enemy ATK, your SPD ×2 for 3 turns.', cost:3, requires:'wind_skill_dash_strike' },
+  ],
+}
+
+const TYPE_COLORS = { passive:'#9a8050', active:'#5eaee0', ultimate:'#c8b96e' }
+const TYPE_LABELS = { passive:'PASSIVE', active:'ACTIVE', ultimate:'ULTIMATE' }
+
+const MAX_BATTLE_SLOTS = 4
+
+let player = await renderNav('nav')
+if (!player) throw new Error('no player')
+
+// ── Load skill state from DB ──────────────────────────────
+// skills_unlocked: array of skill keys
+// battle_skills: array of up to 4 skill keys for battle
+let skillsUnlocked = player.skills_unlocked || []
+let battleSkills   = player.battle_skills   || []
+let skillPoints    = player.skill_points    || 0
+let activeElement  = 'fire'
+
+document.getElementById('sp-display').textContent = skillPoints
+
+// ── Render element tabs ───────────────────────────────────
+function renderTabs() {
+  document.getElementById('element-tabs').innerHTML = Object.entries(ELEMENTS).map(([key, el]) => {
+    const count = (SKILL_TREE[key]||[]).filter(s => skillsUnlocked.includes(s.key)).length
+    const active = key === activeElement
+    return `<button class="element-tab" onclick="setElement('${key}')"
+      style="color:${el.color};border-color:${active?el.color:el.color+'40'};background:${active?el.bg:'transparent'};font-weight:${active?'600':'400'}">
+      ${el.label}${count>0?` <span style="opacity:.7">${count}/3</span>`:''}
+    </button>`
+  }).join('')
+}
+
+window.setElement = (key) => {
+  activeElement = key
+  renderTabs()
+  renderTree()
+}
+
+// ── Render skill tree for active element ─────────────────
+function renderTree() {
+  const el     = ELEMENTS[activeElement]
+  const skills = SKILL_TREE[activeElement] || []
+  const wrap   = document.getElementById('skill-tree')
+
+  wrap.innerHTML = `
+    <div style="padding:.5rem 0;background:${el.bg};border-radius:6px;border:.5px solid ${el.color}30">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:0">
+        ${skills.map((sk, i) => {
+          const isUnlocked = skillsUnlocked.includes(sk.key)
+          const prereqMet  = !sk.requires || skillsUnlocked.includes(sk.requires)
+          const canUnlock  = !isUnlocked && prereqMet && skillPoints >= sk.cost
+          const isActive   = battleSkills.includes(sk.key)
+          const stateClass = isUnlocked ? (isActive ? 'active' : 'unlocked') : 'locked'
+
+          return `
+            ${i > 0 ? `<div class="connector-v" style="background:${isUnlocked?el.color+'60':'rgba(139,106,32,.2)'}"></div>` : ''}
+            <div class="skill-node ${stateClass}" data-key="${sk.key}"
+              style="--glow:${el.glow}"
+              onclick="handleSkillClick('${sk.key}')">
+              <div class="skill-img-wrap" style="border-color:${isUnlocked?el.color:el.color+'40'}">
+                <img src="../assets/ability/${sk.key}.png" alt="${sk.label}"
+                  onerror="this.outerHTML='<span style=\\'font-size:1.6rem\\'>${TYPE_LABELS[sk.type][0]}</span>'">
+              </div>
+              <div class="skill-label" style="color:${isUnlocked?el.color:'#7a6435'}">${sk.label}</div>
+              <div class="skill-tag" style="background:${TYPE_COLORS[sk.type]}22;color:${TYPE_COLORS[sk.type]};border:.5px solid ${TYPE_COLORS[sk.type]}44">
+                ${TYPE_LABELS[sk.type]}
+              </div>
+              ${!isUnlocked && prereqMet && skillPoints >= sk.cost
+                ? `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:#c8b96e;margin-top:2px">${sk.cost} SP — Click to unlock</div>`
+                : !isUnlocked && !prereqMet
+                ? `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:#7a6435;margin-top:2px">🔒 Unlock previous first</div>`
+                : !isUnlocked
+                ? `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:#c04040;margin-top:2px">Need ${sk.cost} SP</div>`
+                : isActive
+                ? `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:${el.color};margin-top:2px">✦ In battle slots</div>`
+                : `<div style="font-family:'Share Tech Mono',monospace;font-size:.45rem;color:#5ec45e;margin-top:2px">✓ Unlocked</div>`
+              }
+            </div>
+          `
+        }).join('')}
+      </div>
+    </div>
+  `
+}
+
+// ── Handle skill node click ───────────────────────────────
+window.handleSkillClick = (key) => {
+  const sk    = Object.values(SKILL_TREE).flat().find(s => s.key === key)
+  if (!sk) return
+  showSkillDetail(sk)
+}
+
+// ── Skill detail panel ────────────────────────────────────
+function showSkillDetail(sk) {
+  const el         = Object.entries(ELEMENTS).find(([k]) => SKILL_TREE[k]?.some(s => s.key === sk.key))
+  const elKey      = el?.[0] || 'fire'
+  const elData     = ELEMENTS[elKey]
+  const isUnlocked = skillsUnlocked.includes(sk.key)
+  const prereqMet  = !sk.requires || skillsUnlocked.includes(sk.requires)
+  const inBattle   = battleSkills.includes(sk.key)
+  const slotsFull  = battleSkills.length >= MAX_BATTLE_SLOTS
+
+  const panel = document.getElementById('skill-detail')
+  panel.innerHTML = `
+    <div style="border:.5px solid ${elData.color}40;border-radius:5px;padding:.75rem;background:${elData.bg}">
+      <div style="display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.5rem">
+        <div style="width:44px;height:44px;border-radius:6px;border:2px solid ${elData.color};overflow:hidden;flex-shrink:0;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center">
+          <img src="../assets/ability/${sk.key}.png" style="width:36px;height:36px;object-fit:contain"
+            onerror="this.outerHTML='<span style=\\'font-size:1.4rem\\'>${TYPE_LABELS[sk.type][0]}</span>'">
+        </div>
+        <div>
+          <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${elData.color};margin:0 0 2px">${sk.label}</p>
+          <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#3a2008;margin:0">
+            ${elData.label.toUpperCase()} · ${TYPE_LABELS[sk.type]} · Cost: ${sk.cost} SP
+          </p>
+        </div>
+      </div>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.8rem;color:#1a1208;margin:0 0 .6rem">${sk.desc}</p>
+      <div style="display:flex;gap:5px;flex-wrap:wrap">
+        ${!isUnlocked && prereqMet && skillPoints >= sk.cost
+          ? `<button onclick="unlockSkill('${sk.key}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(139,106,32,.5);border-radius:3px;padding:.35rem .9rem;cursor:pointer">✦ Unlock (${sk.cost} SP)</button>`
+          : !isUnlocked && !prereqMet
+          ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#7a6435">🔒 Unlock previous skill first</span>`
+          : !isUnlocked
+          ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Not enough skill points (need ${sk.cost})</span>`
+          : ''
+        }
+        ${isUnlocked && sk.type !== 'passive' && !inBattle && !slotsFull
+          ? `<button onclick="addToBattleSlot('${sk.key}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(94,174,224,.25);border:1px solid rgba(94,174,224,.5);border-radius:3px;padding:.35rem .9rem;cursor:pointer">⚔ Add to Battle</button>`
+          : ''
+        }
+        ${isUnlocked && sk.type !== 'passive' && !inBattle && slotsFull
+          ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Battle slots full (${MAX_BATTLE_SLOTS} max)</span>`
+          : ''
+        }
+        ${isUnlocked && sk.type !== 'passive' && inBattle
+          ? `<button onclick="removeFromBattleSlot('${sk.key}')" style="font-family:'Cinzel',serif;font-size:.72rem;color:#c04040;background:rgba(192,64,64,.1);border:.5px solid rgba(192,64,64,.3);border-radius:3px;padding:.35rem .9rem;cursor:pointer">✕ Remove from Battle</button>`
+          : ''
+        }
+        ${isUnlocked && sk.type === 'passive'
+          ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#9a8050">Passive — always active when unlocked</span>`
+          : ''
+        }
+      </div>
+    </div>
+  `
+}
+
+// ── Unlock a skill ────────────────────────────────────────
+window.unlockSkill = async (key) => {
+  const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
+  if (!sk) return
+  if (skillPoints < sk.cost) { showToast('Not enough skill points', true); return }
+  if (sk.requires && !skillsUnlocked.includes(sk.requires)) { showToast('Unlock previous skill first', true); return }
+
+  skillsUnlocked = [...skillsUnlocked, key]
+  skillPoints    = skillPoints - sk.cost
+
+  await supabase.from('players').update({
+    skills_unlocked: skillsUnlocked,
+    skill_points:    skillPoints,
+  }).eq('id', player.id)
+  player.skills_unlocked = skillsUnlocked
+  player.skill_points    = skillPoints
+
+  document.getElementById('sp-display').textContent = skillPoints
+  showToast('✦ Skill unlocked: ' + sk.label + '!')
+  renderTabs()
+  renderTree()
+  showSkillDetail(sk)
+}
+
+// ── Battle slot management ────────────────────────────────
+window.addToBattleSlot = async (key) => {
+  if (battleSkills.length >= MAX_BATTLE_SLOTS) { showToast('Battle slots full!', true); return }
+  if (battleSkills.includes(key)) return
+  battleSkills = [...battleSkills, key]
+  await saveBattleSkills()
+  renderBattleSlots()
+  // refresh detail
+  const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
+  if (sk) showSkillDetail(sk)
+  showToast('Added to battle!')
+}
+
+window.removeFromBattleSlot = async (key) => {
+  battleSkills = battleSkills.filter(k => k !== key)
+  await saveBattleSkills()
+  renderBattleSlots()
+  renderTree()
+  const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
+  if (sk) showSkillDetail(sk)
+}
+
+async function saveBattleSkills() {
+  await supabase.from('players').update({ battle_skills: battleSkills }).eq('id', player.id)
+  player.battle_skills = battleSkills
+}
+
+function renderBattleSlots() {
+  const container = document.getElementById('battle-slots')
+  const slots = []
+
+  // Fill filled slots
+  for (let i = 0; i < MAX_BATTLE_SLOTS; i++) {
+    const key    = battleSkills[i] || null
+    const sk     = key ? Object.values(SKILL_TREE).flat().find(s => s.key === key) : null
+    const elKey  = sk ? Object.entries(SKILL_TREE).find(([,v]) => v.some(s=>s.key===key))?.[0] : null
+    const elData = elKey ? ELEMENTS[elKey] : null
+
+    slots.push(`
+      <div class="slot-box ${sk?'filled':''}" style="display:flex;align-items:center;gap:.6rem;${sk?`border-color:${elData?.color}60;background:${elData?.bg};`:''}" onclick="${sk?`openSlotDetail('${key}')`:``}">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#7a6435;min-width:16px">S${i+1}</div>
+        ${sk ? `
+          <div style="width:34px;height:34px;border-radius:5px;border:1.5px solid ${elData?.color||'#9a8050'};overflow:hidden;background:rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+            <img src="../assets/ability/${sk.key}.png" style="width:28px;height:28px;object-fit:contain"
+              onerror="this.outerHTML='<span style=\\'font-size:1rem\\'>${TYPE_LABELS[sk.type][0]}</span>'">
+          </div>
+          <div style="flex:1;min-width:0">
+            <p style="font-family:'Cinzel',serif;font-size:.75rem;color:${elData?.color||'#9a8050'};margin:0">${sk.label}</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#3a2008;margin:0">${(elKey||'').toUpperCase()} · ${TYPE_LABELS[sk.type]}</p>
+          </div>
+          <button class="remove-slot" onclick="event.stopPropagation();removeFromBattleSlot('${key}')">✕</button>
+        ` : `
+          <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;flex:1">Empty slot — unlock and assign a skill</div>
+        `}
+      </div>
+    `)
+  }
+  container.innerHTML = slots.join('')
+}
+
+window.openSlotDetail = (key) => {
+  const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
+  if (sk) showSkillDetail(sk)
+}
+
+// ── Skill point reset ─────────────────────────────────────
+window.openResetConfirm = () => {
+  if (!skillsUnlocked.length) { showToast('No skills to reset'); return }
+  document.getElementById('reset-modal')?.remove()
+  const totalSpent = skillsUnlocked.reduce((sum, key) => {
+    const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
+    return sum + (sk?.cost || 0)
+  }, 0)
+
+  const m = document.createElement('div')
+  m.id = 'reset-modal'
+  m.style.cssText = 'position:fixed;inset:0;z-index:800;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.7)'
+  m.innerHTML = `
+    <div style="background:#c4b070;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin:0 0 .5rem">Reset Skill Points</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.85rem;color:#1a1208;margin:0 0 1rem">
+        All ${skillsUnlocked.length} skills will be unlearned and ${totalSpent} SP refunded. Battle skills will be cleared.
+      </p>
+      <div style="display:flex;gap:8px">
+        <button onclick="confirmReset()" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(192,64,64,.2);border:1px solid rgba(192,64,64,.5);border-radius:3px;padding:.45rem;cursor:pointer">Confirm Reset</button>
+        <button onclick="document.getElementById('reset-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
+      </div>
+    </div>
+  `
+  m.addEventListener('click', e => { if(e.target===m) m.remove() })
+  document.body.appendChild(m)
+}
+
+window.confirmReset = async () => {
+  const totalSpent = skillsUnlocked.reduce((sum, key) => {
+    const sk = Object.values(SKILL_TREE).flat().find(s => s.key === key)
+    return sum + (sk?.cost || 0)
+  }, 0)
+  const newSP = skillPoints + totalSpent
+  skillsUnlocked = []
+  battleSkills   = []
+  skillPoints    = newSP
+
+  await supabase.from('players').update({
+    skills_unlocked: [],
+    battle_skills:   [],
+    skill_points:    newSP,
+  }).eq('id', player.id)
+  player.skills_unlocked = []
+  player.battle_skills   = []
+  player.skill_points    = newSP
+
+  document.getElementById('reset-modal')?.remove()
+  document.getElementById('sp-display').textContent = skillPoints
+  document.getElementById('skill-detail').innerHTML = ''
+  renderTabs()
+  renderTree()
+  renderBattleSlots()
+  showToast('Skills reset — ' + newSP + ' SP refunded')
+}
+
+// ── Init ─────────────────────────────────────────────────
+renderTabs()
+renderTree()
+renderBattleSlots()
+</script>
+</body>
+</html>
