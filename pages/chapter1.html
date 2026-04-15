@@ -1042,27 +1042,41 @@ async function checkLevelUp(oldXp, newXp, oldLevel) {
 
   if (!leveled) return null
 
-  const newMaxHp    = (player.max_hp || 100) + levelsGained * 20
-  const newHp       = newMaxHp  // FULL HP restore on level up
+  // +5 HP per level (not 20)
+  const newMaxHp  = (player.max_hp || 100) + levelsGained * 5
+  const newHp     = newMaxHp  // full restore on level up
 
-  // Award 2 Skill Points per level gained (spent in Skill Tree, not stat modal)
-  const spGained  = levelsGained * 2
+  // 1 SP per level gained
+  const spGained  = levelsGained * 1
   const newSP     = (player.skill_points || 0) + spGained
   player.skill_points = newSP
-
-  // Track sp_claimed so the Claim button on skills page stays accurate
   const newClaimed = (player.sp_claimed || 0) + spGained
   player.sp_claimed = newClaimed
 
+  // +1 to all base stats per level
+  const statGain = levelsGained
+  const updStats = {
+    atk:     (player.atk     || 1) + statGain,
+    def:     (player.def     || 0) + statGain,
+    power:   (player.power   || 0) + statGain,
+    guard:   (player.guard   || 0) + statGain,
+    speed:   (player.speed   || 0) + statGain,
+    insight: (player.insight || 0) + statGain,
+    luck:    (player.luck    || 0) + statGain,
+    control: (player.control || 0) + statGain,
+  }
+  Object.assign(player, updStats)
+
   currentHp = newHp
   player.max_hp = newMaxHp
+  player.level  = level
+  player.xp     = newXp
 
-  player.level = level
-  player.xp    = newXp
-  showToast('LEVEL UP! Lvl ' + level + ' — Full HP restored! +' + spGained + ' skill points — visit Skills page!')
+  showToast('LEVEL UP! Lvl ' + level + ' — +5 HP · +1 all stats · +' + spGained + ' SP!')
   renderHUD()
 
-  return { level, max_hp: newMaxHp, hp: newHp, xp: newXp, skill_points: newSP, sp_claimed: newClaimed }
+  return { level, max_hp: newMaxHp, hp: newHp, xp: newXp,
+           skill_points: newSP, sp_claimed: newClaimed, ...updStats }
 }
 
 // ── HUD ──────────────────────────────────────────
@@ -1294,6 +1308,11 @@ const ITEM_IMAGES = {
   // Tactical weapon
   'iron_sword':     '../assets/weapon/iron_sword.png',
   'tactical_sword': '../assets/weapon/tactical_sword.png',
+  // Watcher Set
+  'watcher_eye_ring': '../assets/sets/watcher_eye_ring.png',
+  'watcher_band':     '../assets/sets/watcher_band.png',
+  'watcher_cloak':    '../assets/sets/watcher_cloak.png',
+  'watcher_crown':    '../assets/sets/watcher_crown.png',
 }
 function getItemImg(k) { return ITEM_IMAGES[k] || null }
 
@@ -2040,7 +2059,12 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     }
   }
 
-  function log(msg) { const el=document.getElementById('combat-log'); if(el) el.textContent=msg }
+  function log(msg, turnInfo) {
+    const el = document.getElementById('combat-log')
+    if (el) el.innerHTML = (turnInfo
+      ? '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.48rem;color:#a08858;letter-spacing:.06em;display:block;margin-bottom:2px">' + turnInfo + '</span>'
+      : '') + msg
+  }
 
   function shake() {
     const w=document.getElementById('combat-wrap')
@@ -2158,14 +2182,15 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         if (isBoss) {
           const unlocked = player.chapters_unlocked || [1]
           if (!unlocked.includes(2)) updates.chapters_unlocked = [...unlocked, 2]
-          // ── Award 4 SP for completing Chapter 1 (one-time) ──
-          const ch1Bonus = 4
+          // ── 1 SP for boss kill (the bonus kill SP) ──
+          const ch1Bonus = 1
           updates.skill_points = (player.skill_points || 0) + ch1Bonus
-          // Advance sp_claimed so the Claim button stays in sync
           updates.sp_claimed   = (player.sp_claimed  || 0) + ch1Bonus
           player.skill_points  = updates.skill_points
           player.sp_claimed    = updates.sp_claimed
-          showToast('Chapter 1 Complete — +' + (enemy.xp||300) + ' XP  +' + ch1Bonus + ' Skill Points awarded!')
+          showToast('Chapter 1 Complete — +' + (enemy.xp||300) + ' XP  +' + ch1Bonus + ' Bonus SP!')
+          // ── Watcher Item Set — rare drop (35% per piece) ──
+          await dropWatcherSet()
         } else {
           showToast('Victory! +' + (enemy.xp||50) + ' XP gained!')
         }
@@ -2226,6 +2251,16 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   function playerDEF()  { return calcDEF() }
   function playerSPD()  { return calcSPD() }
   function enemySPD()   { return enemy.spd || Math.floor((enemy.atk||5) * 0.6) }
+
+  // ── Global skill level getter (also used by renderSkillSlots outside doTurn) ─
+  function _skillLvGlobal(key) {
+    const T = [0,10,25,50,90,150,240,380,590,900]
+    const sl = (player.skill_levels || {})[key]
+    if (!sl) return 1
+    let lv = 1
+    for (let i = 1; i < T.length; i++) { if (sl.uses >= T[i]) lv = i+1; else break }
+    return Math.min(10, lv)
+  }
 
   // ── Battle skills from player ────────────────────────────
   const battleSkillKeys = player.battle_skills || []
@@ -2305,10 +2340,13 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         const sk = BATTLE_SKILLS[k]
         const cd = statusEffects.skillCooldowns[k] || 0
         const isUlt = sk.type === 'ultimate'
-        return `<button class="combat-btn" id="btn-skill-${k}" onclick="useSkill('${k}')" ${cd>0?'disabled':''} title="${sk.desc||sk.label}"
+        const lv  = _skillLvGlobal(k)
+        const lvColor = lv >= 10 ? '#ffd700' : lv >= 7 ? '#c8b96e' : lv >= 4 ? '#a0c080' : '#888'
+        return `<button class="combat-btn" id="btn-skill-${k}" onclick="useSkill('${k}')" ${cd>0?'disabled':''} title="Lv${lv} · ${sk.desc||sk.label}"
           style="color:${sk.color};${isUlt?'border-color:'+sk.color+'60;':''};font-size:.58rem;display:flex;align-items:center;gap:4px">
           <img src="../assets/ability/${k}.png" style="width:16px;height:16px;object-fit:contain;border-radius:2px" onerror="this.style.display='none'">
-          <span>${isUlt?'★ ':''} ${sk.label}${cd>0?' ('+cd+')':''}</span>
+          <span style="flex:1">${isUlt?'★ ':''} ${sk.label}${cd>0?' ('+cd+')':''}</span>
+          <span style="font-size:.48rem;color:${lvColor}">Lv${lv}</span>
         </button>`
       }).join('') + '</div>'
   }
@@ -2341,35 +2379,102 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   }
 
 
+  // ── Skill leveling system ───────────────────────────────
+  // Tracks use-count for each skill: slow XP curve, max level 10.
+  // Stored in player.skill_levels as { skillKey: { uses, level } }
+  // Gains: every 10 uses grants +1 level, cost doubles each tier.
+  // Required uses: lv1→2: 10, lv2→3: 25, lv3→4: 50, lv4→5: 90, lv5→6: 150,
+  //               lv6→7: 240, lv7→8: 380, lv8→9: 590, lv9→10: 900 cumulative
+  const SKILL_LVL_THRESHOLDS = [0,10,25,50,90,150,240,380,590,900]
+  function getSkillLevel(key) {
+    const sl = (player.skill_levels || {})[key]
+    if (!sl) return 1
+    let lv = 1
+    for (let i = 1; i < SKILL_LVL_THRESHOLDS.length; i++) {
+      if (sl.uses >= SKILL_LVL_THRESHOLDS[i]) lv = i + 1
+      else break
+    }
+    return Math.min(10, lv)
+  }
+  function skillScale(key) {
+    // Returns a multiplier 0.5–1.0 based on skill level (lv1=50%, lv10=100%)
+    return 0.5 + (getSkillLevel(key) - 1) * (0.5 / 9)
+  }
+  async function recordSkillUse(key) {
+    const sl = player.skill_levels || {}
+    if (!sl[key]) sl[key] = { uses: 0 }
+    sl[key].uses++
+    player.skill_levels = sl
+    // Fire-and-forget DB save
+    supabase.from('players').update({ skill_levels: sl }).eq('id', player.id)
+  }
+
   async function doTurn(playerAction, skillKey = null) {
     if (over) return
     setButtons(false)
     defending = false
     const luckBonus  = Math.floor(eqLuck / 2)
-    const pSPD = playerSPD() + (statusEffects.playerSPDBonus || 0)
-    const eSPD = enemySPD()
-    const unlocked = player.skills_unlocked || []
+    const unlocked   = player.skills_unlocked || []
 
-    // Tick down status effects before resolving
+    // Tick down status effects
     if (statusEffects.enemyStunTurns > 0)  statusEffects.enemyStunTurns--
     if (statusEffects.rootTrapTurns  > 0)  statusEffects.rootTrapTurns--
-    // Tick skill cooldowns
     Object.keys(statusEffects.skillCooldowns).forEach(k => {
       if (statusEffects.skillCooldowns[k] > 0) statusEffects.skillCooldowns[k]--
     })
 
-    // Determine turn order
-    const playerFirst =
-      playerAction === 'strike' ? true :
-      playerAction === 'defend' ? true :
-      playerAction === 'heavy'  ? pSPD >= 8 :
-      playerAction === 'skill'  ? true :  // skills always go first
-      false
+    // ── FF-Style Turn Order ───────────────────────────────────
+    // Base speed comparison with jitter. Faster player goes first.
+    // Ties broken randomly (spice!) unless one side has a speed-override skill.
+    const pSPD = playerSPD() + (statusEffects.playerSPDBonus || 0)
+    const eSPD = enemySPD()
+
+    // Skill-specific overrides
+    const dashStrikeActive = (skillKey === 'wind_skill_dash_strike') // always first
+    const heavySlowsPenalty = (playerAction === 'heavy') ? -3 : 0    // heavy is slower
+    const defenseGoesFirst  = (playerAction === 'defend')             // defend always first
+
+    // Effective speeds with jitter (±1–2) for variety
+    const pEffSPD = pSPD + heavySlowsPenalty + Math.floor(Math.random() * 3)
+    const eEffSPD = eSPD + Math.floor(Math.random() * 3)
+
+    let playerFirst
+    if (dashStrikeActive || defenseGoesFirst) {
+      playerFirst = true  // speed override skills
+    } else if (pEffSPD === eEffSPD) {
+      playerFirst = Math.random() < 0.5  // dead tie → coin flip
+    } else {
+      playerFirst = pEffSPD > eEffSPD
+    }
+
+    // ── Dodge calculation ─────────────────────────────────────
+    // Base dodge chance = 3% + (speed difference × 1.5%), capped 0–40%
+    // Wind passive "Gust" adds flat 20% dodge
+    function calcPlayerDodge() {
+      const speedAdv = Math.max(0, pSPD - eSPD)
+      const base = 0.03 + speedAdv * 0.015
+      const windBonus = unlocked.includes('wind_passive_dodge') ? 0.20 : 0
+      return Math.min(0.40, base + windBonus)
+    }
+    function calcEnemyDodge() {
+      const speedAdv = Math.max(0, eSPD - pSPD)
+      return Math.min(0.25, 0.02 + speedAdv * 0.012)
+    }
 
     let messages = []
+    const turnLabel = playerFirst
+      ? '⚡ You act first (SPD ' + pEffSPD + ' vs ' + eEffSPD + ')'
+      : '⏳ ' + enemy.name + ' acts first (SPD ' + eEffSPD + ' vs ' + pEffSPD + ')'
 
     // ── Player action ─────────────────────────────────────
     function resolvePlayerAction() {
+      // Enemy dodge check (applies to attack actions only)
+      const enemyDodged = (playerAction === 'strike' || playerAction === 'heavy') && Math.random() < calcEnemyDodge()
+      if (enemyDodged) {
+        messages.push(enemy.name + ' <em>dodges</em> your attack!')
+        return
+      }
+
       if (playerAction === 'strike') {
         // Backstab passive: 15% double damage
         const backstab   = unlocked.includes('darkness_passive_backstab') && Math.random() < 0.15
@@ -2382,112 +2487,126 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         enemyHp          = Math.max(0, enemyHp - dmg)
         messages.push(backstab
           ? '⚡ Backstab! You strike for <strong>' + dmg + '</strong> double damage!'
-          : 'You strike for <strong>' + dmg + '</strong> damage.' + (ignoreDEF ? ' (DEF ignored)' : ''))
-        // Burn passive: apply burn on strike
+          : 'You strike for <strong>' + dmg + '</strong>.' + (ignoreDEF ? ' (DEF ignored)' : ''))
+        // Burn passive
         if (unlocked.includes('fire_passive_burn')) {
           statusEffects.burnTurns = 2
-          messages.push('🔥 Burn applied — 3 damage/turn for 2 turns.')
+          messages.push('🔥 Burn applied — 3 dmg/turn × 2 turns.')
         }
-        // Chain passive: 20% chain to extra hit
+        // Chain passive: 20%
         if (unlocked.includes('lightning_passive_chain_damage') && Math.random() < 0.2) {
           const chainDmg = Math.max(1, Math.floor(dmg * 0.5))
           enemyHp = Math.max(0, enemyHp - chainDmg)
-          messages.push('⚡ Chain! Secondary hit for <strong>' + chainDmg + '</strong>.')
+          messages.push('⚡ Chain hit for <strong>' + chainDmg + '</strong>!')
         }
       } else if (playerAction === 'heavy') {
-        const roll   = window._forceMaxHit ? (10+luckBonus) : Math.floor(Math.random()*(10+luckBonus))+3
+        const roll    = window._forceMaxHit ? (10+luckBonus) : Math.floor(Math.random()*(10+luckBonus))+3
         window._forceMaxHit = false
         const baseATK = playerATK() + (statusEffects.playerATKBonus||0)
-        const dmg    = Math.max(1, Math.round(baseATK * 1.6) + roll)
-        enemyHp      = Math.max(0, enemyHp - dmg)
-        messages.push('Heavy strike lands for <strong>' + dmg + '</strong> damage!')
+        const dmg     = Math.max(1, Math.round(baseATK * 1.6) + roll)
+        enemyHp       = Math.max(0, enemyHp - dmg)
+        messages.push('Heavy strike for <strong>' + dmg + '</strong>!')
       } else if (playerAction === 'defend') {
         defending = true
-        messages.push('You brace for impact — defense doubled this turn.')
+        messages.push('You brace — defense doubled this turn.')
       } else if (playerAction === 'skill' && skillKey) {
         const sk = BATTLE_SKILLS[skillKey]
         if (!sk) return
         statusEffects.skillCooldowns[skillKey] = sk.type === 'ultimate' ? 4 : 2
+        recordSkillUse(skillKey)
+        const sc = skillScale(skillKey)
+        const skLv = getSkillLevel(skillKey)
+        if (skLv < 10) messages.push('Skill Lv ' + skLv + ' — power ' + Math.round(sc*100) + '%')
 
         if (sk.fn === 'shadowStep') {
           statusEffects.ignoreEnemyDEF = true
-          messages.push('🌑 Shadow Step — your next attack will ignore enemy DEF!')
+          messages.push('🌑 Shadow Step Lv' + skLv + ' — next attack ignores DEF!')
         } else if (sk.fn === 'rockArmor') {
-          statusEffects.playerDEFBonus  = (statusEffects.playerDEFBonus||0) + 20
-          statusEffects.rockArmorTurns  = 2
-          messages.push('🪨 Rock Armor activated — +20 DEF for 2 turns!')
+          const defBonus = Math.round(20 * sc)
+          statusEffects.playerDEFBonus = (statusEffects.playerDEFBonus||0) + defBonus
+          statusEffects.rockArmorTurns = 2
+          messages.push('🪨 Rock Armor Lv' + skLv + ' — +' + defBonus + ' DEF for 2 turns!')
         } else if (sk.fn === 'earthquake') {
-          const dmg = Math.max(15, playerATK() * 2)
+          const dmg = Math.max(5, Math.round(playerATK() * 2 * sc))
           enemyHp   = Math.max(0, enemyHp - dmg)
           statusEffects.enemyStunTurns = 1
-          messages.push('🌍 Earthquake! ' + dmg + ' damage — enemy stunned for 1 turn!')
+          messages.push('🌍 Earthquake Lv' + skLv + '! <strong>' + dmg + '</strong> dmg — stunned!')
         } else if (sk.fn === 'fireBlast') {
           const def = Math.floor((enemy.def||0) * 0.5)
-          const dmg = Math.max(1, 25 + playerATK() - def)
+          const dmg = Math.max(1, Math.round((25 * sc + playerATK()) - def))
           enemyHp   = Math.max(0, enemyHp - dmg)
-          messages.push('🔥 Fire Blast — ' + dmg + ' fire damage (50% DEF ignored)!')
+          messages.push('🔥 Fire Blast Lv' + skLv + ' — <strong>' + dmg + '</strong> (50% DEF ignored)!')
         } else if (sk.fn === 'infernoZone') {
           statusEffects.infernoTurns = 3
-          messages.push('🔥 Inferno Zone ignited — 40 damage/turn for 3 turns!')
+          statusEffects.infernoDmg   = Math.round(40 * sc)
+          messages.push('🔥 Inferno Zone Lv' + skLv + ' — ' + statusEffects.infernoDmg + ' dmg/turn × 3 turns!')
         } else if (sk.fn === 'healPulse') {
-          const heal = Math.min(player.max_hp||100, currentHp + 25) - currentHp
-          currentHp  = Math.min(player.max_hp||100, currentHp + 25)
-          messages.push('✨ Heal Pulse — restored ' + heal + ' HP!')
+          const base = Math.round(25 * sc)
+          const heal = Math.min(player.max_hp||100, currentHp + base) - currentHp
+          currentHp  = Math.min(player.max_hp||100, currentHp + base)
+          messages.push('✨ Heal Pulse Lv' + skLv + ' — restored <strong>' + heal + '</strong> HP!')
         } else if (sk.fn === 'divineBarrier') {
           statusEffects.invulnerable = true
           statusEffects.divineBarrierReflect = true
-          messages.push('✨ Divine Barrier — invulnerable this turn! Damage reflected.')
+          messages.push('✨ Divine Barrier Lv' + skLv + ' — invulnerable this turn! Damage reflected.')
         } else if (sk.fn === 'lightningStrike') {
-          const dmg = 30 + Math.floor(playerATK() * 0.5)
+          const dmg = Math.round((30 + playerATK() * 0.5) * sc)
           enemyHp   = Math.max(0, enemyHp - dmg)
-          messages.push('⚡ Lightning Strike — ' + dmg + ' lightning damage (ignores shields)!')
+          messages.push('⚡ Lightning Strike Lv' + skLv + ' — <strong>' + dmg + '</strong> (ignores shields)!')
         } else if (sk.fn === 'thunderstorm') {
           let total = 0
+          const boltBase = Math.round(10 * sc)
           for (let b = 0; b < 5; b++) {
-            const bolt = 10 + Math.floor(Math.random()*10)
+            const bolt = boltBase + Math.floor(Math.random() * Math.round(10 * sc))
             total += bolt; enemyHp = Math.max(0, enemyHp - bolt)
           }
-          messages.push('⚡ Thunderstorm — 5 bolts, ' + total + ' total damage!')
+          messages.push('⚡ Thunderstorm Lv' + skLv + ' — 5 bolts, <strong>' + total + '</strong> total!')
         } else if (sk.fn === 'bladeForm') {
-          statusEffects.playerATKBonus  = (statusEffects.playerATKBonus||0) + 20
-          statusEffects.playerSPDBonus  = (statusEffects.playerSPDBonus||0) + 5
-          statusEffects.bladeFormTurns  = 2
-          messages.push('⚙ Blade Form — ATK +20 and SPD +5 for 2 turns!')
+          const atkBon = Math.round(20 * sc), spdBon = Math.round(5 * sc)
+          statusEffects.playerATKBonus = (statusEffects.playerATKBonus||0) + atkBon
+          statusEffects.playerSPDBonus = (statusEffects.playerSPDBonus||0) + spdBon
+          statusEffects.bladeFormTurns = 2
+          messages.push('⚙ Blade Form Lv' + skLv + ' — ATK +' + atkBon + ', SPD +' + spdBon + ' (2 turns)!')
         } else if (sk.fn === 'ironDomain') {
-          statusEffects.playerATKBonus  = (statusEffects.playerATKBonus||0) + playerATK()
+          const atkBon = Math.round(playerATK() * sc)
+          statusEffects.playerATKBonus = (statusEffects.playerATKBonus||0) + atkBon
           statusEffects.ironDomainTurns = 3
-          messages.push('⚙ Iron Domain — your ATK doubled for 3 turns!')
+          messages.push('⚙ Iron Domain Lv' + skLv + ' — ATK +' + atkBon + ' for 3 turns!')
         } else if (sk.fn === 'rootTrap') {
           statusEffects.rootTrapTurns = 1
-          messages.push('🌿 Root Trap — enemy is rooted, will skip their next attack!')
+          messages.push('🌿 Root Trap Lv' + skLv + ' — enemy rooted, skips next attack!')
         } else if (sk.fn === 'overgrowth') {
-          const heal = Math.min(player.max_hp||100, currentHp + 40) - currentHp
-          currentHp  = Math.min(player.max_hp||100, currentHp + 40)
-          const dmg  = 30
+          const healAmt = Math.round(40 * sc), dmg = Math.round(30 * sc)
+          const heal = Math.min(player.max_hp||100, currentHp + healAmt) - currentHp
+          currentHp  = Math.min(player.max_hp||100, currentHp + healAmt)
           enemyHp    = Math.max(0, enemyHp - dmg)
-          messages.push('🌿 Nature Overgrowth — healed ' + heal + ' HP and dealt ' + dmg + ' damage!')
+          messages.push('🌿 Overgrowth Lv' + skLv + ' — +' + heal + ' HP & <strong>' + dmg + '</strong> dmg!')
         } else if (sk.fn === 'waterShield') {
-          statusEffects.waterShield = (statusEffects.waterShield||0) + 30
-          messages.push('💧 Water Shield — absorbing up to 30 damage!')
+          const shAmt = Math.round(30 * sc)
+          statusEffects.waterShield = (statusEffects.waterShield||0) + shAmt
+          messages.push('💧 Water Shield Lv' + skLv + ' — absorbs up to ' + shAmt + ' damage!')
         } else if (sk.fn === 'tsunami') {
-          const dmg = 50 + Math.floor(playerATK() * 0.4)
+          const dmg = Math.round((50 + playerATK() * 0.4) * sc)
           enemyHp   = Math.max(0, enemyHp - dmg)
           statusEffects.enemyStunTurns = 1
-          messages.push('🌊 Tsunami — ' + dmg + ' damage, enemy knocked back 1 turn!')
+          messages.push('🌊 Tsunami Lv' + skLv + ' — <strong>' + dmg + '</strong> dmg, enemy stunned!')
         } else if (sk.fn === 'dashStrike') {
-          const dmg = Math.max(1, playerATK() * 2 + Math.floor(Math.random()*8))
+          const dmg = Math.max(1, Math.round((playerATK() * 2 + Math.floor(Math.random()*8)) * sc))
           enemyHp   = Math.max(0, enemyHp - dmg)
-          statusEffects.playerSPDBonus = (statusEffects.playerSPDBonus||0) + 10
-          messages.push('💨 Dash Strike — ' + dmg + ' damage! Speed +10 next turn.')
+          const spdBon = Math.round(10 * sc)
+          statusEffects.playerSPDBonus = (statusEffects.playerSPDBonus||0) + spdBon
+          messages.push('💨 Dash Strike Lv' + skLv + ' — <strong>' + dmg + '</strong>, SPD +' + spdBon + '!')
         } else if (sk.fn === 'tornadoField') {
-          statusEffects.enemyATKMult  = 0.7
+          const reduct = 1 - Math.round(sc * 30) / 100
+          statusEffects.enemyATKMult  = Math.min(statusEffects.enemyATKMult||1.0, reduct)
           statusEffects.playerSPDBonus = (statusEffects.playerSPDBonus||0) + pSPD
           statusEffects.tornadoTurns   = 3
-          messages.push('💨 Tornado Field — enemy ATK -30%, your SPD doubled for 3 turns!')
+          messages.push('💨 Tornado Field Lv' + skLv + ' — enemy ATK -' + Math.round(sc*30) + '%, SPD doubled!')
         } else if (sk.fn === 'voidZone') {
-          statusEffects.enemyATKMult  = 0.7
+          const reduct = 1 - Math.round(sc * 30) / 100
+          statusEffects.enemyATKMult  = Math.min(statusEffects.enemyATKMult||1.0, reduct)
           statusEffects.voidZoneTurns = 3
-          messages.push('🌑 Void Zone — enemy ATK reduced by 30% for 3 turns!')
+          messages.push('🌑 Void Zone Lv' + skLv + ' — enemy ATK -' + Math.round(sc*30) + '% for 3 turns!')
         }
       }
     }
@@ -2497,14 +2616,19 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       if (enemyHp <= 0) return
       // Stun / root check
       if (statusEffects.enemyStunTurns > 0 || statusEffects.rootTrapTurns > 0) {
-        messages.push(enemy.name + ' is stunned and cannot attack!')
+        messages.push(enemy.name + ' is stunned — cannot attack!')
         return
       }
       if (statusEffects.invulnerable) {
         const reflectDmg = Math.floor(enemy.atk * 0.5)
         enemyHp          = Math.max(0, enemyHp - reflectDmg)
         statusEffects.invulnerable = false
-        messages.push('✨ Divine Barrier absorbs the blow! Reflected ' + reflectDmg + ' back.')
+        messages.push('✨ Divine Barrier absorbs! Reflected ' + reflectDmg + ' back.')
+        return
+      }
+      // Player dodge check
+      if (Math.random() < calcPlayerDodge()) {
+        messages.push('You <em>dodge</em> the attack! (SPD advantage)')
         return
       }
       const defMult  = defending ? 0.25 : 1
@@ -2550,12 +2674,13 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     if (statusEffects.burnTurns > 0 && enemyHp > 0) {
       enemyHp = Math.max(0, enemyHp - 3)
       statusEffects.burnTurns--
-      messages.push('🔥 Burn deals 3 damage. (' + statusEffects.burnTurns + ' turns left)')
+      messages.push('🔥 Burn: 3 dmg. (' + statusEffects.burnTurns + ' left)')
     }
     if (statusEffects.infernoTurns > 0 && enemyHp > 0) {
-      enemyHp = Math.max(0, enemyHp - 40)
+      const iDmg = statusEffects.infernoDmg || 40
+      enemyHp = Math.max(0, enemyHp - iDmg)
       statusEffects.infernoTurns--
-      messages.push('🔥 Inferno Zone: 40 damage! (' + statusEffects.infernoTurns + ' turns left)')
+      messages.push('🔥 Inferno: ' + iDmg + ' dmg! (' + statusEffects.infernoTurns + ' left)')
     }
     if (statusEffects.regenTurns > 0 && currentHp > 0) {
       const heal = Math.min(player.max_hp||100, currentHp + 5) - currentHp
@@ -2589,7 +2714,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     }
 
     shake()
-    log(messages.join(' '))
+    log(messages.join(' '), turnLabel)
     syncBars()
     renderSkillSlots()
 
@@ -2722,6 +2847,96 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       await supabase.from('inventory').delete().eq('id', itemId)
     } else {
       await supabase.from('inventory').update({ quantity: qty - 1 }).eq('id', itemId)
+    }
+  }
+
+
+  // ── Watcher Item Set Drop ─────────────────────────────────
+  // Each piece has 35% drop chance. Stats roll 1-5 randomly per stat.
+  async function dropWatcherSet() {
+    const WATCHER_PIECES = [
+      {
+        item_key: 'watcher_eye_ring', name: "Watcher's Multi-Eye Ring", rarity: 'rare',
+        item_type: 'accessory', icon: '💍',
+        img: '../assets/sets/watcher_eye_ring.png',
+        stats: ['insight_bonus','luck_bonus','atk_bonus'],
+        special_effect: "Observer's Sight: First attack on an unseen enemy deals +25% damage. Reveals hidden enemies nearby.",
+      },
+      {
+        item_key: 'watcher_band', name: "Watcher's Band", rarity: 'rare',
+        item_type: 'accessory', icon: '💍',
+        img: '../assets/sets/watcher_band.png',
+        stats: ['control_bonus','speed_bonus','atk_bonus'],
+        special_effect: "Pattern Recognition: Consecutive hits on the same enemy stack +2% damage (max 20%).",
+      },
+      {
+        item_key: 'watcher_cloak', name: "Watcher's Cloak", rarity: 'rare',
+        item_type: 'armor', icon: '🧥',
+        img: '../assets/sets/watcher_cloak.png',
+        stats: ['speed_bonus','insight_bonus','luck_bonus'],
+        special_effect: "Phantom Step: After dodging, your next attack cannot be dodged. 15% chance to phase (50% dmg reduction).",
+      },
+      {
+        item_key: 'watcher_crown', name: "Watcher's Crown", rarity: 'rare',
+        item_type: 'armor', icon: '👑',
+        img: '../assets/sets/watcher_crown.png',
+        stats: ['insight_bonus','guard_bonus'],
+        special_effect: "Observed: Enemies you hit take -10% ATK and +10% damage from you.",
+      },
+    ]
+    const SET_BONUSES = {
+      2: { label: 'You begin to see.', effect: 'Observer Stacks on hit (max 5): +2% Crit Chance & +2% Accuracy per stack.' },
+      3: { label: 'Nothing escapes your notice.', effect: 'Dodging or critting auto-applies Observed. Observed enemies take +10% damage.' },
+      4: { label: 'THE WATCHER SEES ALL.', effect: 'After 5 hits: Total Observation — enemy Marked (+30% dmg), Slowed, cannot dodge. You gain +Speed & +Crit Damage.' },
+    }
+
+    let dropped = []
+    for (const piece of WATCHER_PIECES) {
+      if (Math.random() > 0.35) continue  // 35% per piece
+
+      // Roll stats 1-5 each
+      const statRolls = {}
+      for (const stat of piece.stats) {
+        statRolls[stat] = Math.floor(Math.random() * 5) + 1
+      }
+
+      const row = {
+        player_id:      player.id,
+        item_key:       piece.item_key,
+        name:           piece.name,
+        rarity:         piece.rarity,
+        item_type:      piece.item_type,
+        icon:           piece.icon,
+        quantity:       1,
+        equipped_slot:  null,
+        atk_bonus:      statRolls['atk_bonus']      || 0,
+        def_bonus:      statRolls['def_bonus']       || 0,
+        power_bonus:    statRolls['power_bonus']     || 0,
+        guard_bonus:    statRolls['guard_bonus']     || 0,
+        speed_bonus:    statRolls['speed_bonus']     || 0,
+        insight_bonus:  statRolls['insight_bonus']   || 0,
+        luck_bonus:     statRolls['luck_bonus']      || 0,
+        control_bonus:  statRolls['control_bonus']   || 0,
+        special_effect: piece.special_effect,
+        hp_restore:     0,
+        sockets_total:  0,
+        sockets_used:   0,
+        socketed_runes: [],
+        element:        'none',
+        two_handed:     false,
+      }
+      const { error } = await supabase.from('inventory').insert(row)
+      if (!error) {
+        dropped.push(piece)
+        const statSummary = Object.entries(statRolls).map(([k,v])=>'+'+v+' '+k.replace('_bonus','')).join(' · ')
+        queueLoot(piece.name + ' [' + statSummary + ']', 1, piece.img)
+      }
+    }
+
+    // Show set bonus info if 2+ pieces dropped
+    if (dropped.length >= 2) {
+      const bonus = SET_BONUSES[Math.min(dropped.length, 4)]
+      if (bonus) showToast('👁 Watcher Set (' + dropped.length + 'pc): ' + bonus.label)
     }
   }
 
