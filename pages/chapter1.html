@@ -1443,6 +1443,84 @@ function triggerForcedEyeEncounter(encounterType, resumeNextId) {
       #eye-alert-lines p:nth-child(4){animation-delay:0.8s;color:#e05555;font-weight:bold;letter-spacing:.1em}
       #eye-alert-lines p:nth-child(5){animation-delay:1.1s;color:#a08858}
       .eye-combat-panel { width:100%;max-width:440px;padding:0 1rem; }
+
+      /* ── Override dark-on-parchment combat styles for the dark overlay ── */
+      #eye-encounter-overlay .combat-panel {
+        background: rgba(255,255,255,0.04);
+        border: .5px solid rgba(200,184,128,.2);
+        border-radius: 6px;
+        padding: .75rem;
+      }
+      #eye-encounter-overlay .combat-enemy-row {
+        display: flex; align-items: center; gap: .75rem; margin-bottom: .6rem;
+      }
+      #eye-encounter-overlay .combat-enemy-name {
+        color: #e8d8a8 !important;
+      }
+      #eye-encounter-overlay .combat-log {
+        color: #c8b96e !important;
+        background: rgba(0,0,0,.3) !important;
+        border-color: rgba(200,184,128,.15) !important;
+        font-family: 'IM Fell English', serif;
+        font-style: italic;
+        min-height: 2.5rem;
+      }
+      #eye-encounter-overlay .combat-log em {
+        color: #5eaee0 !important;
+      }
+      #eye-encounter-overlay .combat-log strong {
+        color: #e05555 !important;
+      }
+      #eye-encounter-overlay .stat-key {
+        color: #a08858 !important;
+      }
+      #eye-encounter-overlay .stat-val {
+        color: #e8d8a8 !important;
+      }
+      #eye-encounter-overlay .stat-bar-wrap {
+        background: rgba(255,255,255,.08) !important;
+      }
+      #eye-encounter-overlay p[style*="color:#1a1208"],
+      #eye-encounter-overlay span[style*="color:#1a1208"] {
+        color: #c8b96e !important;
+      }
+      #eye-encounter-overlay .combat-btn {
+        color: #c8b96e !important;
+        background: rgba(200,184,128,.08) !important;
+        border-color: rgba(200,184,128,.25) !important;
+      }
+      #eye-encounter-overlay .combat-btn:hover:not(:disabled) {
+        background: rgba(200,184,128,.18) !important;
+        border-color: rgba(200,184,128,.5) !important;
+      }
+      #eye-encounter-overlay .combat-btn:disabled {
+        color: rgba(200,184,128,.3) !important;
+        border-color: rgba(200,184,128,.1) !important;
+      }
+      #eye-encounter-overlay #skill-slots-row p,
+      #eye-encounter-overlay #skill-slots-row span {
+        color: #c8b96e !important;
+      }
+      #eye-encounter-overlay #items-panel {
+        background: rgba(15,12,8,.95) !important;
+        border-color: rgba(200,184,128,.3) !important;
+      }
+      #eye-encounter-overlay #items-panel p,
+      #eye-encounter-overlay #items-panel span {
+        color: #c8b96e !important;
+      }
+      #eye-encounter-overlay #combat-over {
+        color: #c8b96e !important;
+      }
+      #eye-encounter-overlay #combat-over button {
+        color: #1a1208 !important;
+        background: rgba(200,184,128,.45) !important;
+        border-color: rgba(139,106,32,.6) !important;
+      }
+      /* FORCED ENGAGEMENT label */
+      #eye-combat-phase > p {
+        color: #c8b96e !important;
+      }
     </style>
 
     <!-- Alert phase -->
@@ -1519,10 +1597,22 @@ function triggerForcedEyeEncounter(encounterType, resumeNextId) {
 
 // ── Eye combat builder (self-contained, calls _eyeEncounterCallback on end) ─
 function buildEyeCombat(panel, enemy) {
-  // Reuse the main buildCombatUI but intercept the end via special onWin/onLose
-  // We pass sentinel strings and override endCombat via a flag
   window._inEyeEncounter = true
   buildCombatUI(panel, enemy, '__eye_win__', '__eye_lose__', '__eye_lose__', false, null)
+
+  // After build — patch all dark inline colors to light ones for the black overlay
+  requestAnimationFrame(() => {
+    const overlay = document.getElementById('eye-encounter-overlay')
+    if (!overlay) return
+    // Walk all elements inside overlay and flip #1a1208 / #3a2008 to light colors
+    overlay.querySelectorAll('[style]').forEach(el => {
+      el.style.cssText = el.style.cssText
+        .replace(/color\s*:\s*#1a1208/gi,  'color:#e8d8a8')
+        .replace(/color\s*:\s*#3a2008/gi,  'color:#a08858')
+        .replace(/color\s*:\s*#7a6435/gi,  'color:#a08858')
+        .replace(/background\s*:\s*rgba\(200,184,128,[^)]+\)/gi, 'background:rgba(200,184,128,.12)')
+    })
+  })
 }
 
 function rollWatcherEncounter(nextId) {
