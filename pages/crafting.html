@@ -102,6 +102,11 @@ const ITEM_IMAGES = {
   'rune_ignis':'../assets/runes/rune_ignis.png','rune_aqua':'../assets/runes/rune_aqua.png',
   'rune_terra':'../assets/runes/rune_terra.png','rune_aero':'../assets/runes/rune_aero.png',
   'rune_umbra':'../assets/runes/rune_umbra.png','rune_lux':'../assets/runes/rune_lux.png',
+  // Watcher Set
+  'watcher_eye_ring':'../assets/sets/watcher_eye_ring.png',
+  'watcher_band':    '../assets/sets/watcher_band.png',
+  'watcher_cloak':   '../assets/sets/watcher_cloak.png',
+  'watcher_crown':   '../assets/sets/watcher_crown.png',
 }
 function getItemImg(k) { return ITEM_IMAGES[k] || null }
 
@@ -220,7 +225,7 @@ function setFilter(f) {
 window.setFilter = setFilter
 
 function renderItemList() {
-  const filtered = items.filter(i => filter==='all' || i.item_type===filter || (filter==='accessory' && i.subtype==='accessory'))
+  const filtered = items.filter(i => filter==='all' || i.item_type===filter || (filter==='accessory' && (i.subtype==='accessory' || i.item_type==='accessory')))
   const el = document.getElementById('item-list')
   if (!filtered.length) { el.innerHTML=`<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.85rem;color:#7a6435;padding:.5rem 0">No items in this category.</p>`; return }
 
@@ -418,9 +423,19 @@ function renderSocketPanel() {
     <h2 class="page-title" style="color:${rc}">${item.icon} ${item.name}</h2>
     <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#9a8050;letter-spacing:.06em;margin-bottom:.5rem">
       ${item.element&&item.element!=='none'?`[${item.element.toUpperCase()}] `:''}${item.subtype||item.item_type}
-      ${item.atk_bonus>0?` · ATK +${item.atk_bonus}`:''}
-      ${item.def_bonus>0?` · DEF +${item.def_bonus}`:''}
+      ${(item.atk_bonus||0)>0?` · ATK +${item.atk_bonus}`:''}
+      ${(item.def_bonus||0)>0?` · DEF +${item.def_bonus}`:''}
+      ${(item.power_bonus||0)>0?` · PWR +${item.power_bonus}`:''}
+      ${(item.guard_bonus||0)>0?` · GRD +${item.guard_bonus}`:''}
+      ${(item.speed_bonus||0)>0?` · SPD +${item.speed_bonus}`:''}
+      ${(item.control_bonus||0)>0?` · CTR +${item.control_bonus}`:''}
+      ${(item.insight_bonus||0)>0?` · INS +${item.insight_bonus}`:''}
+      ${(item.luck_bonus||0)>0?` · LCK +${item.luck_bonus}`:''}
     </p>
+    ${item.special_effect ? `<div style="margin:.4rem 0;padding:5px 8px;background:rgba(94,174,224,.08);border:.5px solid rgba(94,174,224,.3);border-radius:3px">
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.46rem;color:#5eaee0;letter-spacing:.08em;margin:0 0 2px">SET EFFECT</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.68rem;color:#1a1208;margin:0;line-height:1.4">${item.special_effect}</p>
+    </div>` : ''}
     <hr class="ink-divider">
 
     <!-- Sockets -->
