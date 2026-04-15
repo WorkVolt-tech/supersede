@@ -617,14 +617,40 @@ function buildNodeHTML(nd) {
       onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\'font-family:Cinzel,serif;font-size:.55rem;color:${locked?'rgba(200,160,60,.5)':col};font-weight:700\\'>${nd.type==='keystone'?'★':'◆'}</span>')"
     />`
   } else {
-    const letter = nd.stat ? nd.stat.charAt(0).toUpperCase() : '+'
-    inner = `<span style="font-family:'Share Tech Mono',monospace;font-size:${nd.type==='notable'?'.65rem':'.58rem'};color:${locked?'rgba(200,160,60,.5)':col};font-weight:600">${letter}</span>`
+    // Stat-themed mini icons for small nodes
+    const STAT_ICON = {
+      atk_bonus:     { icon:'⚔', color:'#e05555' },
+      power_bonus:   { icon:'🔥', color:'#992222' },
+      def_bonus:     { icon:'🛡', color:'#5ec45e' },
+      guard_bonus:   { icon:'◈',  color:'#3db89a' },
+      speed_bonus:   { icon:'⚡', color:'#5eaee0' },
+      insight_bonus: { icon:'◉',  color:'#b06eff' },
+      luck_bonus:    { icon:'✦',  color:'#d4a843' },
+      control_bonus: { icon:'◎',  color:'#d4783a' },
+    }
+    const si = nd.stat ? STAT_ICON[nd.stat] : null
+    if (si) {
+      const sz = nd.type === 'notable' ? 12 : 10
+      const op = locked ? 'opacity:.32;filter:grayscale(1)' : `filter:drop-shadow(0 0 3px ${si.color}99)`
+      inner = `<span style="font-size:${sz}px;line-height:1;${op}">${si.icon}</span>`
+    } else {
+      inner = `<span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:${locked?'rgba(200,160,60,.5)':col};font-weight:600">+</span>`
+    }
   }
 
-  const glowStyle = isUnlocked(nd) && nd.type !== 'start' ? `box-shadow:0 0 ${nd.type==='keystone'?14:8}px ${col}88;` : ''
-  const ring = `<div class="sn-ring" style="border-color:${locked?'rgba(180,140,60,.4)':col};${glowStyle};overflow:hidden;display:flex;align-items:center;justify-content:center;">${inner}</div>`
+  const STAT_COLORS = {
+    atk_bonus:'#e05555', power_bonus:'#992222', def_bonus:'#5ec45e',
+    guard_bonus:'#3db89a', speed_bonus:'#5eaee0', insight_bonus:'#b06eff',
+    luck_bonus:'#d4a843', control_bonus:'#d4783a'
+  }
+  const statCol = (nd.type === 'small' || nd.type === 'notable') && nd.stat && STAT_COLORS[nd.stat]
+    ? STAT_COLORS[nd.stat] : col
+  const ringCol  = locked ? 'rgba(180,140,60,.4)' : statCol
+  const glowStyle = isUnlocked(nd) && nd.type !== 'start' ? `box-shadow:0 0 ${nd.type==='keystone'?14:8}px ${statCol}88;` : ''
+  const ring = `<div class="sn-ring" style="border-color:${ringCol};${glowStyle};overflow:hidden;display:flex;align-items:center;justify-content:center;">${inner}</div>`
+  const lblCol = locked ? '#a08858' : statCol
   const lbl  = nd.type !== 'start'
-    ? `<div class="sn-lbl" style="color:${locked?'#a08858':col}">${nd.label}</div>`
+    ? `<div class="sn-lbl" style="color:${lblCol}">${nd.label}</div>`
     : ''
   return ring + lbl
 }
