@@ -2109,15 +2109,41 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         <span id="c-yara-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#5eaee0;min-width:50px;text-align:right">${yara.hp}/${yara.maxHp}</span>
       </div>` : '<div style="margin-bottom:1rem"></div>'}
       <div id="combat-actions">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:.4rem">CHOOSE YOUR ACTION</p>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-          <button class="combat-btn" id="btn-strike" title="Fast attack. Always goes first.">⚔ Strike</button>
-          <button class="combat-btn" id="btn-heavy" title="Heavy blow. High damage, slower.">💥 Heavy Strike</button>
-          <button class="combat-btn" id="btn-defend" title="Reduce incoming damage this turn.">🛡 Defend</button>
-          <button class="combat-btn" id="btn-items" style="color:#5eaee0" title="Use a consumable item.">🎒 Items</button>
-          <button class="combat-btn" id="btn-escape" title="Attempt to flee." style="grid-column:span 2">💨 Flee</button>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#1a1208;letter-spacing:.09em;margin-bottom:5px">— CHOOSE YOUR ACTION —</p>
+
+        <!-- Basic actions always visible -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px">
+          <button class="combat-btn" id="btn-strike"
+            style="flex-direction:column;gap:2px;padding:.45rem .25rem;font-size:.62rem"
+            title="Fast attack. Always goes first.">
+            <span style="font-size:1.1rem;line-height:1">⚔</span>
+            <span>Strike</span>
+            <span style="font-size:.44rem;color:#a08858;letter-spacing:.04em">FAST · FIRST</span>
+          </button>
+          <button class="combat-btn" id="btn-heavy"
+            style="flex-direction:column;gap:2px;padding:.45rem .25rem;font-size:.62rem"
+            title="Heavy blow. High damage but slower.">
+            <span style="font-size:1.1rem;line-height:1">💥</span>
+            <span>Heavy</span>
+            <span style="font-size:.44rem;color:#a08858;letter-spacing:.04em">HIGH DMG · SLOW</span>
+          </button>
+          <button class="combat-btn" id="btn-defend"
+            style="flex-direction:column;gap:2px;padding:.45rem .25rem;font-size:.62rem"
+            title="Halve incoming damage this turn. Always acts first.">
+            <span style="font-size:1.1rem;line-height:1">🛡</span>
+            <span>Defend</span>
+            <span style="font-size:.44rem;color:#a08858;letter-spacing:.04em">BLOCK · FIRST</span>
+          </button>
         </div>
-        <div id="skill-slots-row" style="display:flex;flex-direction:column;gap:4px;margin-top:5px"></div>
+
+        <!-- Skills — rendered dynamically, same visual weight as basic actions -->
+        <div id="skill-slots-row" style="margin-bottom:4px"></div>
+
+        <!-- Utility row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+          <button class="combat-btn" id="btn-items" style="color:#5eaee0;font-size:.6rem" title="Use a consumable item.">🎒 Items</button>
+          <button class="combat-btn" id="btn-escape" style="font-size:.6rem" title="Attempt to flee.">💨 Flee</button>
+        </div>
       </div>
       <div id="items-panel" style="display:none;margin-top:.5rem;border:.5px solid rgba(94,174,224,.3);border-radius:4px;padding:.6rem;background:rgba(0,0,0,.05);animation:fadeIn .2s ease">
         <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#5eaee0;letter-spacing:.06em;margin-bottom:.4rem">⚡ USE ITEM</p>
@@ -2416,29 +2442,88 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   function renderSkillSlots() {
     const row = document.getElementById('skill-slots-row')
     if (!row) return
+
     const activeSkills = battleSkillKeys.filter(k => {
       const s = BATTLE_SKILLS[k]
       return s && s.type !== 'passive'
     })
+    const passiveSkills = battleSkillKeys.filter(k => {
+      const s = BATTLE_SKILLS[k]
+      return s && s.type === 'passive'
+    })
+
+    // Build passive indicator strip (always-on effects shown as small tags)
+    const passiveStrip = passiveSkills.length
+      ? '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">'
+        + passiveSkills.map(k => {
+            const sk = BATTLE_SKILLS[k]
+            return `<span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:${sk.color};
+              border:.5px solid ${sk.color}50;border-radius:12px;padding:1px 6px;background:${sk.color}12;
+              letter-spacing:.04em">⚡ ${sk.label} (passive)</span>`
+          }).join('')
+        + '</div>'
+      : ''
+
     if (!activeSkills.length) {
-      row.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#7a6435;margin-top:2px">No active skills assigned — visit Skills page</p>'
+      row.innerHTML = passiveStrip +
+        '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#7a6435;padding:4px 0">' +
+        'No active skills assigned — visit Skills page</p>'
       return
     }
-    row.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#1a1208;letter-spacing:.07em;margin-bottom:2px">SKILLS</p>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">' +
-      activeSkills.map(k => {
-        const sk = BATTLE_SKILLS[k]
-        const cd = statusEffects.skillCooldowns[k] || 0
-        const isUlt = sk.type === 'ultimate'
-        const lv  = _skillLvGlobal(k)
-        const lvColor = lv >= 10 ? '#ffd700' : lv >= 7 ? '#c8b96e' : lv >= 4 ? '#a0c080' : '#888'
-        return `<button class="combat-btn" id="btn-skill-${k}" onclick="useSkill('${k}')" ${cd>0?'disabled':''} title="Lv${lv} · ${sk.desc||sk.label}"
-          style="color:${sk.color};${isUlt?'border-color:'+sk.color+'60;':''};font-size:.58rem;display:flex;align-items:center;gap:4px">
-          <img src="../assets/ability/${k}.png" style="width:16px;height:16px;object-fit:contain;border-radius:2px" onerror="this.style.display='none'">
-          <span style="flex:1">${isUlt?'★ ':''} ${sk.label}${cd>0?' ('+cd+')':''}</span>
-          <span style="font-size:.48rem;color:${lvColor}">Lv${lv}</span>
-        </button>`
-      }).join('') + '</div>'
+
+    // Skills header
+    let html = passiveStrip
+    html += '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.48rem;color:#1a1208;letter-spacing:.09em;margin-bottom:4px">— SKILLS —</p>'
+
+    // Skills grid — same 3-column layout as basic actions
+    html += '<div style="display:grid;grid-template-columns:' +
+      (activeSkills.length === 1 ? '1fr' : activeSkills.length === 2 ? '1fr 1fr' : '1fr 1fr 1fr') +
+      ';gap:4px">'
+
+    html += activeSkills.map(k => {
+      const sk     = BATTLE_SKILLS[k]
+      const cd     = statusEffects.skillCooldowns[k] || 0
+      const isUlt  = sk.type === 'ultimate'
+      const lv     = _skillLvGlobal(k)
+      const lvColor = lv >= 10 ? '#ffd700' : lv >= 7 ? '#c8b96e' : lv >= 4 ? '#a0c080' : '#9a8858'
+      const pct    = Math.round((0.5 + (lv - 1) * (0.5 / 9)) * 100)
+
+      // Skill icon — try image, fall back to element emoji
+      const EL_ICON = { fire:'🔥', water:'💧', earth:'🪨', wind:'💨', dark:'🌑', light:'✨', lightning:'⚡', metal:'⚙', plant:'🌿' }
+      const elIcon = EL_ICON[sk.el] || '✦'
+
+      const cdLabel = cd > 0 ? cd + ' turn' + (cd > 1 ? 's' : '') : null
+      const border  = isUlt ? `border-color:${sk.color}70` : `border-color:${sk.color}40`
+
+      // Build skill button safely — avoid nested template literals and quote hell
+      const cdOverlay = cd > 0
+        ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;border-radius:3px">'
+          + '<span style="font-family:Share Tech Mono,monospace;font-size:.55rem;color:#c8b96e">' + cdLabel + '</span>'
+          + '</div>'
+        : ''
+      const iconFilter = cd > 0 ? 'grayscale(1)' : 'drop-shadow(0 0 4px ' + sk.color + '88)'
+      const btnColor   = cd > 0 ? 'rgba(200,160,60,.35)' : sk.color
+      const imgTag = '<img src="../assets/ability/' + k + '.png"'
+        + ' style="width:24px;height:24px;object-fit:contain;border-radius:3px;display:block;margin:0 auto"'
+        + ' onerror="this.remove()">'
+
+      return '<button class="combat-btn" id="btn-skill-' + k + '"'
+        + ' onclick="useSkill(\'' + k + '\')"'
+        + (cd > 0 ? ' disabled' : '')
+        + ' title="' + (sk.desc || sk.label) + ' (Lv' + lv + ' · ' + pct + '% power)"'
+        + ' style="flex-direction:column;gap:2px;padding:.45rem .25rem;' + border + ';'
+        + 'color:' + btnColor + ';position:relative;overflow:hidden">'
+        + cdOverlay
+        + '<span style="font-size:1rem;line-height:1;filter:' + iconFilter + '">' + imgTag
+        + '<span style="font-size:1rem;margin:0 auto;display:none" class="sk-fallback-' + k + '">' + elIcon + '</span>'
+        + '</span>'
+        + '<span style="font-size:.58rem;font-weight:600;letter-spacing:.02em">' + (isUlt ? '★ ' : '') + sk.label + '</span>'
+        + '<span style="font-size:.42rem;color:' + lvColor + ';letter-spacing:.04em">Lv' + lv + ' · ' + pct + '%</span>'
+        + '</button>'
+    }).join('')
+
+    html += '</div>'
+    row.innerHTML = html
   }
 
   function setButtons(enabled) {
