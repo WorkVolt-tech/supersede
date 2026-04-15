@@ -591,6 +591,10 @@ function buildNodeClass(nd) {
   return `sn sn-${sz}${unl?' unlocked':''}${sel?' selected':''}`
 }
 
+function labelToFilename(label) {
+  return label.toLowerCase().replace(/['']/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
+}
+
 function buildNodeHTML(nd) {
   const col    = nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e'
   const locked = !isUnlocked(nd) && nd.type !== 'start'
@@ -602,15 +606,23 @@ function buildNodeHTML(nd) {
   } else if (nd.type === 'elemental') {
     const avail = chapter >= 2
     inner = `<span style="font-family:'Cinzel',serif;font-size:.65rem;color:${avail?col:'#a08858'};font-weight:600">${nd.label[0]}</span>`
-  } else if (nd.type === 'keystone') {
-    inner = `<span style="font-family:'Cinzel',serif;font-size:.55rem;color:${locked?'rgba(200,160,60,.5)':col};font-weight:700;text-align:center;line-height:1.2;max-width:52px;word-break:break-word">★</span>`
+  } else if (nd.type === 'keystone' || nd.type === 'notable') {
+    const imgSize = nd.type === 'keystone' ? '56px' : '34px'
+    const filename = labelToFilename(nd.label)
+    inner = `<img src="../assets/skills/${filename}.png"
+      style="width:${imgSize};height:${imgSize};object-fit:cover;border-radius:50%;display:block;
+             opacity:${locked?'0.35':'1'};
+             filter:${locked?'grayscale(80%)':'none'};
+             pointer-events:none;"
+      onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\'font-family:Cinzel,serif;font-size:.55rem;color:${locked?'rgba(200,160,60,.5)':col};font-weight:700\\'>${nd.type==='keystone'?'★':'◆'}</span>')"
+    />`
   } else {
     const letter = nd.stat ? nd.stat.charAt(0).toUpperCase() : '+'
     inner = `<span style="font-family:'Share Tech Mono',monospace;font-size:${nd.type==='notable'?'.65rem':'.58rem'};color:${locked?'rgba(200,160,60,.5)':col};font-weight:600">${letter}</span>`
   }
 
   const glowStyle = isUnlocked(nd) && nd.type !== 'start' ? `box-shadow:0 0 ${nd.type==='keystone'?14:8}px ${col}88;` : ''
-  const ring = `<div class="sn-ring" style="border-color:${locked?'rgba(180,140,60,.4)':col};${glowStyle}">${inner}</div>`
+  const ring = `<div class="sn-ring" style="border-color:${locked?'rgba(180,140,60,.4)':col};${glowStyle};overflow:hidden;display:flex;align-items:center;justify-content:center;">${inner}</div>`
   const lbl  = nd.type !== 'start'
     ? `<div class="sn-lbl" style="color:${locked?'#a08858':col}">${nd.label}</div>`
     : ''
