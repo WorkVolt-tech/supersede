@@ -126,23 +126,28 @@ const ITEM_IMAGES = {
   // Tactical weapon
   'iron_sword':     '../assets/weapon/iron_sword.png',
   'tactical_sword': '../assets/weapon/tactical_sword.png',
+  // Watcher Set
+  'watcher_eye_ring': '../assets/sets/watcher_eye_ring.png',
+  'watcher_band':     '../assets/sets/watcher_band.png',
+  'watcher_cloak':    '../assets/sets/watcher_cloak.png',
+  'watcher_crown':    '../assets/sets/watcher_crown.png',
 }
 function getItemImg(k) { return ITEM_IMAGES[k] || null }
 
 
   const SLOTS = [
-    { key:'helmet',     label:'Helmet',      icon:'⛑',  accepts:['helmet'] },
-    { key:'chest',      label:'Chest',       icon:'🦺', accepts:['chest'] },
+    { key:'helmet',     label:'Helmet',      icon:'⛑',  accepts:['helmet','armor'] },
+    { key:'chest',      label:'Chest',       icon:'🦺', accepts:['chest','armor','cloak'] },
     { key:'gloves',     label:'Gloves',      icon:'🧤', accepts:['gloves'] },
     { key:'boots',      label:'Boots',       icon:'👢', accepts:['boots'] },
-    { key:'accessory1', label:'Accessory 1', icon:'💍', accepts:['accessory'] },
-    { key:'accessory2', label:'Accessory 2', icon:'📿', accepts:['accessory'] },
+    { key:'accessory1', label:'Accessory 1', icon:'💍', accepts:['accessory','ring'] },
+    { key:'accessory2', label:'Accessory 2', icon:'📿', accepts:['accessory','ring'] },
     { key:'mainhand',   label:'Weapon',      icon:'🗡',  accepts:['sword','dagger','staff','bow','spear','shield'] },
     { key:'offhand',    label:'Off-hand',    icon:'🛡',  accepts:['shield','dagger','tome','sword'] },
   ]
 
   const RARITY = { common:'#c8c0a0', uncommon:'#5ec45e', rare:'#5eaee0', epic:'#c090ff', legendary:'#f0d060', mythic:'#ff88ff' }
-  const FILTERS = ['all','weapon','armor','consumable','material','key']
+  const FILTERS = ['all','weapon','armor','accessory','consumable','material','key']
 
   let player = await renderNav('nav')
   if (!player) throw new Error('no player')
@@ -354,12 +359,22 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           </div>
           <button onclick="selectedId=null;render()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#3a2008;padding:0;line-height:1;flex-shrink:0;margin-left:.5rem">✕</button>
         </div>
-        <div style="display:flex;gap:.75rem;font-family:'Share Tech Mono',monospace;font-size:.65rem;margin-bottom:.6rem;flex-wrap:wrap">
-          ${item.atk_bonus>0?`<span style="color:#e05555">ATK +${item.atk_bonus}</span>`:''}
-          ${item.def_bonus>0?`<span style="color:#5ec45e">DEF +${item.def_bonus}</span>`:''}
-          ${item.hp_restore>0?`<span style="color:#5eaee0">+${item.hp_restore} HP</span>`:''}
-          ${!item.atk_bonus&&!item.def_bonus&&!item.hp_restore?`<span style="color:#3a2008">Utility item</span>`:''}
+        <div style="display:flex;gap:.5rem;font-family:'Share Tech Mono',monospace;font-size:.65rem;margin-bottom:.6rem;flex-wrap:wrap">
+          ${(item.atk_bonus||0)>0?`<span style="color:#e05555">ATK +${item.atk_bonus}</span>`:''}
+          ${(item.def_bonus||0)>0?`<span style="color:#5ec45e">DEF +${item.def_bonus}</span>`:''}
+          ${(item.power_bonus||0)>0?`<span style="color:#ff5500">PWR +${item.power_bonus}</span>`:''}
+          ${(item.guard_bonus||0)>0?`<span style="color:#8b5e3c">GRD +${item.guard_bonus}</span>`:''}
+          ${(item.speed_bonus||0)>0?`<span style="color:#a8d8ea">SPD +${item.speed_bonus}</span>`:''}
+          ${(item.control_bonus||0)>0?`<span style="color:#0088ff">CTR +${item.control_bonus}</span>`:''}
+          ${(item.insight_bonus||0)>0?`<span style="color:#ffd700">INS +${item.insight_bonus}</span>`:''}
+          ${(item.luck_bonus||0)>0?`<span style="color:#b06eff">LCK +${item.luck_bonus}</span>`:''}
+          ${(item.hp_restore||0)>0?`<span style="color:#5eaee0">+${item.hp_restore} HP</span>`:''}
+          ${!(item.atk_bonus||item.def_bonus||item.power_bonus||item.guard_bonus||item.speed_bonus||item.control_bonus||item.insight_bonus||item.luck_bonus||item.hp_restore)?`<span style="color:#3a2008">Utility item</span>`:''}
         </div>
+        ${item.special_effect ? `<div style="margin-bottom:.6rem;padding:5px 8px;background:rgba(94,174,224,.08);border:.5px solid rgba(94,174,224,.3);border-radius:3px">
+          <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#5eaee0;letter-spacing:.08em;margin:0 0 2px">SET EFFECT</p>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.68rem;color:#1a1208;margin:0;line-height:1.4">${item.special_effect}</p>
+        </div>` : ''}
         ${(item.sockets_total||0) > 0 ? `
           <div style="margin-bottom:.5rem">
             <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a07de0;letter-spacing:.07em;margin-bottom:3px">SOCKETS ${item.sockets_used||0}/${item.sockets_total}</p>
