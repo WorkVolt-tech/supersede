@@ -2412,6 +2412,94 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     wind_ultimate_tornado_field:    { label:'Tornado Field',  type:'ultimate', el:'wind',      color:'#a8d8ea', desc:'Enemy ATK -10, your SPD ×2',    fn:'tornadoField' },
   }
 
+  // ── Skill-tree notable nodes usable as battle skills ────────────
+  // Keys match the node IDs stored in player.battle_skills
+  // type: 'active' = usable each turn (2-turn cooldown)
+  //       'passive' = always-on effect applied at battle start / on hit
+  const NOTABLE_SKILLS = {
+    // ── ATTACK branch ──
+    an1: { label:'Warbound',      type:'active',  branch:'attack',     color:'#e05555',
+           desc:'Your attacks deal +15% ATK as bonus damage this turn.',
+           fn:'warbound' },
+    an2: { label:'Flame Fist',    type:'passive', branch:'attack',     color:'#992222',
+           desc:'Power contributes an extra ×0.4 to ATK.' },
+    an3: { label:'Venom Fang',    type:'passive', branch:'attack',     color:'#e05555',
+           desc:'Strike has 15% chance to poison (3 dmg/turn, 2 turns).' },
+    an4: { label:"Ember's End",   type:'active',  branch:'attack',     color:'#e05555',
+           desc:'Deal +25% damage to enemies below 30% HP.',
+           fn:'embersEnd' },
+    an5: { label:'Venom Lance',   type:'active',  branch:'attack',     color:'#992222',
+           desc:'Heavy Strike poisons enemy: 5 dmg/turn for 3 turns.',
+           fn:'venomLance' },
+    an6: { label:'Predator',      type:'active',  branch:'attack',     color:'#e05555',
+           desc:'Gain +20 ATK for 2 turns.',
+           fn:'predator' },
+    // ── DEFENSE branch ──
+    dn1: { label:'Tidal Resolve', type:'passive', branch:'defense',    color:'#5ec45e',
+           desc:'First time below 50% HP: gain +20 DEF for 2 turns.' },
+    dn2: { label:'Absorption',    type:'passive', branch:'defense',    color:'#3db89a',
+           desc:'Every 3 hits taken: next Defend heals 15 HP.' },
+    dn3: { label:'Live Wire',     type:'passive', branch:'defense',    color:'#5ec45e',
+           desc:'When hit: 20% chance to stun enemy 1 turn.' },
+    dn4: { label:'Pressure Wave', type:'active',  branch:'defense',    color:'#5ec45e',
+           desc:'Below 30% HP: gain +20 DEF and deal +15 damage this turn.',
+           fn:'pressureWave' },
+    dn5: { label:'Arc Reflex',    type:'passive', branch:'defense',    color:'#3db89a',
+           desc:'After 3 hits in a row: auto strike back for 50% ATK.' },
+    dn6: { label:'Charged Stance',type:'active',  branch:'defense',    color:'#5ec45e',
+           desc:'After 2 consecutive hits: DEF doubled next turn.',
+           fn:'chargedStance' },
+    // ── AGILITY branch ──
+    gn1: { label:'Razor Tempo',   type:'passive', branch:'agility',    color:'#5eaee0',
+           desc:'Strike always goes first regardless of enemy speed.' },
+    gn2: { label:'Ghost Step',    type:'passive', branch:'agility',    color:'#5eaee0',
+           desc:'15% chance to dodge. On dodge, deal a free counter hit.' },
+    gn3: { label:'Heavy Ground',  type:'active',  branch:'agility',    color:'#5eaee0',
+           desc:'Reduce enemy SPD by 6 for this battle.',
+           fn:'heavyGround' },
+    gn4: { label:'Flicker',       type:'passive', branch:'agility',    color:'#5eaee0',
+           desc:'After dodging: next Strike deals double damage.' },
+    gn5: { label:'Tremor Step',   type:'passive', branch:'agility',    color:'#5eaee0',
+           desc:'20% chance each turn to stagger enemy (they miss their attack).' },
+    gn6: { label:'Earth Spike',   type:'active',  branch:'agility',    color:'#5eaee0',
+           desc:'Launch ground spike: 20 damage, ignores 30% DEF.',
+           fn:'earthSpike' },
+    // ── MIND branch ──
+    mn1: { label:'Sharp Mind',    type:'passive', branch:'mind',       color:'#b06eff',
+           desc:'Insight grants +1 ATK per 3 Insight points.' },
+    mn2: { label:'Foresight',     type:'active',  branch:'mind',       color:'#b06eff',
+           desc:'Predict next attack — reduce incoming damage by 90% this turn.',
+           fn:'foresight' },
+    mn3: { label:'Razor Luck',    type:'passive', branch:'mind',       color:'#d4a843',
+           desc:'Each Luck point increases crit damage by 0.5%.' },
+    mn4: { label:'Prescience',    type:'passive', branch:'mind',       color:'#b06eff',
+           desc:'Insight reduces enemy crit chance by 2% per point.' },
+    mn5: { label:'Ricochet',      type:'passive', branch:'mind',       color:'#d4a843',
+           desc:'20% chance attacks bounce — hit twice, second at 40% ATK.' },
+    mn6: { label:'Precise Strike',type:'active',  branch:'mind',       color:'#b06eff',
+           desc:'Next attack crits for ×1.75 damage.',
+           fn:'preciseStrike' },
+    // ── DARK/PLANT branch ──
+    dpn1:{ label:'Nightshroud',   type:'active',  branch:'dark_plant', color:'#9a6fd8',
+           desc:'First turn: free dodge. On dodge, counter for 50% ATK.',
+           fn:'nightshroud' },
+    dkn1:{ label:'Umbral Veil',   type:'passive', branch:'dark_plant', color:'#9a6fd8',
+           desc:'15% dodge chance. On dodge, counter for 50% ATK.' },
+    pln1:{ label:'Thornwall',     type:'active',  branch:'dark_plant', color:'#9a6fd8',
+           desc:'Defend reflects 15% of absorbed damage back as thorns.',
+           fn:'thornwall' },
+    dkn2:{ label:'Shade Walk',    type:'passive', branch:'dark_plant', color:'#9a6fd8',
+           desc:'+5 SPD, +4 Power. On kill: +15 SPD for 2 turns.' },
+    pln2:{ label:'Enduring Root', type:'passive', branch:'dark_plant', color:'#9a6fd8',
+           desc:'Cannot be stunned or rooted by enemy skills.' },
+    dpn2:{ label:'Dread Pulse',   type:'active',  branch:'dark_plant', color:'#9a6fd8',
+           desc:'Each hit reduces enemy ATK by 2 (stacks up to 3×).',
+           fn:'dreadPulse' },
+  }
+
+  // Merge NOTABLE_SKILLS into BATTLE_SKILLS so the rest of the engine is unified
+  Object.assign(BATTLE_SKILLS, NOTABLE_SKILLS)
+
   // ── Combat status effects ────────────────────────────────
   let statusEffects = {
     playerATKBonus:  0,
@@ -2432,9 +2520,30 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   // Apply passive skills at battle start
   function applyPassives() {
     const unlocked = player.skills_unlocked || []
-    if (unlocked.includes('water_passive_regen'))            statusEffects.regenTurns    = 999  // always on
+    const inBattle = player.battle_skills   || []
+    // Elemental passives
+    if (unlocked.includes('water_passive_regen'))            statusEffects.regenTurns    = 999
     if (unlocked.includes('earth_passive_damage_reduction')) statusEffects.playerDEFBonus += 5
     if (unlocked.includes('metal_passive_reflect'))          statusEffects.metalReflect  = true
+    // Notable passives — only if assigned to a battle slot
+    if (inBattle.includes('an2')) statusEffects.flameFist    = true   // Power ×0.4 to ATK
+    if (inBattle.includes('an3')) statusEffects.venomFang    = true   // 15% poison on strike
+    if (inBattle.includes('dn1')) statusEffects.tidalResolve = true   // first-time low HP DEF
+    if (inBattle.includes('dn2')) statusEffects.absorption   = true   // hit-counter heal
+    if (inBattle.includes('dn3')) statusEffects.liveWire     = true   // stun on hit
+    if (inBattle.includes('dn5')) statusEffects.arcReflex    = true   // 3-hit counter
+    if (inBattle.includes('gn1')) statusEffects.razorTempo   = true   // always go first on Strike
+    if (inBattle.includes('gn2')) statusEffects.ghostStep    = true   // 15% dodge + counter
+    if (inBattle.includes('gn4')) statusEffects.flicker      = true   // post-dodge double hit
+    if (inBattle.includes('gn5')) statusEffects.tremorStep   = true   // 20% stagger
+    if (inBattle.includes('mn1')) statusEffects.sharpMind    = true   // Insight → ATK
+    if (inBattle.includes('mn3')) statusEffects.razorLuck    = true   // Luck → crit damage
+    if (inBattle.includes('mn4')) statusEffects.prescience   = true   // Insight → enemy crit
+    if (inBattle.includes('mn5')) statusEffects.ricochet     = true   // 20% bounce
+    if (inBattle.includes('dkn1'))statusEffects.umbralVeil   = true   // 15% dodge + counter
+    if (inBattle.includes('pln2'))statusEffects.enduringRoot = true   // immune to stun/root
+    if (inBattle.includes('dkn2'))statusEffects.shadeWalk    = true   // kill SPD burst
+    if (inBattle.includes('dpn2'))statusEffects.dreadPulse   = true   // on-hit ATK reduction
   }
   applyPassives()
 
@@ -2606,6 +2715,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
 
     // Skill-specific overrides
     const dashStrikeActive = (skillKey === 'wind_skill_dash_strike') // always first
+    const razorTempoActive = statusEffects.razorTempo && playerAction === 'strike' // always first
     const heavySlowsPenalty = (playerAction === 'heavy') ? -3 : 0    // heavy is slower
     const defenseGoesFirst  = (playerAction === 'defend')             // defend always first
 
@@ -2614,7 +2724,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     const eEffSPD = eSPD + Math.floor(Math.random() * 3)
 
     let playerFirst
-    if (dashStrikeActive || defenseGoesFirst) {
+    if (dashStrikeActive || defenseGoesFirst || razorTempoActive) {
       playerFirst = true  // speed override skills
     } else if (pEffSPD === eEffSPD) {
       playerFirst = Math.random() < 0.5  // dead tie → coin flip
@@ -2658,7 +2768,9 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         const baseATK    = playerATK() + (statusEffects.playerATKBonus||0)
         const ignoreDEF  = statusEffects.ignoreEnemyDEF
         statusEffects.ignoreEnemyDEF = false
-        const dmg        = Math.max(1, (baseATK + roll) * (backstab ? 2 : 1))
+        const flickerMult = statusEffects.flickerReady ? 2 : 1
+        if (statusEffects.flickerReady) { statusEffects.flickerReady = false }
+        const dmg        = Math.max(1, (baseATK + roll) * (backstab ? 2 : 1) * flickerMult)
         enemyHp          = Math.max(0, enemyHp - dmg)
         messages.push(backstab
           ? '⚡ Backstab! You strike for <strong>' + dmg + '</strong> double damage!'
@@ -2674,6 +2786,29 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
           enemyHp = Math.max(0, enemyHp - chainDmg)
           messages.push('⚡ Chain hit for <strong>' + chainDmg + '</strong>!')
         }
+        // Venom Fang passive: 15% poison on strike
+        if (statusEffects.venomFang && Math.random() < 0.15) {
+          statusEffects.burnTurns = Math.max(statusEffects.burnTurns, 2)
+          messages.push('☠ Venom Fang — poison applied! (3 dmg/turn × 2 turns)')
+        }
+        // Ricochet passive: 20% double hit
+        if (statusEffects.ricochet && Math.random() < 0.20) {
+          const bounceDmg = Math.max(1, Math.floor(dmg * 0.4))
+          enemyHp = Math.max(0, enemyHp - bounceDmg)
+          messages.push('🎯 Ricochet! Bounce hit for <strong>' + bounceDmg + '</strong>!')
+        }
+        // Flicker: post-dodge double damage flag (applied in dodge handler below)
+        // Precise Strike: crit override
+        if (statusEffects.nextCrit) {
+          statusEffects.nextCrit = false
+          const critBonus = Math.floor(dmg * 0.75)
+          enemyHp = Math.max(0, enemyHp - critBonus)
+          messages.push('🎯 Critical hit! +<strong>' + critBonus + '</strong> bonus damage!')
+        }
+        // Dread Pulse on-hit stack (passive version)
+        if (statusEffects.dreadPulse && !statusEffects.dreadPulseStacks) {
+          statusEffects.dreadPulseStacks = 0
+        }
       } else if (playerAction === 'heavy') {
         const roll    = window._forceMaxHit ? (10+luckBonus) : Math.floor(Math.random()*(10+luckBonus))+3
         window._forceMaxHit = false
@@ -2681,9 +2816,20 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         const dmg     = Math.max(1, Math.round(baseATK * 1.6) + roll)
         enemyHp       = Math.max(0, enemyHp - dmg)
         messages.push('Heavy strike for <strong>' + dmg + '</strong>!')
+        // Venom Lance: apply poison after Heavy Strike
+        if (statusEffects.venomLanceTurns > 0) {
+          messages.push('☠ Venom Lance — venom coats the wound!')
+        }
       } else if (playerAction === 'defend') {
         defending = true
         messages.push('You brace — defense doubled this turn.')
+        // Absorption: heal 15 HP if charged
+        if (statusEffects.absorptionHeal) {
+          const healAmt = statusEffects.absorptionHeal
+          currentHp = Math.min(maxPlayerHp, currentHp + healAmt)
+          statusEffects.absorptionHeal = 0
+          messages.push('🛡 Absorption — healed <strong>' + healAmt + '</strong> HP!')
+        }
       } else if (playerAction === 'skill' && skillKey) {
         const sk = BATTLE_SKILLS[skillKey]
         if (!sk) return
@@ -2782,6 +2928,77 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
           statusEffects.enemyATKMult  = Math.min(statusEffects.enemyATKMult||1.0, reduct)
           statusEffects.voidZoneTurns = 3
           messages.push('🌑 Void Zone Lv' + skLv + ' — enemy ATK -' + Math.round(sc*30) + '% for 3 turns!')
+
+        // ── NOTABLE SKILL EFFECTS ─────────────────────────────
+        } else if (sk.fn === 'warbound') {
+          const bonus = Math.round(playerATK() * 0.15 * sc)
+          statusEffects.playerATKBonus = (statusEffects.playerATKBonus||0) + bonus
+          statusEffects.warboundTurns  = 1
+          messages.push('⚔ Warbound — +' + bonus + ' ATK this turn!')
+
+        } else if (sk.fn === 'embersEnd') {
+          const mult = enemyHp / maxEnemyHp < 0.30 ? 1.25 : 1.0
+          const dmg  = Math.max(1, Math.round(playerATK() * mult * sc))
+          enemyHp    = Math.max(0, enemyHp - dmg)
+          messages.push("🔥 Ember's End — " + dmg + ' damage' + (mult > 1 ? ' (+25% finishing blow)!' : '!'))
+
+        } else if (sk.fn === 'venomLance') {
+          statusEffects.venomLanceTurns = 3
+          statusEffects.venomLanceDmg   = Math.round(5 * sc)
+          messages.push('☠ Venom Lance — Heavy Strike venom: ' + statusEffects.venomLanceDmg + ' dmg/turn × 3 turns!')
+
+        } else if (sk.fn === 'predator') {
+          const bonus = Math.round(20 * sc)
+          statusEffects.playerATKBonus  = (statusEffects.playerATKBonus||0) + bonus
+          statusEffects.predatorTurns   = 2
+          messages.push('🐺 Predator — +' + bonus + ' ATK for 2 turns!')
+
+        } else if (sk.fn === 'pressureWave') {
+          const lowHp = currentHp / maxPlayerHp < 0.30
+          const defBonus = lowHp ? 20 : 0
+          const dmgBonus = lowHp ? 15 : 0
+          if (lowHp) {
+            statusEffects.playerDEFBonus = (statusEffects.playerDEFBonus||0) + defBonus
+            enemyHp = Math.max(0, enemyHp - dmgBonus)
+            messages.push('🌊 Pressure Wave — below 30% HP: +' + defBonus + ' DEF & ' + dmgBonus + ' damage!')
+          } else {
+            messages.push('🌊 Pressure Wave — full power needs low HP (>30% remaining).')
+          }
+
+        } else if (sk.fn === 'chargedStance') {
+          statusEffects.chargedStance = true
+          messages.push('⚡ Charged Stance — DEF doubled next turn if you take 2 hits!')
+
+        } else if (sk.fn === 'heavyGround') {
+          statusEffects.enemySPDReduction = (statusEffects.enemySPDReduction||0) + 6
+          messages.push('🪨 Heavy Ground — enemy SPD -6 for this battle!')
+
+        } else if (sk.fn === 'earthSpike') {
+          const dmg = Math.round((20 + playerATK() * 0.3) * sc)
+          enemyHp   = Math.max(0, enemyHp - dmg)
+          messages.push('🪨 Earth Spike — ' + dmg + ' damage (ignores 30% DEF)!')
+
+        } else if (sk.fn === 'foresight') {
+          statusEffects.foresight = true
+          messages.push('🔮 Foresight — next incoming attack reduced by 90%!')
+
+        } else if (sk.fn === 'preciseStrike') {
+          statusEffects.nextCrit = true
+          messages.push('🎯 Precise Strike — next attack will critical hit (×1.75)!')
+
+        } else if (sk.fn === 'nightshroud') {
+          statusEffects.nightshroud = true
+          messages.push('🌑 Nightshroud — free dodge active! Counter on dodge.')
+
+        } else if (sk.fn === 'thornwall') {
+          statusEffects.thornwall = true
+          messages.push('🌿 Thornwall — next Defend reflects 15% damage as thorns!')
+
+        } else if (sk.fn === 'dreadPulse') {
+          const stacks = Math.min(3, (statusEffects.dreadPulseStacks||0) + 1)
+          statusEffects.dreadPulseStacks = stacks
+          statusEffects.enemyATKMult = Math.max(0.1, (statusEffects.enemyATKMult||1.0) - 0.08)
+          messages.push('💀 Dread Pulse — enemy ATK -' + (stacks * 8) + '% total (' + stacks + ' stacks)!')
         }
       }
     }
@@ -2801,13 +3018,34 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         messages.push('✨ Divine Barrier absorbs! Reflected ' + reflectDmg + ' back.')
         return
       }
-      // Player dodge check
-      if (Math.random() < calcPlayerDodge()) {
-        messages.push('You <em>dodge</em> the attack! (SPD advantage)')
+      // Player dodge check — includes Nightshroud first-turn, Ghost Step, Umbral Veil
+      let dodgeChance = calcPlayerDodge()
+      if (statusEffects.ghostStep  || statusEffects.umbralVeil) dodgeChance = Math.max(dodgeChance, 0.15)
+      if (statusEffects.nightshroud) { dodgeChance = 1.0; statusEffects.nightshroud = false }
+
+      if (Math.random() < dodgeChance) {
+        messages.push('You <em>dodge</em> the attack!')
+        // Flicker: next strike doubles
+        if (statusEffects.flicker) { statusEffects.flickerReady = true }
+        // Ghost Step / Umbral Veil: counter on dodge
+        if (statusEffects.ghostStep || statusEffects.umbralVeil) {
+          const counterDmg = Math.max(1, Math.floor(playerATK() * 0.5))
+          enemyHp = Math.max(0, enemyHp - counterDmg)
+          messages.push('↩ Counter hit for <strong>' + counterDmg + '</strong>!')
+        }
+        // Increment consecutive-hit counter on dodge (reset it)
+        statusEffects.consecutiveHits = 0
         return
       }
+      // Foresight active: reduce damage 90%
+      let foresightMult = 1.0
+      if (statusEffects.foresight) { foresightMult = 0.10; statusEffects.foresight = false; messages.push('🔮 Foresight absorbs the blow!') }
+      // Endurig Root: immune to stun
+      if (statusEffects.enduringRoot) { statusEffects.enemyStunTurns = 0; statusEffects.rootTrapTurns = 0 }
       const defMult  = defending ? 0.25 : 1
-      const eATKMult = statusEffects.enemyATKMult || 1.0
+      const eATKMult = (statusEffects.enemyATKMult || 1.0) * (foresightMult || 1.0)
+      // Apply enemy SPD reduction from heavyGround
+      const eSPDReduced = (statusEffects.enemySPDReduction || 0)
       const totalDEF = playerDEF() + (statusEffects.playerDEFBonus||0)
       let eDmg       = Math.max(0, Math.round((enemy.atk * eATKMult + Math.floor(Math.random()*4) - totalDEF) * defMult))
 
@@ -2826,6 +3064,50 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         const refDmg = Math.max(1, Math.floor(eDmg * 0.1))
         enemyHp      = Math.max(0, enemyHp - refDmg)
         messages.push('⚙ Metal Reflect — ' + refDmg + ' damage reflected!')
+      }
+      // Thornwall: reflect 15% of Defend absorption
+      if (statusEffects.thornwall && defending && eDmg > 0) {
+        const thornDmg = Math.max(1, Math.floor(eDmg * 0.15))
+        enemyHp = Math.max(0, enemyHp - thornDmg)
+        statusEffects.thornwall = false
+        messages.push('🌿 Thornwall — ' + thornDmg + ' thorn damage reflected!')
+      }
+      // Live Wire: 20% stun on being hit
+      if (statusEffects.liveWire && eDmg > 0 && Math.random() < 0.20) {
+        statusEffects.enemyStunTurns = 1
+        messages.push('⚡ Live Wire — shock! Enemy stunned next turn.')
+      }
+      // Tidal Resolve: first time below 50% HP, gain +20 DEF for 2 turns
+      if (statusEffects.tidalResolve && !statusEffects.tidalResolveFired &&
+          currentHp / maxPlayerHp < 0.50 && eDmg > 0) {
+        statusEffects.tidalResolveFired = true
+        statusEffects.playerDEFBonus = (statusEffects.playerDEFBonus||0) + 20
+        statusEffects.rockArmorTurns = (statusEffects.rockArmorTurns||0) + 2
+        messages.push('🌊 Tidal Resolve — below 50% HP: +20 DEF for 2 turns!')
+      }
+      // Absorption: hit counter — every 3 hits, next Defend heals 15
+      if (statusEffects.absorption && eDmg > 0) {
+        statusEffects.absorptionCount = (statusEffects.absorptionCount||0) + 1
+        if (statusEffects.absorptionCount >= 3) {
+          statusEffects.absorptionCount = 0
+          statusEffects.absorptionHeal  = 15
+          messages.push('🛡 Absorption charged — next Defend heals 15 HP!')
+        }
+      }
+      // Arc Reflex: 3 consecutive hits → auto counter
+      if (statusEffects.arcReflex && eDmg > 0) {
+        statusEffects.consecutiveHits = (statusEffects.consecutiveHits||0) + 1
+        if (statusEffects.consecutiveHits >= 3) {
+          statusEffects.consecutiveHits = 0
+          const arcDmg = Math.max(1, Math.floor(playerATK() * 0.5))
+          enemyHp = Math.max(0, enemyHp - arcDmg)
+          messages.push('⚡ Arc Reflex — counter strike for <strong>' + arcDmg + '</strong>!')
+        }
+      }
+      // Tremor Step: 20% chance to stagger enemy (they skip attack next turn)
+      if (statusEffects.tremorStep && Math.random() < 0.20) {
+        statusEffects.enemyStunTurns = 1
+        messages.push('🌍 Tremor Step — ground shakes! Enemy staggered.')
       }
 
       if (defending && eDmg === 0) {
