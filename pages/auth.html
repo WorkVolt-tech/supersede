@@ -37,61 +37,13 @@
   import { supabase } from '../supabase.js'
 
   let mode = 'login'
-  let hasRedirected = false
 
-  // Check if user needs setup (first login with temp username)
- async function checkNeedsSetup(userId) {
-  const { data: player } = await supabase
-    .from('players')
-    .select('username')
-    .eq('user_id', userId)
-    .maybeSingle()  // <-- FIXED: Returns null instead of error if no rows
-  
-  // If no player row exists, they definitely need setup
-  if (!player) return true
-  
-  return player.username?.startsWith('Player_') || false
-}
-
-  async function init() {
-    const { data: { session } } = await supabase.auth.getSession()
-    
-    if (session && !hasRedirected) {
-      hasRedirected = true
-      
-      const needsSetup = await checkNeedsSetup(session.user.id)
-      
-      if (needsSetup) {
-        location.replace('setup.html')
-      } else {
-        location.replace('book.html')
-      }
-    }
-  }
-  
-  await init()
-
-  supabase.auth.onAuthStateChange(async (event, session) => {
-    if (event === 'INITIAL_SESSION') return
-    
-    if (event === 'SIGNED_IN' && session && !hasRedirected) {
-      hasRedirected = true
-      
-      const needsSetup = await checkNeedsSetup(session.user.id)
-      
-      if (needsSetup) {
-        location.replace('setup.html')
-      } else {
-        location.replace('book.html')
-      }
-    }
-  })
-
+  // Simple mode toggle
   function setMode(m) {
     mode = m
     const isSignup = m === 'signup'
     document.getElementById('confirm-row').style.display = isSignup ? 'block' : 'none'
-    document.getElementById('auth-sub').textContent = isSignup ? 'Register your identity with the System.' : 'Welcome back, player.'
+    document.getElementById('auth-sub').textContent = isSignup ? 'Create your account.' : 'Welcome back, player.'
     document.getElementById('submit-btn').textContent = isSignup ? 'Register ›' : 'Enter ›'
     document.getElementById('toggle-btn').textContent = isSignup ? 'Already registered? Log in.' : 'No account? Sign up.'
     document.getElementById('auth-error').textContent = ''
@@ -132,17 +84,26 @@
     btn.disabled = true
 
     if (mode === 'login') {
-      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      // LOGIN
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       btn.disabled = false
       btn.textContent = 'Enter ›'
+      
       if (error) { 
         errorEl.textContent = error.message
         return 
       }
-      // Redirect handled by onAuthStateChange
+      
+      // Check if they need username setup
+      const needsSetup = await checkNeedsSetup(data.user.id)
+      if (needsSetup) {
+        window.location.href = 'setup.html'
+      } else {
+        window.location.href = 'book.html'
+      }
 
     } else {
-      // Sign up - auto-generate temporary username
+      // SIGNUP
       const tempUsername = 'Player_' + Math.random().toString(36).slice(2, 7).toUpperCase()
       
       const { data, error } = await supabase.auth.signUp({
@@ -159,7 +120,7 @@
         return 
       }
 
-      // Create player row with temporary username
+      // Create player row
       const userId = data.user?.id
       if (userId) {
         const { error: pErr } = await supabase.from('players').insert({
@@ -177,7 +138,7 @@
         
         if (pErr) {
           console.error('Player creation error:', pErr)
-          errorEl.textContent = 'Account created but profile setup failed: ' + pErr.message
+          errorEl.textContent = 'Account created but profile setup failed.'
           return
         }
       }
@@ -185,15 +146,29 @@
       // Auto sign in
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
       if (signInErr) {
-        errorEl.textContent = 'Account created! Please sign in.'
+        errorEl.textContent = 'Account created! Please log in.'
         setMode('login')
         return
       }
-      // Redirect handled by onAuthStateChange (will go to setup.html)
+      
+      // Go to setup to choose real username
+      window.location.href = 'setup.html'
     }
   })
 
-  // Enter key listeners - only for fields that always exist
+  // Check if user needs username setup
+  async function checkNeedsSetup(userId) {
+    const { data, error } = await supabase
+      .from('players')
+      .select('username')
+      .eq('user_id', userId)
+      .maybeSingle()
+    
+    if (error || !data) return true
+    return data.username?.startsWith('Player_') || false
+  }
+
+  // Enter key listeners
   document.getElementById('email').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('submit-btn').click()
   })
