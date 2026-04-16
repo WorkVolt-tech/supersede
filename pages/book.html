@@ -11,6 +11,7 @@
   <div id="nav"></div>
 
   <div class="book" style="margin-top:.75rem">
+    <!-- Left page: chapter list -->
     <div class="page-left parchment">
       <div class="page-inner">
         <p class="chapter-label">SuperSede</p>
@@ -25,6 +26,7 @@
 
     <div class="spine"></div>
 
+    <!-- Right page: player record -->
     <div class="page-right parchment">
       <div class="page-inner">
         <p class="chapter-label">Player Record</p>
@@ -45,7 +47,6 @@
 
 <script type="module">
   import { renderNav } from '../components/nav.js'
-  import { supabase } from '../supabase.js'
 
   const CHAPTERS = [
     { number: 1, title: 'System Initialization', sub: 'The world stops. The game begins.' },
@@ -53,17 +54,7 @@
   ]
 
   const player = await renderNav('nav')
-  
-  if (!player) {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      window.location.href = 'auth.html'
-      return
-    }
-    // Has session but no player - redirect to setup
-    window.location.href = 'setup.html'
-    return
-  }
+  if (!player) throw new Error('no player')
 
   const unlocked = player.chapters_unlocked || [1]
 
