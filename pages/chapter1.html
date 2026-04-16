@@ -533,17 +533,35 @@ A player sits on the edge of a fountain. Green badge. Exhausted face. They look 
 
 Forty. The number lands.
 
-"And something else," they add. "Something bigger than players. The System has been seeding the city with creatures — testing us. Getting us ready."
+"And something else." They point in three directions across the frozen city. "The System has sealed three zones — the parking garage to the north, the market to the east, the glass tower to the west. Each one has something inside it. Not System creatures. Something older. Something the System found and appointed."
 
-"Ready for what?"
+A beat.
 
-They look at the sky. "I think we're about to find out."
+"Nothing gets through to the plaza until those three are dealt with. I tried. There's a barrier — you can feel it. The Watcher won't show itself until the district is cleared."
 
-Your interface pulses. CHAPTER PROGRESS: 70%`,
+Your interface updates:
+
+CHAPTER PROGRESS: 40%
+THREE ZONE GUARDIANS DETECTED.
+DISTRICT MUST BE CLEARED TO PROCEED.`,
+    sysMsg: '⚠ Zone Guardians active. The district is sealed until all three are defeated.',
     choices: [
-      { label: 'Ask them what they know', next: 'plaza_talk' },
-      { label: 'Explore the district',    sub: 'Farm enemies across 3 locations', next: 'farming_hub', icon: '🗺' },
+      { label: 'Head to the Parking Garage', sub: 'Face the Sentinel of the First Eye', next: 'garage_approach' },
+      { label: 'Head to the Frozen Market',  sub: 'Face The Surveyor',                  next: 'market_approach' },
+      { label: 'Head to the Glass Tower',    sub: 'Face The Unseen',                    next: 'tower_approach' },
     ],
+  },
+
+  // ── After each guardian is beaten, player returns here ──
+  // This hub checks if all 3 are cleared, then sends to plaza
+  district_hub: {
+    id: 'district_hub', type: 'story',
+    text: `You return to the plaza center.
+
+The barrier has shifted — you can feel it. Like pressure releasing from a sealed room.
+
+Your interface shows the district status.`,
+    choices: [], // dynamically overridden by render() — see renderDistrictHub below
   },
 
   plaza_talk: {
@@ -582,7 +600,6 @@ Yara looks at you. Her interface is still glitching. "Did you see that?"
     choices: [
       { label: 'I am ready — let it come',           sub: 'Engage The Watcher now',              next: 'pre_boss_check' },
       { label: 'Hit the north plaza spawn first',    sub: 'More XP before the boss fight',       next: 'plaza_grind' },
-      { label: 'Explore the district',               sub: 'Farm 3 zones — XP, runes, and gear',  next: 'farming_hub', icon: '🗺' },
       { label: "A Watcher's Eye descends — face it", sub: 'Lv3+ challenge — rare loot',           next: 'watcher_eye_ambush', variant: 'danger' },
     ],
   },
@@ -758,7 +775,7 @@ Three zones pulse with System entity activity — each with different threats an
         ],
       },
     ],
-    returnNode: 'plaza_talk',
+    returnNode: 'district_hub',
   },
 
   // ═══════════════════════════════════════
@@ -1507,7 +1524,7 @@ She disappears down the ramp. Her badge: green. Steady. Sure.
 
 You follow.`,
     xp: 80,
-    choices: [{ label: 'Return to zone selection', next: 'farming_hub' }],
+    choices: [{ label: 'Return to the plaza', next: 'district_hub' }],
   },
 
 
@@ -2004,7 +2021,7 @@ Gio picks up a frozen apple from a nearby stall. Turns it over in his hands.
 
 "Good fight," he says. To both of you. To none of you. Just to the air.`,
     xp: 80,
-    choices: [{ label: 'Return to zone selection', next: 'farming_hub' }],
+    choices: [{ label: 'Return to the plaza', next: 'district_hub' }],
   },
 
 
@@ -2445,7 +2462,7 @@ Yara walks to the window. The frozen city stretches out below them — every roo
 
 She says it to all of you. But she's looking at you.`,
     xp: 100,
-    choices: [{ label: 'Return to zone selection', next: 'farming_hub' }],
+    choices: [{ label: 'Return to the plaza', next: 'district_hub' }],
   },
 
   chapter_end: {
@@ -2613,11 +2630,32 @@ function updateHpBar(hp) {
 
 // ── Save ─────────────────────────────────────────
 async function save(updates) {
+  // Preserve defeated_bosses across the player object overwrite
+  const prevDefeated = updates.defeated_bosses || player.defeated_bosses || []
   const { data } = await supabase
     .from('players').update({ ...updates, last_seen_at: new Date().toISOString() })
     .eq('id', player.id).select().single()
-  if (data) { player = data; currentHp = data.hp }
+  if (data) {
+    player = data
+    currentHp = data.hp
+    // Keep in-memory value if DB returned empty (guards against missing column)
+    if (!player.defeated_bosses || !player.defeated_bosses.length) {
+      player.defeated_bosses = prevDefeated
+    }
+  }
   renderHUD()
+}
+
+// ── Defeated bosses helpers ───────────────────────
+function getDefeatedBosses() {
+  return player.defeated_bosses || []
+}
+
+function markBossDefeated(bossKey) {
+  const defeated = [...getDefeatedBosses()]
+  if (!defeated.includes(bossKey)) defeated.push(bossKey)
+  player.defeated_bosses = defeated
+  return defeated
 }
 
 // ── Add item ─────────────────────────────────────
@@ -3115,7 +3153,7 @@ window.returnToZoneHub = function() {
 }
 window.returnToStory = function() {
   document.getElementById('loot-window')?.remove()
-  goTo('plaza_talk')
+  goTo('district_hub')
 }
 
 // ── Derived stat calculations ────────────────────────────────
@@ -3314,7 +3352,100 @@ function render() {
   else if (node.type === 'combat')       renderCombat(panel, node)
   else if (node.type === 'end')          renderEnd(panel, node)
   else if (node.type === 'location_hub') renderLocationHub(panel, node)
+  else if (nodeId === 'district_hub')    renderDistrictHub(panel)
   else                                   renderChoices(panel, node)
+}
+
+// ── District hub — checks guardian progress, routes to plaza when all 3 done ──
+function renderDistrictHub(panel) {
+  const defeated  = getDefeatedBosses()
+  const sentinel  = defeated.includes('sentinel')
+  const surveyor  = defeated.includes('surveyor')
+  const unseen    = defeated.includes('unseen')
+  const allDone   = sentinel && surveyor && unseen
+
+  // Auto-advance to plaza if all three cleared
+  if (allDone) {
+    // Update story text to reflect all cleared
+    const stEl = document.getElementById('story-text')
+    if (stEl) stEl.textContent = `You return to the plaza center.
+
+The barrier is gone. You feel it the moment you step onto the stone — the air pressure normalizes, the interference clears, the radar opens up fully for the first time since you entered the district.
+
+Three guardians. Three zones. All of it sealed and recorded.
+
+A green badge pulses near the fountain. Yara. She's been waiting.
+
+She looks at you when you approach — takes in the state of you, the cost of it.
+
+"You cleared them," she says. Not a question.
+
+"All three."
+
+She nods slowly. Something in her expression shifts. The countdown she's been watching has reached zero.
+
+"Then it's time."
+
+Your interface pulses once:
+
+CHAPTER PROGRESS: 90%
+DISTRICT CLEARED. THE WATCHER APPROACHES.`
+
+    panel.innerHTML = `
+      <p class="choices-label">The plaza awaits.</p>
+      <div class="choices">
+        <button class="choice" onclick="goTo('plaza_talk')">
+          <span class="choice-arrow">→</span>
+          <span class="choice-body">Go to Yara
+            <span class="choice-sub">The Watcher is coming.</span>
+          </span>
+        </button>
+      </div>
+    `
+    return
+  }
+
+  // Show remaining guardians
+  const stEl = document.getElementById('story-text')
+  if (stEl) stEl.textContent = `You return to the plaza center.
+
+The barrier is still up. You can feel where it gives — and where it doesn't.
+
+Your interface shows the district status. Not all zones are clear.
+
+The Watcher won't show itself until every guardian is defeated. The city is still sealed.`
+
+  const zones = [
+    { id: 'loc_garage', bossKey: 'sentinel', introNode: 'garage_approach', name: 'Parking Garage',  guardian: 'Sentinel of the First Eye', icon: '🅿️', color: '#5ec45e', done: sentinel },
+    { id: 'loc_market', bossKey: 'surveyor', introNode: 'market_approach', name: 'Frozen Market',   guardian: 'The Surveyor',               icon: '🏪', color: '#c8b96e', done: surveyor },
+    { id: 'loc_tower',  bossKey: 'unseen',   introNode: 'tower_approach',  name: 'Glass Tower',     guardian: 'The Unseen',                 icon: '🏢', color: '#e05555', done: unseen  },
+  ]
+
+  panel.innerHTML = `
+    <p class="choices-label">District Status</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem">
+      ${zones.map(z => z.done ? `
+        <div style="border:.5px solid ${z.color}40;border-radius:5px;padding:.65rem .75rem;background:${z.color}08;opacity:.7">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span style="font-size:1rem">${z.icon}</span>
+            <span style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208">${z.name}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:${z.color};margin-left:auto">✓ CLEARED</span>
+          </div>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.72rem;color:#7a6435;margin:3px 0 0">${z.guardian} — defeated.</p>
+        </div>
+      ` : `
+        <div onclick="goTo('${z.introNode}')" style="border:.5px solid rgba(224,85,85,.4);border-radius:5px;padding:.65rem .75rem;background:rgba(80,20,20,.08);cursor:pointer;transition:all .2s"
+          onmouseover="this.style.background='rgba(80,20,20,.15)'" onmouseout="this.style.background='rgba(80,20,20,.08)'">
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span style="font-size:1rem">${z.icon}</span>
+            <span style="font-family:'Cinzel',serif;font-size:.82rem;color:#7a4040">${z.name}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#e07070;border:.5px solid rgba(224,85,85,.3);padding:1px 6px;border-radius:12px;margin-left:auto">🔒 GUARDIAN ACTIVE</span>
+          </div>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.72rem;color:#8a5050;margin:3px 0 0">${z.guardian} — must be defeated to proceed.</p>
+        </div>
+      `).join('')}
+    </div>
+  `
 }
 
 // ── Zone guardian mapping ─────────────────────────
@@ -3327,7 +3458,7 @@ const ZONE_GUARDIANS = {
 function isZoneUnlocked(locId) {
   const g = ZONE_GUARDIANS[locId]
   if (!g) return true
-  const defeated = player.defeated_bosses || []
+  const defeated = getDefeatedBosses()
   return defeated.includes(g.bossKey)
 }
 
@@ -3382,7 +3513,7 @@ function renderLocationHub(panel, node) {
         }
       }).join('')}
     </div>
-    <button class="choice" onclick="goTo('plaza_talk')" style="width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
+    <button class="choice" onclick="goTo('district_hub')" style="width:100%;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
       <span class="choice-arrow">→</span>
       <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:1rem;color:#3a2e15">Return to main story</span>
     </button>
@@ -3456,7 +3587,7 @@ function renderFarmZone(panel, loc) {
         <span class="choice-arrow">←</span>
         <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#1a1208">Back to zones</span>
       </button>
-      <button class="choice" onclick="goTo('plaza_talk')" style="flex:1;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
+      <button class="choice" onclick="goTo('district_hub')" style="flex:1;text-align:left;border:none;background:none;cursor:pointer;padding:.5rem 0">
         <span class="choice-arrow">→</span>
         <span class="choice-body" style="font-family:'IM Fell English',serif;font-size:.9rem;color:#1a1208">Return to story</span>
       </button>
@@ -3822,10 +3953,8 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         // Zone guardian boss key — mark as defeated
         const curNode = NODES[nodeId]
         if (curNode && curNode.bossKey) {
-          const defeated = [...(player.defeated_bosses || [])]
-          if (!defeated.includes(curNode.bossKey)) defeated.push(curNode.bossKey)
+          const defeated = markBossDefeated(curNode.bossKey)
           updates.defeated_bosses = defeated
-          player.defeated_bosses  = defeated
         }
 
         if (isBoss) {
