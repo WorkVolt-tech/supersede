@@ -145,6 +145,7 @@
           errorEl.textContent = 'Account created but profile setup failed: ' + pErr.message
           return
         }
+        location.replace('book.html')
       }
 
       // Sign in immediately so they don't have to verify email
