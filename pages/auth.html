@@ -40,16 +40,18 @@
   let hasRedirected = false
 
   // Check if user needs setup (first login with temp username)
-  async function checkNeedsSetup(userId) {
-    const { data: player } = await supabase
-      .from('players')
-      .select('username')
-      .eq('user_id', userId)
-      .single()
-    
-    // If username starts with "Player_" (auto-generated), they need setup
-    return player?.username?.startsWith('Player_') || false
-  }
+ async function checkNeedsSetup(userId) {
+  const { data: player } = await supabase
+    .from('players')
+    .select('username')
+    .eq('user_id', userId)
+    .maybeSingle()  // <-- FIXED: Returns null instead of error if no rows
+  
+  // If no player row exists, they definitely need setup
+  if (!player) return true
+  
+  return player.username?.startsWith('Player_') || false
+}
 
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
