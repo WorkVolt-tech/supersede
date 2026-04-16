@@ -1921,6 +1921,9 @@ function renderFarmZone(panel, loc) {
           'System Enforcer':'../assets/enemy/enemy_system_enforcer.png',
           "Watcher's Eye":  '../assets/boss/watcher_eye.png',
           "Watcher's Eye Swarm": '../assets/boss/watcher_eye_swarm.png',
+          'Sentinel of the First Eye': '../assets/boss/sentinel_of_the_first_eye.png',
+          'The Surveyor':              '../assets/boss/the_surveyor.png',
+          'The Unseen':                '../assets/boss/the_unseen.png',
         }
         const eImg = eImgs[e.name]
         return `<div onclick="fightFarmEnemy(${i})"
@@ -2076,8 +2079,11 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
             'Corrupted Sentry': '../assets/enemy/enemy_corrupted_sentry.png',
             'Void Sentinel':    '../assets/enemy/enemy_void_sentinel.png',
             'System Enforcer':  '../assets/enemy/enemy_system_enforcer.png',
-            "Watcher's Eye":    '../assets/boss/watcher_eye.png',
-            "Watcher's Eye Swarm": '../assets/boss/watcher_eye_swarm.png',
+            "Watcher's Eye":              '../assets/boss/watcher_eye.png',
+            "Watcher's Eye Swarm":        '../assets/boss/watcher_eye_swarm.png',
+            'Sentinel of the First Eye':  '../assets/boss/sentinel_of_the_first_eye.png',
+            'The Surveyor':               '../assets/boss/the_surveyor.png',
+            'The Unseen':                 '../assets/boss/the_unseen.png',
           }
           if (isBoss) return '<img src=\'../assets/boss/the_watcher.png\' alt=\'The Watcher\' style=\'width:80px;height:80px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 12px #00ffe740)\'>'
           const src = EIMGS[enemy.name]
