@@ -39,7 +39,7 @@
   let mode = 'login'
   let hasRedirected = false
 
-  // Check if user needs setup (first login)
+  // Check if user needs setup (first login with temp username)
   async function checkNeedsSetup(userId) {
     const { data: player } = await supabase
       .from('players')
@@ -57,7 +57,6 @@
     if (session && !hasRedirected) {
       hasRedirected = true
       
-      // Check if this is first login (needs username setup)
       const needsSetup = await checkNeedsSetup(session.user.id)
       
       if (needsSetup) {
@@ -192,7 +191,7 @@
     }
   })
 
-  // Enter key listeners
+  // Enter key listeners - only for fields that always exist
   document.getElementById('email').addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('submit-btn').click()
   })
