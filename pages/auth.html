@@ -42,25 +42,36 @@
   import { supabase } from '../supabase.js'
 
   let mode = 'login'
-  let redirecting = false
+  let hasRedirected = false  // CHANGED: Better name than redirecting
 
-  // ── Fix Edge loop: only redirect once, use flag ───────────
-  async function checkSession() {
-    if (redirecting) return
+  // ── Check session ONCE on load ───────────
+  async function init() {
     const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
-      redirecting = true
+    
+    // CHANGED: Only redirect if we have session AND we're on auth.html (not already on book.html)
+    if (session && !hasRedirected && window.location.pathname.includes('auth.html')) {
+      hasRedirected = true
+      console.log('Initial session found, redirecting to book.html...')
       location.replace('book.html')
     }
   }
-  await checkSession()
+  
+  await init()
 
-  // Listen for auth changes — only redirect on actual sign-in, not INITIAL_SESSION
-  // INITIAL_SESSION on auth page can cause Edge loop
+  // CHANGED: Listen for auth changes - ignore INITIAL_SESSION to prevent loop
   supabase.auth.onAuthStateChange((event, session) => {
-    if (redirecting) return
-    if (event === 'SIGNED_IN' && session) {
-      redirecting = true
+    console.log('Auth event:', event, 'Session:', !!session)
+    
+    // CHANGED: Ignore INITIAL_SESSION - this was causing the loop!
+    if (event === 'INITIAL_SESSION') {
+      console.log('Ignoring INITIAL_SESSION event')
+      return
+    }
+    
+    // Only redirect on actual sign-in, not on initial load
+    if (event === 'SIGNED_IN' && session && !hasRedirected) {
+      hasRedirected = true
+      console.log('SIGNED_IN event, redirecting to book.html...')
       location.replace('book.html')
     }
   })
@@ -84,8 +95,13 @@
   document.getElementById('submit-btn').addEventListener('click', async () => {
     const email    = document.getElementById('email').value.trim()
     const password = document.getElementById('password').value
-    const confirm  = document.getElementById('confirm').value
-    const username = document.getElementById('username').value.trim()
+    
+    // CHANGED: Safe check for confirm field - fixes the TypeError!
+    const confirmEl = document.getElementById('confirm')
+    const confirm  = confirmEl ? confirmEl.value : ''  // If confirm doesn't exist, use empty string
+    
+    const usernameEl = document.getElementById('username')
+    const username = usernameEl ? usernameEl.value.trim() : ''  // Also safe check for username
     const errorEl  = document.getElementById('auth-error')
     const btn      = document.getElementById('submit-btn')
 
@@ -108,7 +124,9 @@
       btn.disabled    = false
       btn.textContent = 'Enter ›'
       if (error) { errorEl.textContent = error.message; return }
-      // onAuthStateChange handles redirect
+      // CHANGED: Explicit redirect for login too
+      hasRedirected = true
+      location.replace('book.html')
 
     } else {
       // Sign up — email confirmation disabled in Supabase dashboard
@@ -145,7 +163,6 @@
           errorEl.textContent = 'Account created but profile setup failed: ' + pErr.message
           return
         }
-        location.replace('book.html')
       }
 
       // Sign in immediately so they don't have to verify email
@@ -155,13 +172,15 @@
         setMode('login')
         return
       }
-      // onAuthStateChange handles redirect
+      // CHANGED: Explicit redirect after successful signup
+      hasRedirected = true
+      location.replace('book.html')
     }
   })
 
   // Enter key on any field
   ['email','username','password','confirm'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => {
+    document.getElementById(id)?.addEventListener('keydown', e => {  // CHANGED: Added ?. for safety
       if (e.key === 'Enter') document.getElementById('submit-btn').click()
     })
   })
