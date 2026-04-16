@@ -32,12 +32,12 @@ export async function renderNav(containerId = 'nav') {
     })
   })
 
-  if (!session) { location.href = '../pages/auth.html'; return null }
+  if (!session) { return null }
 
   const { data: player } = await supabase
     .from('players').select('*').eq('user_id', session.user.id).single()
 
-  if (!player) { location.href = '../pages/auth.html'; return null }
+  if (!player) { return null }
 
   const badgeColors = { neutral:'#c8b96e', red:'#e05555', green:'#5ec45e', elite:'#a07de0', unknown:'#666' }
   const color = badgeColors[player.badge] || badgeColors.neutral
