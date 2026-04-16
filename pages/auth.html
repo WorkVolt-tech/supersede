@@ -3,169 +3,101 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SuperSede — Sign In</title>
+  <title>SuperSede — Chapters</title>
   <link rel="stylesheet" href="../styles/main.css">
 </head>
 <body>
-<div class="auth-outer">
-  <div class="auth-card parchment">
-    <p class="auth-sys">SYSTEM ACCESS</p>
-    <h1 class="auth-title">SuperSede</h1>
-    <p class="auth-sub" id="auth-sub">Welcome back, player.</p>
+<div class="book-wrap">
+  <div id="nav"></div>
 
-    <div class="auth-form">
-      <label class="auth-label">Email</label>
-      <input class="auth-input" type="email" id="email" placeholder="you@example.com" autocomplete="email">
-
-      <label class="auth-label">Password</label>
-      <input class="auth-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password">
-
-      <div id="confirm-row" style="display:none">
-        <label class="auth-label">Confirm Password</label>
-        <input class="auth-input" type="password" id="confirm" placeholder="••••••••" autocomplete="new-password">
+  <div class="book" style="margin-top:.75rem">
+    <div class="page-left parchment">
+      <div class="page-inner">
+        <p class="chapter-label">SuperSede</p>
+        <h1 class="page-title">Table of Contents</h1>
+        <hr class="ink-divider">
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#1a1208;line-height:1.7;margin-bottom:1.5rem">
+          Choose a chapter. Restarting a chapter does not erase your progress or inventory.
+        </p>
+        <div id="chapter-list"></div>
       </div>
-
-      <p class="auth-error" id="auth-error"></p>
-      <button class="auth-btn" id="submit-btn">Enter ›</button>
     </div>
 
-    <button class="auth-toggle" id="toggle-btn">No account? Sign up.</button>
+    <div class="spine"></div>
+
+    <div class="page-right parchment">
+      <div class="page-inner">
+        <p class="chapter-label">Player Record</p>
+        <h2 class="page-title" id="rec-username">—</h2>
+        <hr class="ink-divider">
+        <div id="rec-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .25rem;margin-bottom:1rem"></div>
+        <hr class="ink-divider">
+        <div style="display:flex;flex-wrap:wrap;gap:.5rem">
+          <a href="inventory.html" class="end-btn">🎒 Inventory</a>
+          <a href="trader.html"    class="end-btn">🛒 Trader</a>
+          <a href="lobby.html"     class="end-btn">⚔ Lobby</a>
+          <a href="badges.html"    class="end-btn">🏅 Badges</a>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <script type="module">
+  import { renderNav } from '../components/nav.js'
   import { supabase } from '../supabase.js'
 
-  let mode = 'login'
+  const CHAPTERS = [
+    { number: 1, title: 'System Initialization', sub: 'The world stops. The game begins.' },
+    { number: 2, title: 'The Element Awakens',   sub: 'Choose your path. Choose your power.' },
+  ]
 
-  function setMode(m) {
-    mode = m
-    const isSignup = m === 'signup'
-    document.getElementById('confirm-row').style.display = isSignup ? 'block' : 'none'
-    document.getElementById('auth-sub').textContent = isSignup ? 'Create your account.' : 'Welcome back, player.'
-    document.getElementById('submit-btn').textContent = isSignup ? 'Register ›' : 'Enter ›'
-    document.getElementById('toggle-btn').textContent = isSignup ? 'Already registered? Log in.' : 'No account? Sign up.'
-    document.getElementById('auth-error').textContent = ''
-    document.getElementById('password').autocomplete = isSignup ? 'new-password' : 'current-password'
+  const player = await renderNav('nav')
+  
+  if (!player) {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      window.location.href = 'auth.html'
+      return
+    }
+    // Has session but no player - redirect to setup
+    window.location.href = 'setup.html'
+    return
   }
 
-  document.getElementById('toggle-btn').addEventListener('click', () => {
-    setMode(mode === 'login' ? 'signup' : 'login')
-  })
+  const unlocked = player.chapters_unlocked || [1]
 
-  async function checkNeedsSetup(userId) {
-    const { data, error } = await supabase
-      .from('players')
-      .select('username')
-      .eq('user_id', userId)
-      .maybeSingle()
-    
-    if (error || !data) return true
-    return data.username?.startsWith('Player_') || false
-  }
+  document.getElementById('rec-username').textContent = player.username
+  document.getElementById('rec-stats').innerHTML = [
+    ['Level', player.level], ['XP', player.xp],
+    ['HP', `${player.hp}/${player.max_hp}`], ['Gold', `◈ ${player.gold}`],
+    ['Rep', player.reputation || 'neutral'], ['Element', player.element || '—'],
+  ].map(([k,v]) => `
+    <div>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#1a1208;letter-spacing:.08em;display:block">${k}</span>
+      <span style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">${v}</span>
+    </div>
+  `).join('')
 
-  document.getElementById('submit-btn').addEventListener('click', async () => {
-    const email = document.getElementById('email').value.trim()
-    const password = document.getElementById('password').value
-    const confirmEl = document.getElementById('confirm')
-    const confirm = confirmEl ? confirmEl.value : ''
-    const errorEl = document.getElementById('auth-error')
-    const btn = document.getElementById('submit-btn')
-
-    errorEl.textContent = ''
-
-    if (!email || !password) { 
-      errorEl.textContent = 'Email and password are required.'
-      return 
-    }
-    
-    if (mode === 'signup') {
-      if (password.length < 6) { 
-        errorEl.textContent = 'Password must be at least 6 characters.'
-        return 
-      }
-      if (password !== confirm) { 
-        errorEl.textContent = 'Passwords do not match.'
-        return 
-      }
-    }
-
-    btn.textContent = 'Connecting…'
-    btn.disabled = true
-
-    if (mode === 'login') {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-      btn.disabled = false
-      btn.textContent = 'Enter ›'
-      
-      if (error) { 
-        errorEl.textContent = error.message
-        return 
-      }
-      
-      const needsSetup = await checkNeedsSetup(data.user.id)
-      if (needsSetup) {
-        window.location.href = 'setup.html'
-      } else {
-        window.location.href = 'book.html'
-      }
-
-    } else {
-      const tempUsername = 'Player_' + Math.random().toString(36).slice(2, 7).toUpperCase()
-      
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { username: tempUsername } }
-      })
-      
-      btn.disabled = false
-      btn.textContent = 'Register ›'
-      
-      if (error) { 
-        errorEl.textContent = error.message
-        return 
-      }
-
-      const userId = data.user?.id
-      if (userId) {
-        const { error: pErr } = await supabase.from('players').insert({
-          user_id: userId,
-          username: tempUsername,
-          level: 1,
-          xp: 0,
-          hp: 100,
-          max_hp: 100,
-          gold: 0,
-          badge: 'neutral',
-          reputation: 'neutral',
-          chapters_unlocked: [1]
-        })
-        
-        if (pErr) {
-          console.error('Player creation error:', pErr)
-          errorEl.textContent = 'Account created but profile setup failed.'
-          return
+  document.getElementById('chapter-list').innerHTML = CHAPTERS.map(ch => {
+    const isUnlocked = unlocked.includes(ch.number)
+    const isCurrent  = player.current_chapter === ch.number
+    return `
+      <div style="display:flex;align-items:center;gap:.75rem;padding:.9rem 0;border-bottom:1px solid rgba(139,106,32,.18);opacity:${isUnlocked ? 1 : .45}">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;min-width:70px">
+          ${isUnlocked ? '' : '🔒 '}Chapter ${ch.number}
+        </span>
+        <div style="flex:1">
+          <p style="font-family:'Cinzel',serif;font-size:.88rem;color:#1a1208;margin:0 0 1px">${ch.title}</p>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#1a1208;margin:0">${ch.sub}</p>
+        </div>
+        ${isUnlocked
+          ? `<a href="chapter${ch.number}.html" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);padding:.3rem .8rem;text-decoration:none;border-radius:2px;white-space:nowrap">${isCurrent ? 'Continue ›' : unlocked.includes(ch.number + 1) ? 'Replay ›' : 'Read ›'}</a>`
+          : `<span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208">Sealed</span>`
         }
-      }
-
-      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInErr) {
-        errorEl.textContent = 'Account created! Please log in.'
-        setMode('login')
-        return
-      }
-      
-      window.location.href = 'setup.html'
-    }
-  })
-
-  document.getElementById('email').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('submit-btn').click()
-  })
-  document.getElementById('password').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('submit-btn').click()
-  })
+      </div>
+    `
+  }).join('')
 </script>
 </body>
 </html>
