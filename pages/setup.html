@@ -11,7 +11,7 @@
   <div class="auth-card parchment">
     <p class="auth-sys">IDENTITY CONFIGURATION</p>
     <h1 class="auth-title">Choose Your Name</h1>
-    <p class="auth-sub">Welcome to the System, Player.</p>
+    <p class="auth-sub">Welcome to the System.</p>
 
     <div class="auth-form">
       <label class="auth-label">Username</label>
@@ -26,10 +26,11 @@
 <script type="module">
   import { supabase } from '../supabase.js'
 
-  // Check session
   const { data: { session } } = await supabase.auth.getSession()
+  
+  // If not logged in, go to auth
   if (!session) {
-    location.replace('auth.html')
+    window.location.href = 'auth.html'
   }
 
   const btn = document.getElementById('submit-btn')
@@ -50,24 +51,22 @@
     btn.textContent = 'Saving...'
     btn.disabled = true
 
-    // Update player username
     const { error } = await supabase
       .from('players')
       .update({ username })
       .eq('user_id', session.user.id)
 
     if (error) {
-      errorEl.textContent = 'Error saving username: ' + error.message
+      errorEl.textContent = 'Error: ' + error.message
       btn.disabled = false
       btn.textContent = 'Enter the System ›'
       return
     }
 
-    // Redirect to book after successful setup
-    location.replace('book.html')
+    // Success - go to book
+    window.location.href = 'book.html'
   })
 
-  // Enter key
   document.getElementById('username').addEventListener('keydown', e => {
     if (e.key === 'Enter') btn.click()
   })
