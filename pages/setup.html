@@ -28,7 +28,6 @@
 
   const { data: { session } } = await supabase.auth.getSession()
   
-  // If not logged in, go to auth
   if (!session) {
     window.location.href = 'auth.html'
   }
@@ -63,7 +62,6 @@
       return
     }
 
-    // Success - go to book
     window.location.href = 'book.html'
   })
 
