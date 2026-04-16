@@ -101,13 +101,7 @@
         <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#3a2008;margin-bottom:.4rem">Elemental paths — sealed until Chapter 2</p>
         <div id="elemental-tags" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.75rem"></div>
         <hr class="ink-divider">
-        <div id="claim-sp-block" style="display:none;margin-bottom:.5rem">
-          <div style="background:rgba(200,184,128,.12);border:.5px solid rgba(200,184,128,.35);border-radius:4px;padding:.6rem .75rem">
-            <p style="font-family:'Cinzel',serif;font-size:.8rem;color:#c8b96e;margin:0 0 3px;font-weight:600">⬆ Unclaimed Skill Points</p>
-            <p id="claim-sp-desc" style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#9a8050;margin:0 0 .5rem"></p>
-            <button onclick="claimSP()" style="font-family:'Cinzel',serif;font-size:.75rem;color:#1a1208;background:rgba(200,184,128,.5);border:1px solid rgba(139,106,32,.6);border-radius:3px;padding:.35rem .9rem;cursor:pointer">Claim SP</button>
-          </div>
-        </div>
+
       </div>
     </div>
 
@@ -447,7 +441,6 @@ updateSPDisplay()
 renderPageSummary()
 renderBattleSlotsPage()
 renderElementalTags()
-checkClaimSP()
 
 function renderElementalTags() {
   const chapter = player.current_chapter || 1
@@ -458,57 +451,6 @@ function renderElementalTags() {
     const locked = chapter < 2
     return `<span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;padding:2px 7px;border-radius:12px;border:.5px solid rgba(139,106,32,.15);color:${locked?'#a08858':'#c8b96e'};background:rgba(0,0,0,.1)">${locked?'🔒':''} ${e}</span>`
   }).join('')
-}
-
-// ── Claim unclaimed SP ────────────────────────────────────
-// SP formula: 2 per level gained (from level 2 onward) + 4 if chapter 1 complete
-// sp_claimed tracks how many SP have already been auto-granted
-function calcOwedSP() {
-  const level   = player.level || 1
-  const chapter = player.current_chapter || 1
-  const chapDone= (player.chapters_unlocked || [1]).includes(2) || chapter >= 2
-
-  const spFromLevels  = Math.max(0, level - 1) * 2   // 2 SP per level, starting at level 2
-  const spFromChapter = chapDone ? 4 : 0              // 4 SP for completing chapter 1
-  const totalOwed     = spFromLevels + spFromChapter
-  const alreadyClaimed= player.sp_claimed || 0
-  return Math.max(0, totalOwed - alreadyClaimed)
-}
-
-function checkClaimSP() {
-  const owed = calcOwedSP()
-  const block = document.getElementById('claim-sp-block')
-  const desc  = document.getElementById('claim-sp-desc')
-  if (!block || !desc) return
-  if (owed > 0) {
-    const level   = player.level || 1
-    const chapDone= (player.chapters_unlocked||[1]).includes(2) || (player.current_chapter||1)>=2
-    const fromLvl = Math.max(0, level - 1) * 2 - Math.min(Math.max(0,level-1)*2, player.sp_claimed||0)
-    desc.textContent = `${owed} SP waiting — from your level (${level}) and${chapDone?' chapter 1 completion':' leveling up'}.`
-    block.style.display = 'block'
-  } else {
-    block.style.display = 'none'
-  }
-}
-
-window.claimSP = async () => {
-  const owed = calcOwedSP()
-  if (owed <= 0) return
-  const totalOwed  = (Math.max(0,(player.level||1)-1)*2) + ((player.chapters_unlocked||[1]).includes(2)||(player.current_chapter||1)>=2?4:0)
-  const newClaimed = totalOwed
-  const newSP      = skillPoints + owed
-  const { data, error } = await supabase.from('players')
-    .update({ skill_points: newSP, sp_claimed: newClaimed })
-    .eq('id', player.id)
-    .select().single()
-  if (error) { console.error('claimSP error:', error.message); showToast('Error claiming SP — check console'); return }
-  if (data) Object.assign(player, data)
-  skillPoints         = newSP
-  player.skill_points = newSP
-  player.sp_claimed   = newClaimed
-  updateSPDisplay()
-  checkClaimSP()
-  showToast('✦ Claimed ' + owed + ' Skill Points!')
 }
 
 // ── Open/Close ───────────────────────────────────────
