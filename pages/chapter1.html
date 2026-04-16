@@ -3566,6 +3566,10 @@ function renderBoss(panel, node) {
 
 // ── Shared combat UI builder ──────────────────────
 function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = null) {
+  // Unique namespace so multiple combat instances never share DOM IDs
+  const cid = 'cb' + Math.random().toString(36).slice(2, 7)
+  const $ = id => panel.querySelector('#' + cid + '-' + id)
+
   let enemyHp      = enemy.hp
   const maxEnemyHp  = enemy.hp
   const maxPlayerHp = player.max_hp || 100
@@ -3579,7 +3583,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   })()
 
   panel.innerHTML = `
-    <div class="combat-panel" id="combat-wrap">
+    <div class="combat-panel" id="${cid}-combat-wrap">
       <div class="combat-enemy-row">
         ${(()=>{
           const EIMGS = {
@@ -3606,47 +3610,47 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         <div style="flex:1">
           <p class="combat-enemy-name">${enemy.name}</p>
           <div class="stat-bar-wrap">
-            <div class="stat-bar" id="e-bar" style="background:#e05555;width:100%;transition:width .4s,background .4s"></div>
+            <div class="stat-bar" id="${cid}-e-bar" style="background:#e05555;width:100%;transition:width .4s,background .4s"></div>
           </div>
-          <p id="e-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435;margin-top:2px">${enemyHp} / ${maxEnemyHp} HP</p>
+          <p id="${cid}-e-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435;margin-top:2px">${enemyHp} / ${maxEnemyHp} HP</p>
         </div>
       </div>
-      <div class="combat-log" id="combat-log">${isBoss ? 'The eye opens. It sees everything.' : 'The encounter begins.'}</div>
+      <div class="combat-log" id="${cid}-combat-log">${isBoss ? 'The eye opens. It sees everything.' : 'The encounter begins.'}</div>
       <div class="stat-row" style="margin-bottom:.4rem">
         <span class="stat-key" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#1a1208">YOUR HP</span>
         <div class="stat-bar-wrap">
-          <div class="stat-bar" id="c-player-bar" style="background:#5ec45e;width:100%;transition:width .4s,background .4s"></div>
+          <div class="stat-bar" id="${cid}-c-player-bar" style="background:#5ec45e;width:100%;transition:width .4s,background .4s"></div>
         </div>
-        <span id="c-player-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#1a1208;min-width:50px;text-align:right">${currentHp}/${maxPlayerHp}</span>
+        <span id="${cid}-c-player-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#1a1208;min-width:50px;text-align:right">${currentHp}/${maxPlayerHp}</span>
       </div>
       ${yara ? `
       <div class="stat-row" style="margin-bottom:1rem">
         <span class="stat-key" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#5ec45e">YARA</span>
         <div class="stat-bar-wrap">
-          <div class="stat-bar" id="c-yara-bar" style="background:#5eaee0;width:100%;transition:width .4s,background .4s"></div>
+          <div class="stat-bar" id="${cid}-c-yara-bar" style="background:#5eaee0;width:100%;transition:width .4s,background .4s"></div>
         </div>
-        <span id="c-yara-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#5eaee0;min-width:50px;text-align:right">${yara.hp}/${yara.maxHp}</span>
+        <span id="${cid}-c-yara-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#5eaee0;min-width:50px;text-align:right">${yara.hp}/${yara.maxHp}</span>
       </div>` : '<div style="margin-bottom:1rem"></div>'}
-      <div id="combat-actions">
+      <div id="${cid}-combat-actions">
         <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#1a1208;letter-spacing:.09em;margin-bottom:5px">— CHOOSE YOUR ACTION —</p>
 
         <!-- Basic actions always visible -->
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:4px">
-          <button class="combat-btn" id="btn-strike"
+          <button class="combat-btn" id="${cid}-btn-strike"
             style="flex-direction:column;gap:2px;padding:.45rem .25rem;font-size:.62rem"
             title="Fast attack. Always goes first.">
             <span style="font-size:1.1rem;line-height:1">⚔</span>
             <span>Strike</span>
             <span style="font-size:.44rem;color:#a08858;letter-spacing:.04em">FAST · FIRST</span>
           </button>
-          <button class="combat-btn" id="btn-heavy"
+          <button class="combat-btn" id="${cid}-btn-heavy"
             style="flex-direction:column;gap:2px;padding:.45rem .25rem;font-size:.62rem"
             title="Heavy blow. High damage but slower.">
             <span style="font-size:1.1rem;line-height:1">💥</span>
             <span>Heavy</span>
             <span style="font-size:.44rem;color:#a08858;letter-spacing:.04em">HIGH DMG · SLOW</span>
           </button>
-          <button class="combat-btn" id="btn-defend"
+          <button class="combat-btn" id="${cid}-btn-defend"
             style="flex-direction:column;gap:2px;padding:.45rem .25rem;font-size:.62rem"
             title="Halve incoming damage this turn. Always acts first.">
             <span style="font-size:1.1rem;line-height:1">🛡</span>
@@ -3656,30 +3660,30 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         </div>
 
         <!-- Skills — rendered dynamically, same visual weight as basic actions -->
-        <div id="skill-slots-row" style="margin-bottom:4px"></div>
+        <div id="${cid}-skill-slots-row" style="margin-bottom:4px"></div>
 
         <!-- Utility row -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
-          <button class="combat-btn" id="btn-items" style="color:#5eaee0;font-size:.6rem" title="Use a consumable item.">🎒 Items</button>
-          <button class="combat-btn" id="btn-escape" style="font-size:.6rem" title="Attempt to flee.">💨 Flee</button>
+          <button class="combat-btn" id="${cid}-btn-items" style="color:#5eaee0;font-size:.6rem" title="Use a consumable item.">🎒 Items</button>
+          <button class="combat-btn" id="${cid}-btn-escape" style="font-size:.6rem" title="Attempt to flee.">💨 Flee</button>
         </div>
       </div>
-      <div id="items-panel" style="display:none;margin-top:.5rem;border:.5px solid rgba(94,174,224,.3);border-radius:4px;padding:.6rem;background:rgba(0,0,0,.05);animation:fadeIn .2s ease">
+      <div id="${cid}-items-panel" style="display:none;margin-top:.5rem;border:.5px solid rgba(94,174,224,.3);border-radius:4px;padding:.6rem;background:rgba(0,0,0,.05);animation:fadeIn .2s ease">
         <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#5eaee0;letter-spacing:.06em;margin-bottom:.4rem">⚡ USE ITEM</p>
-        <div id="items-list"></div>
-        <button onclick="document.getElementById('items-panel').style.display='none'" style="font-family:'IM Fell English',serif;font-size:.78rem;color:#7a6435;background:none;border:none;cursor:pointer;margin-top:.4rem;padding:0">✕ Close</button>
+        <div id="${cid}-items-list"></div>
+        <button onclick="document.getElementById('${cid}-items-panel').style.display='none'" style="font-family:'IM Fell English',serif;font-size:.78rem;color:#7a6435;background:none;border:none;cursor:pointer;margin-top:.4rem;padding:0">✕ Close</button>
       </div>
-      <div id="combat-over" style="display:none;text-align:center;padding:.5rem"></div>
+      <div id="${cid}-combat-over" style="display:none;text-align:center;padding:.5rem"></div>
     </div>
   `
 
   function syncBars() {
     const ePct = Math.max(0, Math.round(enemyHp  / maxEnemyHp  * 100))
     const pPct = Math.max(0, Math.round(currentHp / maxPlayerHp * 100))
-    const eBar = document.getElementById('e-bar')
-    const eHp  = document.getElementById('e-hp')
-    const pBar = document.getElementById('c-player-bar')
-    const pHp  = document.getElementById('c-player-hp')
+    const eBar = $('e-bar')
+    const eHp  = $('e-hp')
+    const pBar = $('c-player-bar')
+    const pHp  = $('c-player-hp')
     if (eBar) { eBar.style.width = ePct+'%'; eBar.style.background = ePct>50?'#e05555':'#c8b96e' }
     if (eHp)  eHp.textContent = enemyHp+' / '+maxEnemyHp+' HP'
     if (pBar) { pBar.style.width = pPct+'%'; pBar.style.background = pPct>60?'#5ec45e':pPct>30?'#c8b96e':'#e05555' }
@@ -3687,22 +3691,22 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     updateHpBar(currentHp)
     if (yara) {
       const yPct  = Math.max(0, Math.round(yara.hp / yara.maxHp * 100))
-      const yBar  = document.getElementById('c-yara-bar')
-      const yHpEl = document.getElementById('c-yara-hp')
+      const yBar  = $('c-yara-bar')
+      const yHpEl = $('c-yara-hp')
       if (yBar)  { yBar.style.width = yPct+'%'; yBar.style.background = yPct>50?'#5eaee0':'#c8b96e' }
       if (yHpEl) yHpEl.textContent = yara.hp+'/'+yara.maxHp
     }
   }
 
   function log(msg, turnInfo) {
-    const el = document.getElementById('combat-log')
+    const el = $('combat-log')
     if (el) el.innerHTML = (turnInfo
       ? '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.48rem;color:#a08858;letter-spacing:.06em;display:block;margin-bottom:2px">' + turnInfo + '</span>'
       : '') + msg
   }
 
   function shake() {
-    const w=document.getElementById('combat-wrap')
+    const w = $('combat-wrap')
     if(!w) return
     w.classList.add('animate-shake')
     setTimeout(()=>w.classList.remove('animate-shake'),400)
@@ -3711,8 +3715,8 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   async function endCombat(result) {
     if (over) return
     over = true
-    const actions = document.getElementById('combat-actions')
-    const overEl  = document.getElementById('combat-over')
+    const actions = $('combat-actions')
+    const overEl  = $('combat-over')
     if (actions) actions.style.display = 'none'
 
     const isFarm   = onWin === '__farm_win__'
@@ -4078,7 +4082,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
 
   // ── Render battle skill slots ─────────────────────────────
   function renderSkillSlots() {
-    const row = document.getElementById('skill-slots-row')
+    const row = $('skill-slots-row')
     if (!row) return
 
     const activeSkills = battleSkillKeys.filter(k => {
@@ -4145,8 +4149,8 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         + ' style="width:24px;height:24px;object-fit:contain;border-radius:3px;display:block;margin:0 auto"'
         + ' onerror="this.remove()">'
 
-      return '<button class="combat-btn" id="btn-skill-' + k + '"'
-        + ' onclick="useSkill(\'' + k + '\')"'
+      return '<button class="combat-btn" id="' + cid + '-btn-skill-' + k + '"'
+        + ' onclick="useSkill_' + cid + '(\'' + k + '\')"'
         + (cd > 0 ? ' disabled' : '')
         + ' title="' + (sk.desc || sk.label) + ' (Lv' + lv + ' · ' + pct + '% power)"'
         + ' style="flex-direction:column;gap:2px;padding:.45rem .25rem;' + border + ';'
@@ -4166,12 +4170,12 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
 
   function setButtons(enabled) {
     ['btn-strike','btn-heavy','btn-defend','btn-items','btn-escape'].forEach(id => {
-      const b = document.getElementById(id)
+      const b = $(id)
       if (b) b.disabled = !enabled
     })
     // Also update skill buttons
     battleSkillKeys.forEach(k => {
-      const b = document.getElementById('btn-skill-'+k)
+      const b = $('btn-skill-'+k)
       if (b && enabled) {
         const cd = statusEffects.skillCooldowns[k] || 0
         b.disabled = cd > 0
@@ -4181,8 +4185,8 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     })
   }
 
-  // ── Skill use handler ────────────────────────────────────
-  window.useSkill = function(key) {
+  // ── Skill use handler — scoped to this combat instance ───
+  const useSkillLocal = function(key) {
     if (over) return
     const sk = BATTLE_SKILLS[key]
     if (!sk) return
@@ -4190,6 +4194,8 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     if (cd > 0) { log('Skill on cooldown (' + cd + ' turns)'); return }
     doTurn('skill', key)
   }
+  // Expose globally so inline onclick attrs can reach it, keyed by cid
+  window['useSkill_' + cid] = useSkillLocal
 
 
   // ── Skill leveling system ───────────────────────────────
@@ -4719,11 +4725,11 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   }
 
 
-  document.getElementById('btn-strike').addEventListener('click', () => doTurn('strike'))
-  document.getElementById('btn-heavy').addEventListener('click',  () => doTurn('heavy'))
-  document.getElementById('btn-defend').addEventListener('click', () => doTurn('defend'))
+  $('btn-strike').addEventListener('click', () => doTurn('strike'))
+  $('btn-heavy').addEventListener('click',  () => doTurn('heavy'))
+  $('btn-defend').addEventListener('click', () => doTurn('defend'))
 
-  document.getElementById('btn-escape').addEventListener('click', async () => {
+  $('btn-escape').addEventListener('click', async () => {
     if (over) return
     const escChance = 0.3 + (playerSPD() - enemySPD()) * 0.05
     if (Math.random() < Math.max(0.1, Math.min(0.8, escChance))) {
@@ -4739,17 +4745,17 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   })
 
   // ── Items button ─────────────────────────────
-  document.getElementById('btn-items').addEventListener('click', async () => {
+  $('btn-items').addEventListener('click', async () => {
     if (over) return
-    const panel = document.getElementById('items-panel')
-    const list  = document.getElementById('items-list')
+    const itemsPanel = $('items-panel')
+    const list       = $('items-list')
 
     // Toggle panel
-    if (panel.style.display !== 'none') {
-      panel.style.display = 'none'
+    if (itemsPanel.style.display !== 'none') {
+      itemsPanel.style.display = 'none'
       return
     }
-    panel.style.display = 'block'
+    itemsPanel.style.display = 'block'
     list.innerHTML = '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:#9a8050">Loading...</p>'
 
     // Fetch consumables and usable keys from inventory
@@ -4770,7 +4776,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     const RC = {common:'#c8c0a0',uncommon:'#5ec45e',rare:'#5eaee0',epic:'#c090ff',legendary:'#f0d060',mythic:'#ff88ff'}
 
     list.innerHTML = usable.map(item => `
-      <div onclick="combatUseItem('${item.id}','${item.name}',${item.hp_restore||0},${item.quantity||1},'${item.special_effect||''}')"
+      <div onclick="combatUseItem_${cid}('${item.id}','${item.name}',${item.hp_restore||0},${item.quantity||1},'${item.special_effect||''}')"
         style="display:flex;align-items:center;gap:.5rem;padding:.45rem .25rem;border-bottom:.5px solid rgba(139,106,32,.12);cursor:pointer;transition:background .15s;border-radius:2px"
         onmouseover="this.style.background='rgba(200,184,128,.1)'" onmouseout="this.style.background=''">
         ${(()=>{const _s=getItemImg(item.item_key);return _s?('<img src="'+_s+'" style="width:28px;height:28px;object-fit:contain;border-radius:3px;flex-shrink:0">'):(item.icon||'📦')})()}
@@ -4785,7 +4791,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     `).join('')
   })
 
-  window.combatUseItem = async function(itemId, itemName, hpRestore, qty, specialEffect) {
+  window['combatUseItem_' + cid] = async function(itemId, itemName, hpRestore, qty, specialEffect) {
     const maxHp = player.max_hp || 100
 
     // ── Healing items ─────────────────────────
@@ -4793,7 +4799,6 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       const healed  = Math.min(maxHp, currentHp + hpRestore) - currentHp
       currentHp     = Math.min(maxHp, currentHp + hpRestore)
       syncBars()
-      // Save HP to DB immediately
       await supabase.from('players').update({ hp: currentHp }).eq('id', player.id)
       player.hp = currentHp
       log('Used ' + itemName + ' — restored ' + healed + ' HP. (' + currentHp + '/' + maxHp + ')')
@@ -4813,7 +4818,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       enemyHp = 0
       syncBars()
       log('Lava Bomb detonated — enemy destroyed instantly.')
-      document.getElementById('items-panel').style.display = 'none'
+      $('items-panel').style.display = 'none'
       await consumeItem(itemId, qty)
       endCombat('win')
       return
@@ -4823,7 +4828,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       return
     }
 
-    document.getElementById('items-panel').style.display = 'none'
+    $('items-panel').style.display = 'none'
     await consumeItem(itemId, qty)
   }
 
