@@ -17,11 +17,6 @@
       <label class="auth-label">Email</label>
       <input class="auth-input" type="email" id="email" placeholder="you@example.com" autocomplete="email">
 
-      <div id="username-row" style="display:none">
-        <label class="auth-label">Username</label>
-        <input class="auth-input" type="text" id="username" placeholder="Your in-game name" autocomplete="off" maxlength="24">
-      </div>
-
       <label class="auth-label">Password</label>
       <input class="auth-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password">
 
@@ -42,50 +37,64 @@
   import { supabase } from '../supabase.js'
 
   let mode = 'login'
-  let hasRedirected = false  // CHANGED: Better name than redirecting
+  let hasRedirected = false
 
-  // ── Check session ONCE on load ───────────
+  // Check if user needs setup (first login)
+  async function checkNeedsSetup(userId) {
+    const { data: player } = await supabase
+      .from('players')
+      .select('username')
+      .eq('user_id', userId)
+      .single()
+    
+    // If username starts with "Player_" (auto-generated), they need setup
+    return player?.username?.startsWith('Player_') || false
+  }
+
   async function init() {
     const { data: { session } } = await supabase.auth.getSession()
     
-    // CHANGED: Only redirect if we have session AND we're on auth.html (not already on book.html)
-    if (session && !hasRedirected && window.location.pathname.includes('auth.html')) {
+    if (session && !hasRedirected) {
       hasRedirected = true
-      console.log('Initial session found, redirecting to book.html...')
-      location.replace('book.html')
+      
+      // Check if this is first login (needs username setup)
+      const needsSetup = await checkNeedsSetup(session.user.id)
+      
+      if (needsSetup) {
+        location.replace('setup.html')
+      } else {
+        location.replace('book.html')
+      }
     }
   }
   
   await init()
 
-  // CHANGED: Listen for auth changes - ignore INITIAL_SESSION to prevent loop
-  supabase.auth.onAuthStateChange((event, session) => {
-    console.log('Auth event:', event, 'Session:', !!session)
+  supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'INITIAL_SESSION') return
     
-    // CHANGED: Ignore INITIAL_SESSION - this was causing the loop!
-    if (event === 'INITIAL_SESSION') {
-      console.log('Ignoring INITIAL_SESSION event')
-      return
-    }
-    
-    // Only redirect on actual sign-in, not on initial load
     if (event === 'SIGNED_IN' && session && !hasRedirected) {
       hasRedirected = true
-      console.log('SIGNED_IN event, redirecting to book.html...')
-      location.replace('book.html')
+      
+      const needsSetup = await checkNeedsSetup(session.user.id)
+      
+      if (needsSetup) {
+        location.replace('setup.html')
+      } else {
+        location.replace('book.html')
+      }
     }
   })
 
   function setMode(m) {
     mode = m
     const isSignup = m === 'signup'
-    document.getElementById('username-row').style.display = isSignup ? 'block' : 'none'
-    document.getElementById('confirm-row').style.display  = isSignup ? 'block' : 'none'
-    document.getElementById('auth-sub').textContent       = isSignup ? 'Register your identity with the System.' : 'Welcome back, player.'
-    document.getElementById('submit-btn').textContent     = isSignup ? 'Register ›' : 'Enter ›'
-    document.getElementById('toggle-btn').textContent     = isSignup ? 'Already registered? Log in.' : 'No account? Sign up.'
-    document.getElementById('auth-error').textContent     = ''
-    document.getElementById('password').autocomplete      = isSignup ? 'new-password' : 'current-password'
+    document.getElementById('confirm-row').style.display = isSignup ? 'block' : 'none'
+    document.getElementById('auth-sub').textContent = isSignup ? 'Register your identity with the System.' : 'Welcome back, player.'
+    document.getElementById('submit-btn').textContent = isSignup ? 'Register ›' : 'Enter ›'
+    document.getElementById('toggle-btn').textContent = isSignup ? 'Already registered? Log in.' : 'No account? Sign up.'
+    document.getElementById('auth-error').textContent = ''
+    document.getElementById('password').autocomplete = isSignup ? 'new-password' : 'current-password'
   }
 
   document.getElementById('toggle-btn').addEventListener('click', () => {
@@ -93,96 +102,102 @@
   })
 
   document.getElementById('submit-btn').addEventListener('click', async () => {
-    const email    = document.getElementById('email').value.trim()
+    const email = document.getElementById('email').value.trim()
     const password = document.getElementById('password').value
-    
-    // CHANGED: Safe check for confirm field - fixes the TypeError!
     const confirmEl = document.getElementById('confirm')
-    const confirm  = confirmEl ? confirmEl.value : ''  // If confirm doesn't exist, use empty string
-    
-    const usernameEl = document.getElementById('username')
-    const username = usernameEl ? usernameEl.value.trim() : ''  // Also safe check for username
-    const errorEl  = document.getElementById('auth-error')
-    const btn      = document.getElementById('submit-btn')
+    const confirm = confirmEl ? confirmEl.value : ''
+    const errorEl = document.getElementById('auth-error')
+    const btn = document.getElementById('submit-btn')
 
     errorEl.textContent = ''
 
-    // Validation
-    if (!email || !password) { errorEl.textContent = 'Email and password are required.'; return }
+    if (!email || !password) { 
+      errorEl.textContent = 'Email and password are required.'
+      return 
+    }
+    
     if (mode === 'signup') {
-      if (!username) { errorEl.textContent = 'Please choose a username.'; return }
-      if (username.length < 3) { errorEl.textContent = 'Username must be at least 3 characters.'; return }
-      if (password.length < 6) { errorEl.textContent = 'Password must be at least 6 characters.'; return }
-      if (password !== confirm) { errorEl.textContent = 'Passwords do not match.'; return }
+      if (password.length < 6) { 
+        errorEl.textContent = 'Password must be at least 6 characters.'
+        return 
+      }
+      if (password !== confirm) { 
+        errorEl.textContent = 'Passwords do not match.'
+        return 
+      }
     }
 
     btn.textContent = 'Connecting…'
-    btn.disabled    = true
+    btn.disabled = true
 
     if (mode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
-      btn.disabled    = false
+      btn.disabled = false
       btn.textContent = 'Enter ›'
-      if (error) { errorEl.textContent = error.message; return }
-      // CHANGED: Explicit redirect for login too
-      hasRedirected = true
-      location.replace('book.html')
+      if (error) { 
+        errorEl.textContent = error.message
+        return 
+      }
+      // Redirect handled by onAuthStateChange
 
     } else {
-      // Sign up — email confirmation disabled in Supabase dashboard
+      // Sign up - auto-generate temporary username
+      const tempUsername = 'Player_' + Math.random().toString(36).slice(2, 7).toUpperCase()
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { username } }
+        options: { data: { username: tempUsername } }
       })
-      btn.disabled    = false
+      
+      btn.disabled = false
       btn.textContent = 'Register ›'
-      if (error) { errorEl.textContent = error.message; return }
+      
+      if (error) { 
+        errorEl.textContent = error.message
+        return 
+      }
 
-      // Create player row immediately
+      // Create player row with temporary username
       const userId = data.user?.id
       if (userId) {
-        const finalName = username || ('Player_' + Math.random().toString(36).slice(2,7).toUpperCase())
-        const { error: pErr } = await supabase.from('players').upsert(
-          {
-            user_id:           userId,
-            username:          finalName,
-            level:             1,
-            xp:                0,
-            hp:                100,
-            max_hp:            100,
-            gold:              0,
-            badge:             'neutral',
-            reputation:        'neutral',
-            chapters_unlocked: [1]
-          },
-          { onConflict: 'user_id' }
-        )
+        const { error: pErr } = await supabase.from('players').insert({
+          user_id: userId,
+          username: tempUsername,
+          level: 1,
+          xp: 0,
+          hp: 100,
+          max_hp: 100,
+          gold: 0,
+          badge: 'neutral',
+          reputation: 'neutral',
+          chapters_unlocked: [1]
+        })
+        
         if (pErr) {
-          console.warn('Player row error:', pErr.message)
+          console.error('Player creation error:', pErr)
           errorEl.textContent = 'Account created but profile setup failed: ' + pErr.message
           return
         }
       }
 
-      // Sign in immediately so they don't have to verify email
+      // Auto sign in
       const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password })
       if (signInErr) {
         errorEl.textContent = 'Account created! Please sign in.'
         setMode('login')
         return
       }
-      // CHANGED: Explicit redirect after successful signup
-      hasRedirected = true
-      location.replace('book.html')
+      // Redirect handled by onAuthStateChange (will go to setup.html)
     }
   })
 
-  // Enter key on any field
-  ['email','username','password','confirm'].forEach(id => {
-    document.getElementById(id)?.addEventListener('keydown', e => {  // CHANGED: Added ?. for safety
-      if (e.key === 'Enter') document.getElementById('submit-btn').click()
-    })
+  // Enter key listeners
+  document.getElementById('email').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('submit-btn').click()
+  })
+  document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('submit-btn').click()
   })
 </script>
 </body>
