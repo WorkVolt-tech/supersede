@@ -3850,6 +3850,43 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     const overEl  = $('combat-over')
     if (actions) actions.style.display = 'none'
 
+    // ── Record passive battle counts on any win ───────────
+    if (result === 'win') {
+      const unlocked = player.skills_unlocked || []
+      const PASSIVES = [
+        'darkness_passive_backstab',
+        'fire_passive_burn',
+        'lightning_passive_chain_damage',
+        'wind_passive_dodge',
+        'earth_passive_damage_reduction',
+        'water_passive_regen',
+        'metal_passive_reflect',
+      ]
+      const activePassives = PASSIVES.filter(k => unlocked.includes(k))
+      if (activePassives.length) {
+        const sl = player.skill_levels || {}
+        let leveledUp = []
+        for (const k of activePassives) {
+          if (!sl[k]) sl[k] = { uses: 0 }
+          const prevLv = _skillLvGlobal(k)
+          sl[k].uses++
+          // Recalculate level using updated uses
+          const T = [0,10,25,50,90,150,240,380,590,900]
+          let newLv = 1
+          for (let i = 1; i < T.length; i++) { if (sl[k].uses >= T[i]) newLv = i+1; else break }
+          newLv = Math.min(10, newLv)
+          if (newLv > prevLv) leveledUp.push({ k, lv: newLv })
+        }
+        player.skill_levels = sl
+        const { error } = await supabase.from('players').update({ skill_levels: sl }).eq('id', player.id)
+        if (error) console.error('[passive skill_levels save]', error.message)
+        for (const { k, lv } of leveledUp) {
+          const label = k.replace(/_passive_/g,' ').replace(/_/g,' ')
+          showToast('✦ Passive: ' + label + ' reached Lv ' + lv + '!')
+        }
+      }
+    }
+
     const isFarm   = onWin === '__farm_win__'
     const isEyeFight = onWin === '__eye_win__'
 
@@ -4173,6 +4210,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     enemyATKMult:    1.0,
     enemyStunTurns:  0,
     burnTurns:       0,
+    burnDmg:         3,   // scaled by fire_passive_burn level
     infernoTurns:    0,
     regenTurns:      0,
     rootTrapTurns:   0,
@@ -4183,9 +4221,13 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   function applyPassives() {
     const unlocked = player.skills_unlocked || []
     const inBattle = player.battle_skills   || []
-    // Elemental passives
+    // Elemental passives — scaled by level
     if (unlocked.includes('water_passive_regen'))            statusEffects.regenTurns    = 999
-    if (unlocked.includes('earth_passive_damage_reduction')) statusEffects.playerDEFBonus += 5
+    if (unlocked.includes('earth_passive_damage_reduction')) {
+      // Lv1: +5 DEF, Lv10: +14 DEF
+      const lv = _skillLvGlobal('earth_passive_damage_reduction')
+      statusEffects.playerDEFBonus += Math.round(5 + (lv - 1))
+    }
     if (unlocked.includes('metal_passive_reflect'))          statusEffects.metalReflect  = true
     // Notable passives — only if assigned to a battle slot
     if (inBattle.includes('an2')) statusEffects.flameFist    = true   // Power ×0.4 to ATK
@@ -4349,12 +4391,20 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     return 0.5 + (getSkillLevel(key) - 1) * (0.5 / 9)
   }
   async function recordSkillUse(key) {
-    const sl = player.skill_levels || {}
+    const sl  = player.skill_levels || {}
     if (!sl[key]) sl[key] = { uses: 0 }
+    const prevLv = getSkillLevel(key)
     sl[key].uses++
     player.skill_levels = sl
-    // Fire-and-forget DB save
-    supabase.from('players').update({ skill_levels: sl }).eq('id', player.id)
+    // Detect level-up
+    const newLv = getSkillLevel(key)
+    if (newLv > prevLv) {
+      const sk = BATTLE_SKILLS[key]
+      showToast('✦ ' + (sk?.label || key) + ' reached Lv ' + newLv + '!')
+    }
+    // Awaited save so failures surface in console
+    const { error } = await supabase.from('players').update({ skill_levels: sl }).eq('id', player.id)
+    if (error) console.error('[skill_levels save]', error.message)
   }
 
   async function doTurn(playerAction, skillKey = null) {
@@ -4402,8 +4452,10 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
     function calcPlayerDodge() {
       const speedAdv = Math.max(0, pSPD - eSPD)
       const base = 0.03 + speedAdv * 0.015
-      const windBonus = unlocked.includes('wind_passive_dodge') ? 0.20 : 0
-      return Math.min(0.40, base + windBonus)
+      // Wind dodge: Lv1 +20%, Lv10 +35%
+      const windLv = unlocked.includes('wind_passive_dodge') ? _skillLvGlobal('wind_passive_dodge') : 0
+      const windBonus = windLv > 0 ? 0.20 + (windLv - 1) * (0.15 / 9) : 0
+      return Math.min(0.55, base + windBonus)
     }
     function calcEnemyDodge() {
       const speedAdv = Math.max(0, eSPD - pSPD)
@@ -4425,8 +4477,11 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       }
 
       if (playerAction === 'strike') {
-        // Backstab passive: 15% double damage
-        const backstab   = unlocked.includes('darkness_passive_backstab') && Math.random() < 0.15
+        // Backstab passive: Lv1 15% chance 2× dmg → Lv10 35% chance 3× dmg
+        const bsLv      = unlocked.includes('darkness_passive_backstab') ? _skillLvGlobal('darkness_passive_backstab') : 0
+        const bsChance  = bsLv > 0 ? 0.15 + (bsLv - 1) * (0.20 / 9) : 0
+        const bsMult    = bsLv > 0 ? 2 + (bsLv - 1) * (1 / 9) : 1
+        const backstab  = bsLv > 0 && Math.random() < bsChance
         const roll       = window._forceMaxHit ? (6+luckBonus) : Math.floor(Math.random()*(6+luckBonus))+1
         window._forceMaxHit = false
         const baseATK    = playerATK() + (statusEffects.playerATKBonus||0)
@@ -4434,21 +4489,30 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         statusEffects.ignoreEnemyDEF = false
         const flickerMult = statusEffects.flickerReady ? 2 : 1
         if (statusEffects.flickerReady) { statusEffects.flickerReady = false }
-        const dmg        = Math.max(1, (baseATK + roll) * (backstab ? 2 : 1) * flickerMult)
+        const dmg        = Math.max(1, Math.round((baseATK + roll) * (backstab ? bsMult : 1) * flickerMult))
         enemyHp          = Math.max(0, enemyHp - dmg)
         messages.push(backstab
-          ? '⚡ Backstab! You strike for <strong>' + dmg + '</strong> double damage!'
+          ? '⚡ Backstab Lv' + bsLv + '! You strike for <strong>' + dmg + '</strong> (' + Math.round(bsMult*10)/10 + '× dmg)!'
           : 'You strike for <strong>' + dmg + '</strong>.' + (ignoreDEF ? ' (DEF ignored)' : ''))
-        // Burn passive
+        // Burn passive: Lv1 3dmg × 2 turns → Lv10 6dmg × 4 turns
         if (unlocked.includes('fire_passive_burn')) {
-          statusEffects.burnTurns = 2
-          messages.push('🔥 Burn applied — 3 dmg/turn × 2 turns.')
+          const burnLv  = _skillLvGlobal('fire_passive_burn')
+          const burnDmg = Math.round(3 + (burnLv - 1) * (3 / 9))
+          const burnDur = Math.round(2 + (burnLv - 1) * (2 / 9))
+          statusEffects.burnTurns = burnDur
+          statusEffects.burnDmg   = burnDmg
+          messages.push('🔥 Burn Lv' + burnLv + ' applied — ' + burnDmg + ' dmg/turn × ' + burnDur + ' turns.')
         }
-        // Chain passive: 20%
-        if (unlocked.includes('lightning_passive_chain_damage') && Math.random() < 0.2) {
-          const chainDmg = Math.max(1, Math.floor(dmg * 0.5))
-          enemyHp = Math.max(0, enemyHp - chainDmg)
-          messages.push('⚡ Chain hit for <strong>' + chainDmg + '</strong>!')
+        // Chain passive: Lv1 20% chance 50% dmg → Lv10 40% chance 90% dmg
+        if (unlocked.includes('lightning_passive_chain_damage')) {
+          const chainLv     = _skillLvGlobal('lightning_passive_chain_damage')
+          const chainChance = 0.20 + (chainLv - 1) * (0.20 / 9)
+          const chainPct    = 0.50 + (chainLv - 1) * (0.40 / 9)
+          if (Math.random() < chainChance) {
+            const chainDmg = Math.max(1, Math.floor(dmg * chainPct))
+            enemyHp = Math.max(0, enemyHp - chainDmg)
+            messages.push('⚡ Chain Lv' + chainLv + ' hit for <strong>' + chainDmg + '</strong>!')
+          }
         }
         // Venom Fang passive: 15% poison on strike
         if (statusEffects.venomFang && Math.random() < 0.15) {
@@ -4723,11 +4787,13 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
 
       currentHp = Math.max(0, currentHp - eDmg)
 
-      // Metal reflect passive: 10% of damage reflected
+      // Metal reflect passive: Lv1 10% → Lv10 28% reflected
       if (statusEffects.metalReflect && eDmg > 0) {
-        const refDmg = Math.max(1, Math.floor(eDmg * 0.1))
+        const refLv  = _skillLvGlobal('metal_passive_reflect')
+        const refPct = 0.10 + (refLv - 1) * (0.18 / 9)
+        const refDmg = Math.max(1, Math.floor(eDmg * refPct))
         enemyHp      = Math.max(0, enemyHp - refDmg)
-        messages.push('⚙ Metal Reflect — ' + refDmg + ' damage reflected!')
+        messages.push('⚙ Metal Reflect Lv' + refLv + ' — ' + refDmg + ' damage reflected!')
       }
       // Thornwall: reflect 15% of Defend absorption
       if (statusEffects.thornwall && defending && eDmg > 0) {
@@ -4793,9 +4859,10 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
 
     // ── DoT & ongoing effects ─────────────────────────────
     if (statusEffects.burnTurns > 0 && enemyHp > 0) {
-      enemyHp = Math.max(0, enemyHp - 3)
+      const bd = statusEffects.burnDmg || 3
+      enemyHp = Math.max(0, enemyHp - bd)
       statusEffects.burnTurns--
-      messages.push('🔥 Burn: 3 dmg. (' + statusEffects.burnTurns + ' left)')
+      messages.push('🔥 Burn: ' + bd + ' dmg. (' + statusEffects.burnTurns + ' left)')
     }
     if (statusEffects.infernoTurns > 0 && enemyHp > 0) {
       const iDmg = statusEffects.infernoDmg || 40
@@ -4804,9 +4871,11 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       messages.push('🔥 Inferno: ' + iDmg + ' dmg! (' + statusEffects.infernoTurns + ' left)')
     }
     if (statusEffects.regenTurns > 0 && currentHp > 0) {
-      const heal = Math.min(player.max_hp||100, currentHp + 5) - currentHp
+      const regenLv  = _skillLvGlobal('water_passive_regen')
+      const regenAmt = Math.round(5 + (regenLv - 1))
+      const heal = Math.min(player.max_hp||100, currentHp + regenAmt) - currentHp
       currentHp += heal
-      if (heal > 0) messages.push('💧 Flow: +5 HP regen.')
+      if (heal > 0) messages.push('💧 Flow Lv' + regenLv + ': +' + heal + ' HP regen.')
     }
     // Tick temp buffs
     if (statusEffects.rockArmorTurns > 0) {
