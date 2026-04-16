@@ -3,101 +3,199 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SuperSede — Chapters</title>
+  <title>SuperSede — Sign In</title>
   <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    .auth-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .auth-book {
+      display: flex;
+      max-width: 680px;
+      width: 100%;
+    }
+    .auth-page {
+      flex: 1;
+      border-radius: 2px 6px 6px 2px;
+      box-shadow: 4px 6px 32px rgba(0,0,0,.45);
+      padding: 2.5rem 2rem;
+    }
+    .auth-input {
+      width: 100%;
+      box-sizing: border-box;
+      background: rgba(255,255,255,.35);
+      border: 1px solid rgba(139,106,32,.45);
+      border-radius: 2px;
+      padding: .55rem .75rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .82rem;
+      color: #1a1208;
+      margin-bottom: .85rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .auth-input:focus { border-color: rgba(139,106,32,.9); }
+    .auth-input::placeholder { color: rgba(26,18,8,.4); }
+    .auth-btn {
+      width: 100%;
+      font-family: 'Cinzel', serif;
+      font-size: .82rem;
+      font-weight: 600;
+      letter-spacing: .06em;
+      color: #1a1208;
+      background: rgba(200,184,128,.4);
+      border: 1px solid rgba(139,106,32,.5);
+      border-radius: 2px;
+      padding: .65rem 1rem;
+      cursor: pointer;
+      transition: background .2s;
+      margin-bottom: .5rem;
+    }
+    .auth-btn:hover { background: rgba(200,184,128,.65); }
+    .auth-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .auth-toggle {
+      font-family: 'IM Fell English', serif;
+      font-style: italic;
+      font-size: .78rem;
+      color: #1a1208;
+      text-align: center;
+      margin-top: .75rem;
+      opacity: .7;
+    }
+    .auth-toggle a {
+      color: #1a1208;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .auth-error {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: .72rem;
+      color: #a03030;
+      margin-bottom: .75rem;
+      min-height: 1rem;
+    }
+    .auth-spine {
+      width: 18px;
+      background: linear-gradient(to right, #7a5c1e, #c8a84b, #7a5c1e);
+      border-radius: 0;
+      flex-shrink: 0;
+    }
+  </style>
 </head>
 <body>
-<div class="book-wrap">
-  <div id="nav"></div>
-
-  <div class="book" style="margin-top:.75rem">
-    <div class="page-left parchment">
+<div class="auth-wrap">
+  <div class="auth-book">
+    <div class="auth-page parchment">
       <div class="page-inner">
         <p class="chapter-label">SuperSede</p>
-        <h1 class="page-title">Table of Contents</h1>
+        <h1 class="page-title" id="form-title">Sign In</h1>
         <hr class="ink-divider">
         <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#1a1208;line-height:1.7;margin-bottom:1.5rem">
-          Choose a chapter. Restarting a chapter does not erase your progress or inventory.
+          Enter your credentials to continue your journey.
         </p>
-        <div id="chapter-list"></div>
-      </div>
-    </div>
 
-    <div class="spine"></div>
+        <div id="auth-error" class="auth-error"></div>
 
-    <div class="page-right parchment">
-      <div class="page-inner">
-        <p class="chapter-label">Player Record</p>
-        <h2 class="page-title" id="rec-username">—</h2>
-        <hr class="ink-divider">
-        <div id="rec-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .25rem;margin-bottom:1rem"></div>
-        <hr class="ink-divider">
-        <div style="display:flex;flex-wrap:wrap;gap:.5rem">
-          <a href="inventory.html" class="end-btn">🎒 Inventory</a>
-          <a href="trader.html"    class="end-btn">🛒 Trader</a>
-          <a href="lobby.html"     class="end-btn">⚔ Lobby</a>
-          <a href="badges.html"    class="end-btn">🏅 Badges</a>
+        <input id="email"    class="auth-input" type="email"    placeholder="Email address" autocomplete="email" />
+        <input id="password" class="auth-input" type="password" placeholder="Password"      autocomplete="current-password" />
+        <div id="confirm-wrap" style="display:none">
+          <input id="confirm" class="auth-input" type="password" placeholder="Confirm password" autocomplete="new-password" />
+        </div>
+
+        <button id="submit-btn" class="auth-btn" onclick="handleSubmit()">Enter the World</button>
+
+        <div class="auth-toggle">
+          <span id="toggle-text">No account?</span>
+          <a onclick="toggleMode()"> <span id="toggle-link">Create one</span></a>
         </div>
       </div>
     </div>
+    <div class="auth-spine"></div>
   </div>
 </div>
 
 <script type="module">
-  import { renderNav } from '../components/nav.js'
   import { supabase } from '../supabase.js'
 
-  const CHAPTERS = [
-    { number: 1, title: 'System Initialization', sub: 'The world stops. The game begins.' },
-    { number: 2, title: 'The Element Awakens',   sub: 'Choose your path. Choose your power.' },
-  ]
-
-  const player = await renderNav('nav')
-  
-  if (!player) {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) {
-      window.location.href = 'auth.html'
-      return
+  // If already signed in with a valid player, skip straight to book
+  const { data: { session } } = await supabase.auth.getSession()
+  if (session) {
+    const { data: player } = await supabase
+      .from('players').select('id').eq('user_id', session.user.id).single()
+    if (player) {
+      window.location.href = 'book.html'
+    } else {
+      window.location.href = 'setup.html'
     }
-    // Has session but no player - redirect to setup
-    window.location.href = 'setup.html'
-    return
   }
 
-  const unlocked = player.chapters_unlocked || [1]
+  let isSignUp = false
 
-  document.getElementById('rec-username').textContent = player.username
-  document.getElementById('rec-stats').innerHTML = [
-    ['Level', player.level], ['XP', player.xp],
-    ['HP', `${player.hp}/${player.max_hp}`], ['Gold', `◈ ${player.gold}`],
-    ['Rep', player.reputation || 'neutral'], ['Element', player.element || '—'],
-  ].map(([k,v]) => `
-    <div>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#1a1208;letter-spacing:.08em;display:block">${k}</span>
-      <span style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">${v}</span>
-    </div>
-  `).join('')
+  window.toggleMode = () => {
+    isSignUp = !isSignUp
+    document.getElementById('form-title').textContent   = isSignUp ? 'Create Account' : 'Sign In'
+    document.getElementById('submit-btn').textContent   = isSignUp ? 'Begin Your Journey' : 'Enter the World'
+    document.getElementById('confirm-wrap').style.display = isSignUp ? 'block' : 'none'
+    document.getElementById('toggle-text').textContent  = isSignUp ? 'Already have an account?' : 'No account?'
+    document.getElementById('toggle-link').textContent  = isSignUp ? 'Sign in' : 'Create one'
+    document.getElementById('auth-error').textContent   = ''
+  }
 
-  document.getElementById('chapter-list').innerHTML = CHAPTERS.map(ch => {
-    const isUnlocked = unlocked.includes(ch.number)
-    const isCurrent  = player.current_chapter === ch.number
-    return `
-      <div style="display:flex;align-items:center;gap:.75rem;padding:.9rem 0;border-bottom:1px solid rgba(139,106,32,.18);opacity:${isUnlocked ? 1 : .45}">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;min-width:70px">
-          ${isUnlocked ? '' : '🔒 '}Chapter ${ch.number}
-        </span>
-        <div style="flex:1">
-          <p style="font-family:'Cinzel',serif;font-size:.88rem;color:#1a1208;margin:0 0 1px">${ch.title}</p>
-          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#1a1208;margin:0">${ch.sub}</p>
-        </div>
-        ${isUnlocked
-          ? `<a href="chapter${ch.number}.html" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);padding:.3rem .8rem;text-decoration:none;border-radius:2px;white-space:nowrap">${isCurrent ? 'Continue ›' : unlocked.includes(ch.number + 1) ? 'Replay ›' : 'Read ›'}</a>`
-          : `<span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208">Sealed</span>`
-        }
-      </div>
-    `
-  }).join('')
+  window.handleSubmit = async () => {
+    const email    = document.getElementById('email').value.trim()
+    const password = document.getElementById('password').value
+    const confirm  = document.getElementById('confirm')?.value
+    const errEl    = document.getElementById('auth-error')
+    const btn      = document.getElementById('submit-btn')
+
+    errEl.textContent = ''
+
+    if (!email || !password) {
+      errEl.textContent = 'Please fill in all fields.'
+      return
+    }
+    if (isSignUp && password !== confirm) {
+      errEl.textContent = 'Passwords do not match.'
+      return
+    }
+
+    btn.disabled = true
+    btn.textContent = '...'
+
+    if (isSignUp) {
+      const { error } = await supabase.auth.signUp({ email, password })
+      if (error) {
+        errEl.textContent = error.message
+        btn.disabled = false
+        btn.textContent = 'Begin Your Journey'
+        return
+      }
+      // New user — go to setup
+      window.location.href = 'setup.html'
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) {
+        errEl.textContent = error.message
+        btn.disabled = false
+        btn.textContent = 'Enter the World'
+        return
+      }
+      // Check if player profile exists
+      const { data: { session } } = await supabase.auth.getSession()
+      const { data: player } = await supabase
+        .from('players').select('id').eq('user_id', session.user.id).single()
+      window.location.href = player ? 'book.html' : 'setup.html'
+    }
+  }
+
+  // Allow Enter key to submit
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.handleSubmit()
+  })
 </script>
 </body>
 </html>
