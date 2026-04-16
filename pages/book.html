@@ -53,42 +53,47 @@
     { number: 2, title: 'The Element Awakens',   sub: 'Choose your path. Choose your power.' },
   ]
 
-  const player = await renderNav('nav')
-  if (!player) throw new Error('no player')
+  ;(async () => {
+    const player = await renderNav('nav')
+    if (!player) return  // nav.js already redirected — just stop
 
-  const unlocked = player.chapters_unlocked || [1]
+    const unlocked = player.chapters_unlocked || [1]
 
-  document.getElementById('rec-username').textContent = player.username
-  document.getElementById('rec-stats').innerHTML = [
-    ['Level', player.level], ['XP', player.xp],
-    ['HP', `${player.hp}/${player.max_hp}`], ['Gold', `◈ ${player.gold}`],
-    ['Rep', player.reputation || 'neutral'], ['Element', player.element || '—'],
-  ].map(([k,v]) => `
-    <div>
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#1a1208;letter-spacing:.08em;display:block">${k}</span>
-      <span style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">${v}</span>
-    </div>
-  `).join('')
-
-  document.getElementById('chapter-list').innerHTML = CHAPTERS.map(ch => {
-    const isUnlocked = unlocked.includes(ch.number)
-    const isCurrent  = player.current_chapter === ch.number
-    return `
-      <div style="display:flex;align-items:center;gap:.75rem;padding:.9rem 0;border-bottom:1px solid rgba(139,106,32,.18);opacity:${isUnlocked ? 1 : .45}">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;min-width:70px">
-          ${isUnlocked ? '' : '🔒 '}Chapter ${ch.number}
-        </span>
-        <div style="flex:1">
-          <p style="font-family:'Cinzel',serif;font-size:.88rem;color:#1a1208;margin:0 0 1px">${ch.title}</p>
-          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#1a1208;margin:0">${ch.sub}</p>
-        </div>
-        ${isUnlocked
-          ? `<a href="chapter${ch.number}.html" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);padding:.3rem .8rem;text-decoration:none;border-radius:2px;white-space:nowrap">${isCurrent ? 'Continue ›' : unlocked.includes(ch.number + 1) ? 'Replay ›' : 'Read ›'}</a>`
-          : `<span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208">Sealed</span>`
-        }
+    document.getElementById('rec-username').textContent = player.username
+    document.getElementById('rec-stats').innerHTML = [
+      ['Level',   player.level],
+      ['XP',      player.xp],
+      ['HP',      `${player.hp}/${player.max_hp}`],
+      ['Gold',    `◈ ${player.gold}`],
+      ['Rep',     player.reputation || 'neutral'],
+      ['Element', player.element || '—'],
+    ].map(([k, v]) => `
+      <div>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#1a1208;letter-spacing:.08em;display:block">${k}</span>
+        <span style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">${v}</span>
       </div>
-    `
-  }).join('')
+    `).join('')
+
+    document.getElementById('chapter-list').innerHTML = CHAPTERS.map(ch => {
+      const isUnlocked = unlocked.includes(ch.number)
+      const isCurrent  = player.current_chapter === ch.number
+      return `
+        <div style="display:flex;align-items:center;gap:.75rem;padding:.9rem 0;border-bottom:1px solid rgba(139,106,32,.18);opacity:${isUnlocked ? 1 : .45}">
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;min-width:70px">
+            ${isUnlocked ? '' : '🔒 '}Chapter ${ch.number}
+          </span>
+          <div style="flex:1">
+            <p style="font-family:'Cinzel',serif;font-size:.88rem;color:#1a1208;margin:0 0 1px">${ch.title}</p>
+            <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#1a1208;margin:0">${ch.sub}</p>
+          </div>
+          ${isUnlocked
+            ? `<a href="chapter${ch.number}.html" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);padding:.3rem .8rem;text-decoration:none;border-radius:2px;white-space:nowrap">${isCurrent ? 'Continue ›' : unlocked.includes(ch.number + 1) ? 'Replay ›' : 'Read ›'}</a>`
+            : `<span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208">Sealed</span>`
+          }
+        </div>
+      `
+    }).join('')
+  })()
 </script>
 </body>
 </html>
