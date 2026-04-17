@@ -195,6 +195,7 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
               (item.control_bonus||0)>0?'CTR +'+item.control_bonus:'',
               (item.insight_bonus||0)>0?'INS +'+item.insight_bonus:'',
               (item.luck_bonus||0)>0?'LCK +'+item.luck_bonus:'',
+              item.hp_restore>0?'+'+item.hp_restore+' HP':'',
             ].filter(Boolean).join(' ')
             const rwLine = _runeword ? '✦ '+_runeword : (_socketsTotal>0?_socketsUsed+'/'+_socketsTotal+' sockets':'')
             return '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.44rem;color:#1a1208;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+bonuses+'</span>'
