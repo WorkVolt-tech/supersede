@@ -2675,8 +2675,8 @@ function renderHUD() {
     </div>
     <div style="margin-bottom:5px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;letter-spacing:.07em">ALIGNMENT</span>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:${moralCol};letter-spacing:.06em">${moralLabel}</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;letter-spacing:.07em">REPUTATION</span>
+        <span style="font-family:'Cinzel',serif;font-size:.5rem;font-weight:600;color:${moralCol};letter-spacing:.06em">${moralLabel}</span>
       </div>
       <div style="position:relative;height:5px;background:linear-gradient(to right,#e05555,#e07a40,#c8b96e,#c8e8a0,#a0d0ff);border-radius:3px">
         <div style="position:absolute;top:-2px;left:${dotLeft}%;width:9px;height:9px;background:${moralCol};border-radius:50%;transform:translateX(-50%);border:1px solid rgba(0,0,0,.3);transition:left .5s,background .5s"></div>
@@ -3801,7 +3801,7 @@ Not a question.`
   const systemText = `Your interface pulses once. A message appears in letters that feel less like text and more like something carved:
 
 CHAPTER 1 COMPLETE.
-ALIGNMENT RECORDED: ${morality.toUpperCase()}.
+REPUTATION RECORDED: ${morality.toUpperCase()}.
 
 Below that, quieter, almost intimate:
 
@@ -3835,7 +3835,7 @@ ${systemText}`
     <div class="end-box">
       <p class="end-title">Chapter 1 Complete</p>
       <div style="margin:.5rem 0 .75rem;padding:.5rem .75rem;background:rgba(0,0,0,.08);border-radius:4px;border-left:3px solid ${mColor}">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;letter-spacing:.08em;margin-bottom:2px">ALIGNMENT RECORDED</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;letter-spacing:.08em;margin-bottom:2px">REPUTATION RECORDED</p>
         <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:${mColor};margin:0">${mLabel}</p>
         <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#9a8050;margin-top:2px">Moral score: ${moral > 0 ? '+' : ''}${moral}</p>
       </div>
