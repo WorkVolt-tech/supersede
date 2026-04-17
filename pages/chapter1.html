@@ -2605,6 +2605,7 @@ async function checkLevelUp(oldXp, newXp, oldLevel) {
     insight: (player.insight || 0) + statGain,
     luck:    (player.luck    || 0) + statGain,
     control: (player.control || 0) + statGain,
+    agility: (player.agility || 0) + statGain,
   }
   Object.assign(player, updStats)
 
