@@ -3502,13 +3502,14 @@ The Watcher won't show itself until every guardian is defeated. The city is stil
     <p class="choices-label">District Status</p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem">
       ${zones.map(z => z.done ? `
-        <div style="border:.5px solid ${z.color}40;border-radius:5px;padding:.65rem .75rem;background:${z.color}08;opacity:.7">
+        <div onclick="enterZoneFromHub('${z.id}')" style="border:.5px solid ${z.color}50;border-radius:5px;padding:.65rem .75rem;background:${z.color}10;cursor:pointer;transition:all .2s"
+          onmouseover="this.style.background='${z.color}20'" onmouseout="this.style.background='${z.color}10'">
           <div style="display:flex;align-items:center;gap:.5rem">
             <span style="font-size:1rem">${z.icon}</span>
             <span style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208">${z.name}</span>
-            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:${z.color};margin-left:auto">✓ CLEARED</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:${z.color};margin-left:auto">✓ FARM</span>
           </div>
-          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.72rem;color:#7a6435;margin:3px 0 0">${z.guardian} — defeated.</p>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.72rem;color:#7a6435;margin:3px 0 0">${z.guardian} — defeated. Tap to farm.</p>
         </div>
       ` : `
         <div onclick="goTo('${z.introNode}')" style="border:.5px solid rgba(224,85,85,.4);border-radius:5px;padding:.65rem .75rem;background:rgba(80,20,20,.08);cursor:pointer;transition:all .2s"
@@ -3537,6 +3538,19 @@ function isZoneUnlocked(locId) {
   if (!g) return true
   const defeated = getDefeatedBosses()
   return defeated.includes(g.bossKey)
+}
+
+// ── Enter a cleared zone directly from the district hub ──
+window.enterZoneFromHub = function(locId) {
+  // Set up farming context using the farming_hub node locations
+  const farmNode = NODES['farming_hub']
+  if (!farmNode) return
+  window._farmingLocations  = farmNode.locations
+  window._farmingReturnNode = 'district_hub'
+  const loc = farmNode.locations.find(l => l.id === locId)
+  if (!loc) return
+  window._currentFarmLoc = loc
+  renderFarmZone(document.getElementById('right-panel'), loc)
 }
 
 // ── Location hub ─────────────────────────────────
