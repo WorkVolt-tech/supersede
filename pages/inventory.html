@@ -104,6 +104,10 @@ const ITEM_IMAGES = {
   'rune_aero':'../assets/runes/rune_aero.png',
   'rune_umbra':'../assets/runes/rune_umbra.png',
   'rune_lux':'../assets/runes/rune_lux.png',
+  'rune_venin':'../assets/runes/rune_venin.png',
+  'rune_ferro':'../assets/runes/rune_ferro.png',
+  'rune_flora':'../assets/runes/rune_flora.png',
+  'rune_volt':'../assets/runes/rune_volt.png',
   // Base items
   'scrap_blade':    '../assets/weapon/scrap_blade.png',
   'knife':          '../assets/weapon/knife.png',
@@ -420,8 +424,8 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
   function showEquippedModal(item) {
     document.getElementById('equipped-modal')?.remove()
 
-    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
-    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#44cc44',ferro:'#a0a8b8',flora:'#22aa55',volt:'#ffe033'}
+    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨',venin:'☠️',ferro:'⚙️',flora:'🌿',volt:'⚡'}
     const RC = {common:'#2a1208',uncommon:'#2a6020',rare:'#1a3a6e',epic:'#4a2a8a',legendary:'#6b5010',mythic:'#6a1a6a'}
 
     const sockets    = item.sockets_total || 0
@@ -509,9 +513,9 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     if (!runeItems || !runeItems.length) {
       pickerEl.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#1a1208">No runes in inventory.</p>'
     } else {
-      const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
-      const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
-      const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux'}
+      const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#44cc44',ferro:'#a0a8b8',flora:'#22aa55',volt:'#ffe033'}
+      const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨',venin:'☠️',ferro:'⚙️',flora:'🌿',volt:'⚡'}
+      const RUNE_NAMES  = {ignis:'Ignis Rune',aqua:'Aqua Rune',terra:'Terra Rune',aero:'Aero Rune',umbra:'Umbra Rune',lux:'Lux Rune',venin:'Venin Rune',ferro:'Ferro Rune',flora:'Flora Rune',volt:'Volt Rune'}
       pickerEl.innerHTML = `
         <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE</p>
         <div style="display:flex;flex-wrap:wrap;gap:5px">
@@ -749,9 +753,9 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
       return
     }
 
-    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
-    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
-    const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux'}
+    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#44cc44',ferro:'#a0a8b8',flora:'#22aa55',volt:'#ffe033'}
+    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨',venin:'☠️',ferro:'⚙️',flora:'🌿',volt:'⚡'}
+    const RUNE_NAMES  = {ignis:'Ignis Rune',aqua:'Aqua Rune',terra:'Terra Rune',aero:'Aero Rune',umbra:'Umbra Rune',lux:'Lux Rune',venin:'Venin Rune',ferro:'Ferro Rune',flora:'Flora Rune',volt:'Volt Rune'}
 
     picker.innerHTML = `
       <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a07de0;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE TO SOCKET</p>
