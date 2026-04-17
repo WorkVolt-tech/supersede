@@ -521,9 +521,24 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
         <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE</p>
         <div style="display:flex;flex-wrap:wrap;gap:5px">
           ${runeItems.map(r => {
-            const key = r.item_key.replace('rune_','')
-            const col = RUNE_COLORS[key]||'#888'
-            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\')" style="display:flex;align-items:center;gap:4px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'"><span>'+(RUNE_ICONS[key]||'?')+'</span><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></button>'
+            const key  = r.item_key.replace('rune_','')
+            const col  = RUNE_COLORS[key] || '#888'
+            const stat = [
+              r.atk_bonus     > 0 ? '+'+r.atk_bonus+' ATK'    : '',
+              r.def_bonus     > 0 ? '+'+r.def_bonus+' DEF'    : '',
+              r.guard_bonus   > 0 ? '+'+r.guard_bonus+' Guard' : '',
+              r.power_bonus   > 0 ? '+'+r.power_bonus+' PWR'  : '',
+              r.speed_bonus   > 0 ? '+'+r.speed_bonus+' SPD'  : '',
+              r.insight_bonus > 0 ? '+'+r.insight_bonus+' INS': '',
+              r.luck_bonus    > 0 ? '+'+r.luck_bonus+' LCK'   : '',
+              r.control_bonus > 0 ? '+'+r.control_bonus+' CTR': '',
+              r.agility_bonus > 0 ? '+'+r.agility_bonus+' AGI': '',
+              r.max_hp_bonus  > 0 ? '+'+r.max_hp_bonus+' Max HP':'',
+            ].filter(Boolean).join(' ')
+            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\')" style="display:flex;flex-direction:column;align-items:center;gap:1px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:5px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'">'
+              +'<span style="display:flex;align-items:center;gap:4px"><span>'+(RUNE_ICONS[key]||'?')+'</span><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></span>'
+              +(stat?'<span style="font-size:.48rem;color:'+col+';opacity:.85">'+stat+'</span>':'')
+              +'</button>'
           }).join('')}
         </div>`
     }
@@ -766,9 +781,22 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           const color = RUNE_COLORS[key] || '#888'
           const icon  = RUNE_ICONS[key]  || '?'
           const name  = RUNE_NAMES[key]  || key
+          const stat  = [
+            r.atk_bonus     > 0 ? '+'+r.atk_bonus+' ATK'     : '',
+            r.def_bonus     > 0 ? '+'+r.def_bonus+' DEF'     : '',
+            r.guard_bonus   > 0 ? '+'+r.guard_bonus+' Guard'  : '',
+            r.power_bonus   > 0 ? '+'+r.power_bonus+' PWR'   : '',
+            r.speed_bonus   > 0 ? '+'+r.speed_bonus+' SPD'   : '',
+            r.insight_bonus > 0 ? '+'+r.insight_bonus+' INS' : '',
+            r.luck_bonus    > 0 ? '+'+r.luck_bonus+' LCK'    : '',
+            r.control_bonus > 0 ? '+'+r.control_bonus+' CTR' : '',
+            r.agility_bonus > 0 ? '+'+r.agility_bonus+' AGI' : '',
+            r.max_hp_bonus  > 0 ? '+'+r.max_hp_bonus+' Max HP':'',
+          ].filter(Boolean).join(' ')
           return `<button onclick="socketRuneToItem('${itemId}','${r.id}','${key}','${itemType}')"
-            style="display:flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:${color}">
-            <span>${icon}</span><span>${name}</span><span style="color:#3a2008;font-size:.5rem">×${r.quantity}</span>
+            style="display:flex;flex-direction:column;align-items:center;gap:1px;background:${color}18;border:1px solid ${color}60;border-radius:4px;padding:5px 8px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:${color}">
+            <span style="display:flex;align-items:center;gap:4px"><span>${icon}</span><span>${name}</span><span style="color:#3a2008;font-size:.5rem">×${r.quantity}</span></span>
+            ${stat ? `<span style="font-size:.48rem;color:${color};opacity:.85">${stat}</span>` : ''}
           </button>`
         }).join('')}
       </div>
