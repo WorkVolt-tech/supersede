@@ -2929,6 +2929,7 @@ async function addItem(itemKey, qty = 1) {
         element:m.element||'none', power_bonus:m.power_bonus||0, control_bonus:m.control_bonus||0,
         guard_bonus:m.guard_bonus||0, speed_bonus:m.speed_bonus||0,
         insight_bonus:m.insight_bonus||0, luck_bonus:m.luck_bonus||0,
+        agility_bonus:m.agility_bonus||0, max_hp_bonus:m.max_hp_bonus||0,
         special_effect:m.special_effect||null, sockets_total:0, sockets_used:0, socketed_runes:[]
       })
       if (insErr) {
@@ -2953,6 +2954,7 @@ async function addItem(itemKey, qty = 1) {
     element:m.element||'none', power_bonus:m.power_bonus||0, control_bonus:m.control_bonus||0,
     guard_bonus:m.guard_bonus||0, speed_bonus:m.speed_bonus||0,
     insight_bonus:m.insight_bonus||0, luck_bonus:m.luck_bonus||0,
+    agility_bonus:m.agility_bonus||0, max_hp_bonus:m.max_hp_bonus||0,
     special_effect:m.special_effect||null,
     sockets_total:socketsRolled, sockets_used:0, socketed_runes:[]
   })
