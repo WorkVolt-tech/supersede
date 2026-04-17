@@ -164,9 +164,9 @@ The young player doesn't look up. Their interface has gone dark. They don't see 
 You do.`,
     sysMsg: '⚠ THE WATCHER SEES ALL — Observation event triggered.',
     choices: [
-      { id: 'enc_team',    label: 'Sit with them a moment',  sub: 'Listen — gain Awareness XP',        next: 'search_team',    outcome: 'team' },
+      { id: 'enc_team',    label: 'Sit with them a moment',  sub: 'Listen — gain Awareness XP',        next: 'search_team',    outcome: 'team',   moral: +15 },
       { id: 'enc_attack',  label: 'Take their supplies',     sub: 'Easy loot. Reputation shifts red.',  next: 'search_attack',  outcome: 'attack', variant: 'danger' },
-      { id: 'enc_observe', label: 'Say nothing and move on', sub: 'Keep your distance — observe',       next: 'search_observe', outcome: 'observe' },
+      { id: 'enc_observe', label: 'Say nothing and move on', sub: 'Keep your distance — observe',       next: 'search_observe', outcome: 'observe', insightRequired: 2 },
     ],
   },
 
@@ -266,8 +266,8 @@ The runner looks up and sees you watching. Not asking for help exactly. Just ack
 You have about ten seconds before it escalates.`,
     xp: 25,
     choices: [
-      { label: 'Step in — draw their attention', sub: 'Help the runner escape', next: 'street_rescue', variant: 'danger' },
-      { label: 'Stay hidden and watch',           sub: 'See what happens',      next: 'street_watch2' },
+      { label: 'Step in — draw their attention', sub: 'Help the runner escape', next: 'street_rescue', variant: 'danger', moral: +15 },
+      { label: 'Stay hidden and watch',           sub: 'See what happens',      next: 'street_watch2', insightRequired: 3 },
     ],
   },
 
@@ -470,7 +470,7 @@ They turn. Badge: NEUTRAL. Expression: amused. Name: Kai.
 They share a location pin. A supply stash and a spawn point where System entities are clustered together. Easy XP if you move now.`,
     xp: 35,
     choices: [
-      { label: 'Hit the spawn point with Kai', sub: 'Team hunt — bonus XP',         next: 'fight_with_kai' },
+      { label: 'Hit the spawn point with Kai', sub: 'Team hunt — bonus XP',         next: 'fight_with_kai', moral: +8 },
       { label: 'Go to the plaza now',          sub: 'Skip the extra grind',          next: 'street_midpoint' },
     ],
   },
@@ -668,9 +668,9 @@ She looks at you with the expression of someone who has been waiting a long time
 You have about ninety seconds to decide.`,
     sysMsg: '⚠ Boss entity countdown initiated. 90 seconds.',
     choices: [
-      { label: 'Fight together',                     sub: 'A green ally — shared damage',    next: 'pre_boss_team' },
+      { label: 'Fight together',                     sub: 'A green ally — shared damage',    next: 'pre_boss_team',   moral: +10 },
       { label: 'Tell her to run — you handle it',   sub: 'Face it alone. Your choice.',     next: 'pre_boss_solo' },
-      { label: 'Use her as bait and set an ambush', sub: 'Cold. Effective. Dangerous.',     next: 'pre_boss_betray', variant: 'danger' },
+      { label: 'Use her as bait and set an ambush', sub: 'Cold. Effective. Dangerous.',     next: 'pre_boss_betray', variant: 'danger', moral: -25 },
     ],
   },
 
@@ -751,27 +751,27 @@ Three zones pulse with System entity activity — each with different threats an
         id: 'loc_garage', name: 'Parking Garage', icon: '🅿️', level: 'Easy', color: '#5ec45e',
         desc: 'Weak spawns. Good for early runes and consumables.',
         enemies: [
-          { name:'Glitch Rat',     icon:'🐀', hp:20,  atk:3,  agility:3, xp:25,  loot:[{itemKey:'rune_ignis',   chance:.25},{itemKey:'energy_drink', chance:.4},{itemKey:'scrap_metal',chance:.6},{itemKey:'scrap_helm',chance:.08},{itemKey:'scrap_shield',chance:.06}] },
-          { name:'Static Crawler', icon:'🦎', hp:30,  atk:4,  agility:4, xp:35,  loot:[{itemKey:'rune_aqua',    chance:.25},{itemKey:'scrap_blade',  chance:.3},{itemKey:'scrap_metal',chance:.5},{itemKey:'scrap_helm',chance:.07},{itemKey:'scrap_shield',chance:.05}] },
-          { name:'Pixel Shard',    icon:'💠', hp:15,  atk:2,  agility:5, xp:20,  loot:[{itemKey:'rune_terra',   chance:.2}, {itemKey:'energy_drink', chance:.5},{itemKey:'flashlight', chance:.2},{itemKey:'scrap_shield',chance:.08}] },
+          { name:'Glitch Rat',     icon:'🐀', hp:20,  atk:3,  agility:3, xp:25,  loot:[{itemKey:'rune_ignis',   chance:.2},{itemKey:'rune_ferro',   chance:.1},{itemKey:'energy_drink', chance:.4},{itemKey:'scrap_metal',chance:.6},{itemKey:'scrap_helm',chance:.08},{itemKey:'scrap_shield',chance:.06}] },
+          { name:'Static Crawler', icon:'🦎', hp:30,  atk:4,  agility:4, xp:35,  loot:[{itemKey:'rune_aqua',    chance:.2},{itemKey:'rune_flora',   chance:.1},{itemKey:'scrap_blade',  chance:.3},{itemKey:'scrap_metal',chance:.5},{itemKey:'scrap_helm',chance:.07},{itemKey:'scrap_shield',chance:.05}] },
+          { name:'Pixel Shard',    icon:'💠', hp:15,  atk:2,  agility:5, xp:20,  loot:[{itemKey:'rune_terra',   chance:.2},{itemKey:'rune_volt',    chance:.1},{itemKey:'energy_drink', chance:.5},{itemKey:'flashlight', chance:.2},{itemKey:'scrap_shield',chance:.08}] },
         ],
       },
       {
         id: 'loc_market', name: 'Frozen Market', icon: '🏪', level: 'Medium', color: '#c8b96e',
         desc: 'Mid-tier entities. Better gear and rare rune drops.',
         enemies: [
-          { name:'Flicker Hound',  icon:'🐕', hp:55,  atk:6,  agility:6, xp:60,  loot:[{itemKey:'rune_aero',    chance:.3}, {itemKey:'jacket',        chance:.25},{itemKey:'knife',      chance:.2},{itemKey:'iron_helm',chance:.1},{itemKey:'iron_shield',chance:.08}] },
-          { name:'Pixel Drone',    icon:'🤖', hp:45,  atk:7,  agility:5, xp:65,  loot:[{itemKey:'rune_ignis',   chance:.35},{itemKey:'scrap_metal',   chance:.6}, {itemKey:'medkit',     chance:.15},{itemKey:'iron_helm',chance:.12}] },
-          { name:'Fracture Wolf',  icon:'🐺', hp:70,  atk:7,  agility:7, xp:75,  loot:[{itemKey:'rune_umbra',   chance:.2}, {itemKey:'leather_gloves',chance:.2}, {itemKey:'worn_boots', chance:.2},{itemKey:'iron_shield',chance:.1}] },
+          { name:'Flicker Hound',  icon:'🐕', hp:55,  atk:6,  agility:6, xp:60,  loot:[{itemKey:'rune_aero',    chance:.25},{itemKey:'rune_flora',   chance:.2}, {itemKey:'jacket',        chance:.2},{itemKey:'knife',      chance:.15},{itemKey:'iron_helm',chance:.1},{itemKey:'iron_shield',chance:.08}] },
+          { name:'Pixel Drone',    icon:'🤖', hp:45,  atk:7,  agility:5, xp:65,  loot:[{itemKey:'rune_ignis',   chance:.3}, {itemKey:'rune_volt',    chance:.2}, {itemKey:'scrap_metal',   chance:.5}, {itemKey:'medkit',     chance:.15},{itemKey:'iron_helm',chance:.12}] },
+          { name:'Fracture Wolf',  icon:'🐺', hp:70,  atk:7,  agility:7, xp:75,  loot:[{itemKey:'rune_umbra',   chance:.2}, {itemKey:'rune_venin',   chance:.2}, {itemKey:'leather_gloves',chance:.2}, {itemKey:'worn_boots', chance:.2},{itemKey:'iron_shield',chance:.1}] },
         ],
       },
       {
         id: 'loc_tower', name: 'Glass Tower', icon: '🏢', level: 'Hard', color: '#e05555',
         desc: 'Elite entities. Rare and epic loot, high XP.',
         enemies: [
-          { name:'Corrupted Sentry',icon:'👾', hp:90,  atk:10, agility:6, xp:100, loot:[{itemKey:'rune_lux',     chance:.3}, {itemKey:'iron_sword',    chance:.15},{itemKey:'riot_vest',  chance:.1},{itemKey:'tactical_helm',chance:.08},{itemKey:'tactical_sword',chance:.06}] },
-          { name:'Void Sentinel',  icon:'⚫', hp:110, atk:12, agility:7, xp:120, loot:[{itemKey:'rune_umbra',   chance:.4}, {itemKey:'iron_helm',     chance:.15},{itemKey:'medkit',     chance:.25},{itemKey:'tactical_helm',chance:.1}] },
-          { name:'System Enforcer',icon:'🔴', hp:130, atk:14, agility:8, xp:150, loot:[{itemKey:'rune_lux',     chance:.35},{itemKey:'iron_shield',   chance:.1}, {itemKey:'iron_ring',  chance:.1},{itemKey:'tactical_shield',chance:.08},{itemKey:'tactical_sword',chance:.05}] },
+          { name:'Corrupted Sentry',icon:'👾', hp:90,  atk:10, agility:6, xp:100, loot:[{itemKey:'rune_lux',     chance:.25},{itemKey:'rune_volt',    chance:.2}, {itemKey:'iron_sword',    chance:.15},{itemKey:'riot_vest',  chance:.1},{itemKey:'tactical_helm',chance:.08},{itemKey:'tactical_sword',chance:.06}] },
+          { name:'Void Sentinel',  icon:'⚫', hp:110, atk:12, agility:7, xp:120, loot:[{itemKey:'rune_umbra',   chance:.3}, {itemKey:'rune_ferro',   chance:.2}, {itemKey:'iron_helm',     chance:.15},{itemKey:'medkit',     chance:.25},{itemKey:'tactical_helm',chance:.1}] },
+          { name:'System Enforcer',icon:'🔴', hp:130, atk:14, agility:8, xp:150, loot:[{itemKey:'rune_venin',   chance:.25},{itemKey:'rune_flora',   chance:.2}, {itemKey:'iron_shield',   chance:.1}, {itemKey:'iron_ring',  chance:.1},{itemKey:'tactical_shield',chance:.08},{itemKey:'tactical_sword',chance:.05}] },
         ],
       },
     ],
@@ -1051,8 +1051,8 @@ He holds up his arm. The badge flickers. NEUTRAL. UNKNOWN. NEUTRAL.
 He pauses. "I can come with you. Or I can stay here. Either way, it's going to notice you soon."`,
     sysMsg: '⚠ Unknown badge detected — player status unclassified.',
     choices: [
-      { label: 'Take Marcus with you', sub: 'He knows the layout. Risky — his badge is unstable.', next: 'garage_b2_together' },
-      { label: 'Leave him here — move alone', sub: 'Safer. Faster. Less complicated.', next: 'garage_b2_alone' },
+      { label: 'Take Marcus with you', sub: 'He knows the layout. Risky — his badge is unstable.', next: 'garage_b2_together', moral: +12 },
+      { label: 'Leave him here — move alone', sub: 'Safer. Faster. Less complicated.', next: 'garage_b2_alone', moral: -5 },
     ],
   },
 
@@ -1146,8 +1146,8 @@ They hold up a hand. Open. Empty.
 "I'm not looking for a fight. I'm looking for someone strong enough to get past what's waiting at the top. And I think that might be you."`,
     sysMsg: '⚠ RED player detected — HIGH THREAT rating. Proceed with caution.',
     choices: [
-      { label: 'Hear Dorian out', sub: 'He might know something useful. He might be lying.', next: 'garage_b3_dorian_talk' },
-      { label: 'Attack before he can', sub: 'RED badge. Extensive history. Trust nothing.', next: 'garage_b3_dorian_fight', variant: 'danger' },
+      { label: 'Hear Dorian out', sub: 'He might know something useful. He might be lying.', next: 'garage_b3_dorian_talk', moral: +5 },
+      { label: 'Attack before he can', sub: 'RED badge. Extensive history. Trust nothing.', next: 'garage_b3_dorian_fight', variant: 'danger', moral: -10 },
       { label: 'Walk past him — say nothing', sub: 'Keep moving. Don\'t engage.', next: 'garage_b3_dorian_ignore' },
     ],
   },
@@ -1173,7 +1173,7 @@ His badge pulses. RED. Something in his history the System won't let you unsee.
 
 There's a long silence.`,
     choices: [
-      { label: 'Take the deal — work together to level four', sub: 'Uneasy alliance. He knows the layout.', next: 'garage_b3_alliance' },
+      { label: 'Take the deal — work together to level four', sub: 'Uneasy alliance. He knows the layout.', next: 'garage_b3_alliance', moral: +8 },
       { label: 'Refuse — you don\'t trust RED badges', sub: 'Go it alone from here.', next: 'garage_b3_dorian_ignore' },
     ],
   },
@@ -1323,7 +1323,7 @@ Dorian is stepping back toward the ramp.`,
     sysMsg: '⚠ VOID SENTINEL — ADAPTIVE AI. Attack pattern changes every round.',
     choices: [
       { label: 'Fight the Void Sentinel — deal with Dorian after', sub: 'Focus on the threat in front of you', next: 'garage_b4_sentinel_fight', variant: 'danger' },
-      { label: 'Turn on Dorian before the fight starts', sub: 'He was never going to hold the deal', next: 'garage_b4_dorian_turn', variant: 'danger' },
+      { label: 'Turn on Dorian before the fight starts', sub: 'He was never going to hold the deal', next: 'garage_b4_dorian_turn', variant: 'danger', moral: -8 },
     ],
   },
 
@@ -1681,9 +1681,9 @@ Something shifts in your interface. The SYSTEM NOTE field — usually blank — 
 BEHAVIOR LOGGED.`,
     sysMsg: '⚠ SYSTEM NOTE: Complex moral event recorded. Watcher awareness elevated.',
     choices: [
-      { label: 'Tell Lena she should have prevented it', next: 'market_b2_confront' },
-      { label: 'Ask Lena to help you get through the market', next: 'market_b2_ally' },
-      { label: 'Say nothing and move on', next: 'market_b2_push' },
+      { label: 'Tell Lena she should have prevented it', next: 'market_b2_confront', moral: +10 },
+      { label: 'Ask Lena to help you get through the market', next: 'market_b2_ally', moral: +5 },
+      { label: 'Say nothing and move on', next: 'market_b2_push', insightRequired: 3 },
     ],
   },
 
@@ -1858,9 +1858,9 @@ Like a measuring instrument. Counting.
 CLICK. CLICK. CLICK.`,
     sysMsg: '⚠ BOUNDARY DETECTED — System entities refuse to enter. Unknown classification ahead.',
     choices: [
-      { label: 'Cross the boundary with Lena', sub: 'She came this far. Let her finish it.', next: 'market_b4_crossing' },
+      { label: 'Cross the boundary with Lena', sub: 'She came this far. Let her finish it.', next: 'market_b4_crossing', moral: +12 },
       { label: 'Tell Lena to guard the boundary', sub: 'Keep the creatures from flooding back in.', next: 'market_b4_solo_cross' },
-      { label: 'Ask Gio to come instead', sub: 'Unexpected choice. His badge is still NEUTRAL.', next: 'market_b4_gio_cross' },
+      { label: 'Ask Gio to come instead', sub: 'Unexpected choice. His badge is still NEUTRAL.', next: 'market_b4_gio_cross', moral: +15 },
     ],
   },
 
@@ -2171,8 +2171,8 @@ They look at you specifically.
 "Including you. Since floor one."`,
     choices: [
       { label: 'Ask Rhen what they\'ve learned', next: 'tower_b2_rhen_info' },
-      { label: 'Ask Rhen to come with you', next: 'tower_b2_rhen_invite' },
-      { label: 'You don\'t trust a DARK badge — leave', next: 'tower_b2_rhen_leave' },
+      { label: 'Ask Rhen to come with you', next: 'tower_b2_rhen_invite', moral: +10 },
+      { label: 'You don\'t trust a DARK badge — leave', next: 'tower_b2_rhen_leave', moral: -5 },
     ],
   },
 
@@ -2219,7 +2219,7 @@ They look at you.
 "That's why you're interesting."`,
     xp: 40,
     choices: [
-      { label: 'Ask Rhen to come with you', next: 'tower_b2_rhen_invite' },
+      { label: 'Ask Rhen to come with you', next: 'tower_b2_rhen_invite', moral: +10 },
       { label: 'Thank them and continue ascending', next: 'tower_b3_midfloors' },
     ],
   },
@@ -2324,8 +2324,8 @@ The corridor ahead shows a single heat signature. Moving. Slow.
 
 The Unseen is walking toward you.`,
     choices: [
-      { label: 'Tell it you\'ll fight it like what it is — unknown', sub: 'Acknowledge its nature. See what it does.', next: 'tower_b4_respect' },
-      { label: 'Tell it the distinction doesn\'t matter — you\'ll fight it like anything else', next: 'tower_b4_direct' },
+      { label: 'Tell it you\'ll fight it like what it is — unknown', sub: 'Acknowledge its nature. See what it does.', next: 'tower_b4_respect', moral: +15 },
+      { label: 'Tell it the distinction doesn\'t matter — you\'ll fight it like anything else', next: 'tower_b4_direct', moral: -5 },
     ],
   },
 
@@ -2465,32 +2465,83 @@ She says it to all of you. But she's looking at you.`,
     choices: [{ label: 'Return to the plaza', next: 'district_hub' }],
   },
 
+  // ── Plaza: allies gather before the final fight ──
+  plaza_allies: {
+    id: 'plaza_allies', type: 'story',
+    text: `The plaza.
+
+You cross the threshold and feel the air change — the frozen city exhaling, the barrier that held the district sealed now simply... gone. The sky above the plaza is still wrong. Compressed. Something vast pressing against it from above.
+
+But you are not alone.
+
+They came from different directions. No signal, no coordination. Just people who fought through the same city and ended up at the same place.
+
+Marcus is sitting on a stone bench near the fountain. His badge reads NEUTRAL — fully settled now, no flicker. He looks up when he hears your footsteps. Doesn't say anything. Just nods once.
+
+Lena is standing at the far edge of the plaza, watching the skyline. She's organized supplies from the market into a neat stack near a column — her instinct, apparently, even now. She looks over her shoulder. "The city will need rebuilding," she says quietly. "Someone has to start thinking about after."
+
+Kai is crouched near the fountain, still writing in their interface. Three pages of notes. They don't look up when you approach. "I've been modeling the Watcher's behavior pattern since we fought through the garage," they say. "I think I understand it now. For what it's worth."
+
+Rhen stands in the shadow of a frozen archway. Their badge: NEUTRAL. New. Still settling. They watch the sky with an expression that isn't fear — more like recognition.
+
+Gio is the last one you notice. He's standing off to the side, the bandage on his arm replaced with something cleaner. He sees you looking and shrugs. "I had nowhere else to go," he says. "Figured I'd stay."
+
+And then: Yara. She's been at the center of all of it — the fountain's edge, watching all of them arrive. She meets your eyes when you reach her.
+
+"You found them," she says.
+
+"They found themselves," you say.
+
+She looks around the plaza. At this improbable gathering. At what the frozen city made of all of you.
+
+"The sky is about to tear," she says. "Whatever's coming — it's been watching us this whole time. It already knows what we are."
+
+She looks at you.
+
+"So let's show it something worth watching."`,
+    sysMsg: '⚠ THE WATCHER SEES ALL — Final observation event. Boss entity imminent.',
+    choices: [{ label: 'Face The Watcher', next: 'watcher_sees_final' }],
+  },
+
+  // ── The Watcher's eye opens — mandatory story beat ──
+  watcher_sees_final: {
+    id: 'watcher_sees_final', type: 'story',
+    text: `The sky tears.
+
+Not like weather. Not like an event. Like something vast and patient has been holding it closed from the other side, and has now simply decided to let go.
+
+The crack runs from horizon to horizon. And through it — an eye.
+
+Not The Watcher. Not the full thing. Just its gaze.
+
+An eye the size of a city block, pale and lidless and burning with something that isn't light — something older, something that predates the concept of light — looking down through the crack at the plaza below.
+
+At all of you.
+
+THE WATCHER SEES ALL.
+
+The words don't come from your interface. They don't come from anywhere. They arrive, already inside you, like something that was always there waiting to be acknowledged.
+
+Every choice since you stepped into the frozen city. Every person you helped or left behind or hurt. Every path you took and every one you didn't.
+
+It knows.
+
+Marcus goes still. Lena's hands tighten on the supply stack. Kai stops writing. Rhen looks directly at the eye without flinching — the only one who seems unsurprised.
+
+Yara reaches over and grabs your arm. Not for comfort. To make sure you're real.
+
+"Now," she says.
+
+The eye closes.
+
+The Watcher descends.`,
+    sysMsg: '⚠ FULL OBSERVATION EVENT — The Watcher has seen everything. Final judgment approaching.',
+    choices: [{ label: 'Face what comes — go to Yara', next: 'plaza_talk' }],
+  },
+
   chapter_end: {
     id:'chapter_end', type:'end',
-    text:`The Watcher shatters.
-
-Not with violence — with silence. Like a mirror falling in a dream, breaking without sound. The eye closes. The crack in the sky seals itself with threads of pale light.
-
-The plaza is still.
-
-Then, slowly, the frozen world begins to move again. One car. One pedestrian. A pigeon completes its flight. The wind returns.
-
-People stumble, confused. They don't know what happened. To them, no time passed.
-
-To you, everything has changed.
-
-Your interface pulses once. A message appears in letters that feel less like text and more like something carved:
-
-CHAPTER 1 COMPLETE.
-BEHAVIOR RECORDED.
-
-Below that, quieter, almost intimate:
-
-Your evolution is being calculated.
-
-You look at your hands. Same hands. Different player.
-
-Chapter 2 is waiting.`,
+    text:'', // dynamically generated by renderEnd based on moral score and allies
     sysMsg: 'Core Fragment obtained. Chapter 2 unlocked.',
     unlocksChapter: 2,
   },
@@ -2582,10 +2633,27 @@ function renderHUD() {
   const hpPct  = Math.max(0, Math.round(hp / mhp * 100))
   const hpCol  = hpPct > 60 ? '#5ec45e' : hpPct > 30 ? '#c8b96e' : '#e05555'
   const xpNext = xpForLevel(lvl)
-  // DB always stores within-level XP (checkLevelUp subtracts each threshold on level-up)
-  // Clamp to guard against any legacy edge-case data
   const xpIntoLevel = Math.max(0, Math.min(xp, xpNext - 1))
   const xpPct = Math.min(100, Math.round(xpIntoLevel / xpNext * 100))
+
+  // ── Fable-style moral alignment ───────────────────
+  const moral = player.moral_score || 0
+  // −100 = pure evil (red), 0 = neutral (gold), +100 = pure good (blue-white)
+  const moralPct  = Math.round((moral + 100) / 2) // 0-100 left-to-right
+  const moralCol  = moral >= 60 ? '#a0d0ff'
+    : moral >= 20  ? '#c8e8a0'
+    : moral >= -20 ? '#c8b96e'
+    : moral >= -60 ? '#e07a40'
+    :                '#e05555'
+  const moralLabel = moral >= 70  ? 'HERO'
+    : moral >= 30   ? 'GOOD'
+    : moral >= -10  ? 'NEUTRAL'
+    : moral >= -40  ? 'RUTHLESS'
+    : moral >= -70  ? 'CORRUPT'
+    :                 'VILLAIN'
+  // Indicator dot position: 0% = far left (evil), 100% = far right (good)
+  const dotLeft = Math.max(2, Math.min(94, moralPct))
+
   document.getElementById('hud').innerHTML = `
     <div class="hud-badge-row">
       <span class="hud-seal">${bs}</span>
@@ -2603,6 +2671,15 @@ function renderHUD() {
       <span class="stat-key">XP</span>
       <div class="stat-bar-wrap"><div class="stat-bar" style="width:${xpPct}%;background:#a07de0;transition:width .4s"></div></div>
       <span class="stat-val" style="font-size:.52rem;min-width:60px;text-align:right">${xpIntoLevel}/${xpNext}</span>
+    </div>
+    <div style="margin-bottom:5px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;letter-spacing:.07em">ALIGNMENT</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:${moralCol};letter-spacing:.06em">${moralLabel}</span>
+      </div>
+      <div style="position:relative;height:5px;background:linear-gradient(to right,#e05555,#e07a40,#c8b96e,#c8e8a0,#a0d0ff);border-radius:3px">
+        <div style="position:absolute;top:-2px;left:${dotLeft}%;width:9px;height:9px;background:${moralCol};border-radius:50%;transform:translateX(-50%);border:1px solid rgba(0,0,0,.3);transition:left .5s,background .5s"></div>
+      </div>
     </div>
     ${(player.skill_points||0)>0?`<div onclick="window.location.href='skills.html'" style="background:rgba(160,125,224,.25);border:1px solid rgba(160,125,224,.5);border-radius:3px;padding:4px 8px;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;cursor:pointer;text-align:center">⬡ ${player.skill_points} SKILL POINTS — tap to spend</div>`:''}
     <div class="stat-grid">
@@ -2888,8 +2965,9 @@ async function addItem(itemKey, qty = 1) {
 const EYE_EXEMPT_NODES = new Set([
   'opening','watcher_eye_ambush','eye_escape_attempt','fight_watcher_eye',
   'eye_defeated','eye_survived','watcher_eye_swarm','fight_eye_swarm',
-  'swarm_defeated','swarm_survived','watcher_sees','pre_boss_team',
-  'pre_boss_solo','pre_boss_betray','pre_boss_check','boss','chapter_end',
+  'swarm_defeated','swarm_survived','watcher_sees','watcher_sees_final',
+  'pre_boss_team','pre_boss_solo','pre_boss_betray','pre_boss_check',
+  'boss','chapter_end','plaza_allies','district_hub',
   'plaza_talk','street_midpoint','plaza_grind','plaza_grind_done',
   'fight_rat_1','fight_rats_2','fight_hounds','fight_crawlers',
   'fight_plaza_spawn','fight_drone_1','fight_sentry','fight_with_kai',
@@ -3272,7 +3350,17 @@ window.goTo = async function goTo(nextId, choice = {}) {
   const updates = { current_node: 'ch1_' + nextId }
   if (cur?.xp)     { updates.xp = oldXp + cur.xp; player.xp = updates.xp }
   if (cur?.hpLoss) { currentHp = Math.max(1, currentHp - cur.hpLoss); updates.hp = currentHp }
-  if (choice.outcome === 'attack') { updates.reputation = 'red'; updates.badge = 'red' }
+  if (choice.outcome === 'attack') {
+    updates.reputation = 'red'; updates.badge = 'red'
+    updates.moral_score = Math.max(-100, (player.moral_score || 0) - 20)
+    player.moral_score = updates.moral_score
+  }
+  // Moral score shifts from story choices
+  if (choice.moral) {
+    const newMoral = Math.max(-100, Math.min(100, (player.moral_score || 0) + choice.moral))
+    updates.moral_score = newMoral
+    player.moral_score  = newMoral
+  }
   if (choice.bossMode) bossMode = choice.bossMode
   if (choice.outcome)  outcome  = choice.outcome
   if (cur?.rewards) for (const r of cur.rewards) await addItem(r.itemKey, r.qty)
@@ -3366,7 +3454,7 @@ function renderDistrictHub(panel) {
 
   // Auto-advance to plaza if all three cleared
   if (allDone) {
-    // Update story text to reflect all cleared
+    // Update story text
     const stEl = document.getElementById('story-text')
     if (stEl) stEl.textContent = `You return to the plaza center.
 
@@ -3374,30 +3462,18 @@ The barrier is gone. You feel it the moment you step onto the stone — the air 
 
 Three guardians. Three zones. All of it sealed and recorded.
 
-A green badge pulses near the fountain. Yara. She's been waiting.
-
-She looks at you when you approach — takes in the state of you, the cost of it.
-
-"You cleared them," she says. Not a question.
-
-"All three."
-
-She nods slowly. Something in her expression shifts. The countdown she's been watching has reached zero.
-
-"Then it's time."
-
-Your interface pulses once:
+Your interface pulses:
 
 CHAPTER PROGRESS: 90%
 DISTRICT CLEARED. THE WATCHER APPROACHES.`
 
     panel.innerHTML = `
-      <p class="choices-label">The plaza awaits.</p>
+      <p class="choices-label">The district is clear.</p>
       <div class="choices">
-        <button class="choice" onclick="goTo('plaza_talk')">
+        <button class="choice" onclick="goTo('plaza_allies')">
           <span class="choice-arrow">→</span>
-          <span class="choice-body">Go to Yara
-            <span class="choice-sub">The Watcher is coming.</span>
+          <span class="choice-body">Move to the plaza
+            <span class="choice-sub">See who made it out.</span>
           </span>
         </button>
       </div>
@@ -3646,11 +3722,97 @@ function renderChoices(panel, node) {
 
 // ── End screen ───────────────────────────────────
 function renderEnd(panel, node) {
-  document.getElementById('story-text').textContent = node.text || ''
+  const moral   = player.moral_score || 0
+  const badge   = player.badge || 'neutral'
+  const defeated = getDefeatedBosses()
+
+  // ── Dynamic ending text based on moral score ─────
+  const morality = moral >= 60 ? 'hero'
+    : moral >= 20 ? 'good'
+    : moral >= -20 ? 'neutral'
+    : moral >= -60 ? 'ruthless'
+    : 'villain'
+
+  const watcherVerdict = {
+    hero:     `THE WATCHER SEES ALL.\n\nAnd what it sees — it did not expect.\n\nA player who helped. Who stayed. Who chose the harder thing when the easier thing was right there.\n\nThe System was designed to test. It was not designed to be moved. But something in the Watcher's dissolution carries the weight of acknowledgment.`,
+    good:     `THE WATCHER SEES ALL.\n\nIt looked through every choice you made in this city. Found more light than shadow.\n\nNot perfect. But honest. And in a game built to reveal what people become under pressure — honest is rarer than it sounds.`,
+    neutral:  `THE WATCHER SEES ALL.\n\nIt saw both. The moments you chose to help and the moments you didn't. The lines you held and the ones you let slide.\n\nIt registers this as: inconclusive. The most human verdict it could give.`,
+    ruthless: `THE WATCHER SEES ALL.\n\nIt saw the pattern before you did. The way efficiency became the excuse. The way pragmatism slowly stopped needing justification.\n\nIt does not condemn. It records. That might be worse.`,
+    villain:  `THE WATCHER SEES ALL.\n\nAnd what it sees does not surprise it. The System was designed to find out what players do when no one is watching.\n\nSomething was watching. Something always was.`,
+  }[morality]
+
+  const allyScatter = `The plaza is still.
+
+Then, slowly, the frozen world begins to move again. One car. One pedestrian. A pigeon completes its flight. The wind returns.
+
+People stumble, confused. They don't know what happened. To them, no time passed.
+
+The people who stood with you in the plaza — they feel it first. The moment the game releases them.
+
+Marcus looks at his hands. Then at you. Then he turns and walks north, toward whatever the unfrozen city holds. His badge: steady. NEUTRAL. Chosen, not assigned.
+
+Lena is already organizing. The market will need restocking. People will be hungry and confused. She has a list started before the first person on the street has taken their second step.
+
+Kai closes their interface notes. Looks at the sky where the crack was. "I'll need to write all of this down," they say, to no one in particular. Then they're gone.
+
+Rhen disappears last. Or you think they do. There's a moment where they're there — NEUTRAL badge, clear eyes — and then the crowd fills in around them and they're just gone. Like they were always just passing through.
+
+Gio stands at the edge of the plaza the longest. He's looking at the market district. Something in his expression that might be a decision forming.
+
+Yara finds you in the crowd.
+
+"Well," she says.
+
+"Well," you say.
+
+She looks at the city opening back up around you — the noise returning, the motion, the smell of coffee from a shop that's already resuming where it left off.
+
+"Chapter 2," she says.
+
+Not a question.`
+
+  const systemText = `Your interface pulses once. A message appears in letters that feel less like text and more like something carved:
+
+CHAPTER 1 COMPLETE.
+ALIGNMENT RECORDED: ${morality.toUpperCase()}.
+
+Below that, quieter, almost intimate:
+
+Your evolution is being calculated.
+
+You look at your hands. Same hands. Different player.
+
+Chapter 2 is waiting.`
+
+  const fullText = `The Watcher shatters.
+
+Not with violence — with silence. Like a mirror falling in a dream, breaking without sound. The eye closes. The crack in the sky seals itself with threads of pale light.
+
+${watcherVerdict}
+
+${allyScatter}
+
+${systemText}`
+
+  document.getElementById('story-text').textContent = fullText
+
+  // ── Moral verdict color ────────────────────────
+  const mColor = moral >= 60 ? '#a0d0ff'
+    : moral >= 20 ? '#c8e8a0'
+    : moral >= -20 ? '#c8b96e'
+    : moral >= -60 ? '#e07a40'
+    : '#e05555'
+  const mLabel = morality.toUpperCase()
+
   panel.innerHTML = `
     <div class="end-box">
       <p class="end-title">Chapter 1 Complete</p>
-      <p class="end-sub">The Watcher has been defeated.<br>Chapter 2 awaits.</p>
+      <div style="margin:.5rem 0 .75rem;padding:.5rem .75rem;background:rgba(0,0,0,.08);border-radius:4px;border-left:3px solid ${mColor}">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;letter-spacing:.08em;margin-bottom:2px">ALIGNMENT RECORDED</p>
+        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:${mColor};margin:0">${mLabel}</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#9a8050;margin-top:2px">Moral score: ${moral > 0 ? '+' : ''}${moral}</p>
+      </div>
+      <p class="end-sub" style="margin-bottom:.75rem">The Watcher has been defeated.<br>Chapter 2 awaits.</p>
       <a href="book.html" class="end-btn" style="display:block;margin-bottom:.75rem">Return to Book ›</a>
       <button class="end-btn" id="restart-btn" style="font-size:.8rem;opacity:.7">↺ Replay Chapter 1</button>
     </div>
