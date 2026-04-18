@@ -117,10 +117,18 @@ document.getElementById('own-stats').innerHTML = [
 
 // ── Presence ──────────────────────────────────────────────
 async function pushPresence(status = 'online') {
+  // Always fetch fresh player data so resets/level changes reflect immediately
+  const { data: fresh } = await supabase.from('players')
+    .select('level,badge,current_node,current_chapter')
+    .eq('id', player.id).single()
+  const lvl    = fresh?.level        || player.level  || 1
+  const badge  = fresh?.badge        || player.badge  || 'neutral'
+  const node   = fresh?.current_node || player.current_node || 'opening'
+  const ch     = fresh?.current_chapter || chapter
+
   await supabase.from('presence').upsert({
     player_id: player.id, username: player.username,
-    chapter, node: player.current_node || 'opening',
-    badge: player.badge || 'neutral', level: player.level || 1,
+    chapter: ch, node, badge, level: lvl,
     status, last_seen_at: new Date().toISOString(),
   }, { onConflict: 'player_id' })
 }
