@@ -40,6 +40,8 @@
       background:rgba(13,11,8,.9); flex-shrink:0; }
     .sn:hover .sn-ring { transform:scale(1.12); }
     .sn.unlocked .sn-ring { background:rgba(30,22,8,.95); }
+    .sn.available .sn-ring { background:rgba(20,15,5,.9); }
+    .sn.available:hover .sn-ring { transform:scale(1.15); }
     .sn.selected .sn-ring { outline:2px solid #c8b96e; outline-offset:3px; }
     .sn-sm .sn-ring { width:28px; height:28px; }
     .sn-md .sn-ring { width:40px; height:40px; }
@@ -572,8 +574,9 @@ function buildTree() {
 function buildNodeClass(nd) {
   const sz  = NODE_SIZE[nd.type] || 'sm'
   const unl = isUnlocked(nd)
+  const avl = !unl && canUnlock(nd)
   const sel = selectedNode === nd.id
-  return `sn sn-${sz}${unl?' unlocked':''}${sel?' selected':''}`
+  return `sn sn-${sz}${unl?' unlocked':''}${avl?' available':''}${sel?' selected':''}`
 }
 
 function labelToFilename(label) {
@@ -582,7 +585,9 @@ function labelToFilename(label) {
 
 function buildNodeHTML(nd) {
   const col    = nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e'
-  const locked = !isUnlocked(nd) && nd.type !== 'start'
+  const unlocked_nd = isUnlocked(nd)
+  const available  = !unlocked_nd && canUnlock(nd)
+  const locked = !unlocked_nd && !available && nd.type !== 'start'
   const chapter= player.current_chapter || 1
 
   let inner = ''
@@ -594,15 +599,14 @@ function buildNodeHTML(nd) {
   } else if (nd.type === 'keystone' || nd.type === 'notable') {
     const imgSize = nd.type === 'keystone' ? '56px' : '34px'
     const filename = labelToFilename(nd.label)
+    const opacity = locked ? '0.25' : available ? '0.65' : '1'
+    const filt    = locked ? 'grayscale(80%)' : available ? 'grayscale(30%)' : 'none'
     inner = `<img src="../assets/skills/${filename}.webp"
       style="width:${imgSize};height:${imgSize};object-fit:cover;border-radius:50%;display:block;
-             opacity:${locked?'0.35':'1'};
-             filter:${locked?'grayscale(80%)':'none'};
-             pointer-events:none;"
-      onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\'font-family:Cinzel,serif;font-size:.55rem;color:${locked?'rgba(200,160,60,.5)':col};font-weight:700\\'>${nd.type==='keystone'?'★':'◆'}</span>')"
+             opacity:${opacity};filter:${filt};pointer-events:none;"
+      onerror="this.style.display='none';this.insertAdjacentHTML('afterend','<span style=\\'font-family:Cinzel,serif;font-size:.55rem;color:${locked?'rgba(200,160,60,.3)':available?col+'aa':col};font-weight:700\\'>${nd.type==='keystone'?'★':'◆'}</span>')"
     />`
   } else {
-    // Stat-themed mini icons for small nodes
     const STAT_ICON = {
       atk_bonus:     { icon:'⚔', color:'#e05555' },
       power_bonus:   { icon:'🔥', color:'#992222' },
@@ -616,10 +620,10 @@ function buildNodeHTML(nd) {
     const si = nd.stat ? STAT_ICON[nd.stat] : null
     if (si) {
       const sz = nd.type === 'notable' ? 12 : 10
-      const op = locked ? 'opacity:.32;filter:grayscale(1)' : `filter:drop-shadow(0 0 3px ${si.color}99)`
+      const op = locked ? 'opacity:.2;filter:grayscale(1)' : available ? `opacity:.7;filter:drop-shadow(0 0 3px ${si.color}66)` : `filter:drop-shadow(0 0 3px ${si.color}99)`
       inner = `<span style="font-size:${sz}px;line-height:1;${op}">${si.icon}</span>`
     } else {
-      inner = `<span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:${locked?'rgba(200,160,60,.5)':col};font-weight:600">+</span>`
+      inner = `<span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:${locked?'rgba(200,160,60,.3)':available?col+'aa':col};font-weight:600">+</span>`
     }
   }
 
@@ -628,12 +632,14 @@ function buildNodeHTML(nd) {
     guard_bonus:'#3db89a', speed_bonus:'#5eaee0', insight_bonus:'#b06eff',
     luck_bonus:'#d4a843', control_bonus:'#d4783a'
   }
-  const statCol = (nd.type === 'small' || nd.type === 'notable') && nd.stat && STAT_COLORS[nd.stat]
+  const statCol  = (nd.type === 'small' || nd.type === 'notable') && nd.stat && STAT_COLORS[nd.stat]
     ? STAT_COLORS[nd.stat] : col
-  const ringCol  = locked ? 'rgba(180,140,60,.4)' : statCol
-  const glowStyle = isUnlocked(nd) && nd.type !== 'start' ? `box-shadow:0 0 ${nd.type==='keystone'?14:8}px ${statCol}88;` : ''
-  const ring = `<div class="sn-ring" style="border-color:${ringCol};${glowStyle};overflow:hidden;display:flex;align-items:center;justify-content:center;">${inner}</div>`
-  const lblCol = locked ? '#a08858' : statCol
+  const ringCol  = locked ? 'rgba(180,140,60,.2)' : available ? statCol + '88' : statCol
+  const glowStyle = unlocked_nd && nd.type !== 'start'
+    ? `box-shadow:0 0 ${nd.type==='keystone'?14:8}px ${statCol}88;`
+    : available ? `box-shadow:0 0 6px ${statCol}44;` : ''
+  const ring = `<div class="sn-ring" style="border-color:${ringCol};${glowStyle};${available?'border-style:dashed;':''}overflow:hidden;display:flex;align-items:center;justify-content:center;">${inner}</div>`
+  const lblCol = locked ? '#6a5428' : available ? statCol + 'bb' : statCol
   const lbl  = nd.type !== 'start'
     ? `<div class="sn-lbl" style="color:${lblCol}">${nd.label}</div>`
     : ''
