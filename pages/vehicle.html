@@ -126,7 +126,7 @@
   <h1>📡 SELECT DESTINATION</h1>
   <p>Choose a chapter to travel to. Reach the end of the road to arrive.</p>
   <div class="chapter-grid" id="chapter-grid"></div>
-  <button class="back-btn" onclick="window.location.href='garage.html'">← Back to Garage</button>
+  <button class="back-btn" onclick="window.location.href='garage.html'+(new URLSearchParams(window.location.search).get('dest')?'?dest='+new URLSearchParams(window.location.search).get('dest'):'')">← Back to Garage</button>
 </div>
 
 <!-- Touch controls -->
@@ -158,6 +158,19 @@ document.getElementById('nav').style.display = 'none'
 const vehicleData = player.vehicle_data || { type: 'car', upgrades: [] }
 const vtype = vehicleData.type || 'car'
 
+// Read destination from URL — passed from garage.html?dest=N
+const urlParams  = new URLSearchParams(window.location.search)
+const urlDest    = urlParams.get('dest')
+let destination  = urlDest ? parseInt(urlDest) : null
+
+// If destination is pre-set from garage, skip chapter select and start immediately
+if (destination) {
+  document.getElementById('chapter-select').style.display = 'none'
+  document.getElementById('hud-dest').textContent = 'CHAPTER ' + destination
+  // Small delay so canvas initialises
+  setTimeout(startGame, 500)
+}
+
 // Vehicle base stats
 const VEHICLE_BASES = {
   motorcycle: { hp:60,  speed:9,   fireRate:12, bulletSpd:14, width:22, height:38 },
@@ -188,7 +201,6 @@ const vstats = computeVehicleStats()
 // ── Chapter select screen ─────────────────────────────────
 const unlocked = player.chapters_unlocked || [1]
 const current  = player.current_chapter   || 1
-let destination = null
 
 function renderChapterGrid() {
   const grid = document.getElementById('chapter-grid')
