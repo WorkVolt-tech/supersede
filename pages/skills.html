@@ -217,9 +217,9 @@ const NODES = [
   { id:'ofp7', label:'+3 Power',   type:'small', branch:'offense', x:CX-160,  y:CY-690, cost:1, stat:'power_bonus',  val:3, requires:['ofn4'] },
   { id:'ofi7', label:'+3 Insight', type:'small', branch:'offense', x:CX+160,  y:CY-690, cost:1, stat:'insight_bonus', val:3, requires:['ofn5'] },
   // Keystones
-  { id:'of_ks1', label:'Bloodthirst', type:'keystone', branch:'offense', x:CX-150, y:CY-820, cost:3, requires:['of7','ofp7'],
+  { id:'of_ks1', label:'Bloodthirst', type:'keystone', branch:'offense', x:CX-150, y:CY-820, cost:3, requires:['of7'],
     desc:'★ KEYSTONE — OFFENSE: ATK scales with missing HP. For every 10% HP missing, gain +10% ATK. At low HP you hit nearly double. High risk, maximum output.' },
-  { id:'of_ks2',  label:'Spell Surge',  type:'keystone', branch:'offense', x:CX+150, y:CY-820, cost:3, requires:['of8','ofi7'],
+  { id:'of_ks2',  label:'Spell Surge',  type:'keystone', branch:'offense', x:CX+150, y:CY-820, cost:3, requires:['of8'],
     desc:'★ KEYSTONE — OFFENSE × ARCANE: Insight now directly scales ATK at +2 ATK per Insight point. A pure mage out-damages brute force. Magic is violence.' },
 
   // ═══════════════════════════════════════════════════════════════
@@ -267,12 +267,12 @@ const NODES = [
   // Pre-keystone
   { id:'df7',  label:'+4 DEF',     type:'small', branch:'defense', x:CX+367, y:CY+624, cost:1, stat:'def_bonus',   val:4, requires:['dfn4','dfn6'] },
   { id:'df8',  label:'+4 Guard',   type:'small', branch:'defense', x:CX+480, y:CY+541, cost:1, stat:'guard_bonus', val:4, requires:['dfn5','dfn6'] },
-  { id:'dfg7', label:'+3 Guard',   type:'small', branch:'defense', x:CX+251, y:CY+584, cost:1, stat:'guard_bonus', val:3, requires:['df7'] },
-  { id:'dfa7', label:'+3 ATK',     type:'small', branch:'defense', x:CX+592, y:CY+559, cost:1, stat:'atk_bonus',   val:3, requires:['df8'] },
+  { id:'dfg7', label:'+3 Guard',   type:'small', branch:'defense', x:CX+290, y:CY+690, cost:1, stat:'guard_bonus', val:3, requires:['df7'] },
+  { id:'dfa7', label:'+3 ATK',     type:'small', branch:'defense', x:CX+530, y:CY+620, cost:1, stat:'atk_bonus',   val:3, requires:['df8'] },
   // Keystones
-  { id:'df_ks1',  label:'Deep Current',    type:'keystone', branch:'defense', x:CX+349, y:CY+735, cost:3, requires:['df7','dfg7'],
+  { id:'df_ks1',  label:'Deep Current',    type:'keystone', branch:'defense', x:CX+349, y:CY+735, cost:3, requires:['df7'],
     desc:'★ KEYSTONE — DEFENSE: DEF scales with current HP. The more HP you have, the harder you are to dent. Max HP items now also boost DEF. Flow adapts to pressure.' },
-  { id:'df_ks2',   label:'Iron Mirror',     type:'keystone', branch:'defense', x:CX+592, y:CY+559, cost:3, requires:['df8','dfa7'],
+  { id:'df_ks2',   label:'Iron Mirror',     type:'keystone', branch:'defense', x:CX+592, y:CY+559, cost:3, requires:['df8'],
     desc:'★ KEYSTONE — DEFENSE × OFFENSE: Reflect 40% of all damage taken back as pure unblockable damage. Metal returns everything. Every hit you take is a hit you land.' },
 
   // ═══════════════════════════════════════════════════════════════
@@ -320,12 +320,12 @@ const NODES = [
   // Pre-keystone
   { id:'fl7',  label:'+3 SPD',     type:'small', branch:'flow', x:CX-663, y:CY-289, cost:1, stat:'speed_bonus',   val:3, requires:['fln4','fln6'] },
   { id:'fl8',  label:'+3 CTR',     type:'small', branch:'flow', x:CX-706, y:CY-156, cost:1, stat:'control_bonus', val:3, requires:['fln5','fln6'] },
-  { id:'fla7', label:'+2 SPD',     type:'small', branch:'flow', x:CX-714, y:CY-390, cost:1, stat:'speed_bonus',   val:2, requires:['fl7'] },
-  { id:'flc7', label:'+2 CTR',     type:'small', branch:'flow', x:CX-807, y:CY-105, cost:1, stat:'control_bonus', val:2, requires:['fl8'] },
+  { id:'fla7', label:'+2 SPD',     type:'small', branch:'flow', x:CX-620, y:CY-350, cost:1, stat:'speed_bonus',   val:2, requires:['fl7'] },
+  { id:'flc7', label:'+2 CTR',     type:'small', branch:'flow', x:CX-760, y:CY-220, cost:1, stat:'control_bonus', val:2, requires:['fl8'] },
   // Keystones
-  { id:'fl_ks1',  label:'Phantom Step', type:'keystone', branch:'flow', x:CX-714, y:CY-390, cost:3, requires:['fl7','fla7'],
+  { id:'fl_ks1',  label:'Phantom Step', type:'keystone', branch:'flow', x:CX-714, y:CY-390, cost:3, requires:['fl7'],
     desc:'★ KEYSTONE — FLOW: Dodge becomes a flat 40% chance. On every dodge, deal a free counter hit AND reset your turn cooldown. Nearly untouchable — the ultimate Agility build.' },
-  { id:'fl_ks2',     label:'Time Lock',    type:'keystone', branch:'flow', x:CX-807, y:CY-105, cost:3, requires:['fl8','flc7'],
+  { id:'fl_ks2',     label:'Time Lock',    type:'keystone', branch:'flow', x:CX-807, y:CY-105, cost:3, requires:['fl8'],
     desc:'★ KEYSTONE — FLOW × ARCANE: Control debuffs compound — each debuff on the enemy reduces their SPD by 5 and ATK by 3 additionally. Stack Control to freeze the enemy in time.' },
 
   // ═══════════════════════════════════════════════════════════════
@@ -373,12 +373,12 @@ const NODES = [
   // Pre-keystone
   { id:'ar7',  label:'+3 Insight', type:'small', branch:'arcane', x:CX+663, y:CY-289, cost:1, stat:'insight_bonus', val:3, requires:['arn4','arn6'] },
   { id:'ar8',  label:'+3 Luck',    type:'small', branch:'arcane', x:CX+706, y:CY-156, cost:1, stat:'luck_bonus',    val:3, requires:['arn5','arn6'] },
-  { id:'arc7', label:'+2 CTR',     type:'small', branch:'arcane', x:CX+714, y:CY-390, cost:1, stat:'control_bonus', val:2, requires:['ar7'] },
-  { id:'arl7', label:'+2 Luck',    type:'small', branch:'arcane', x:CX+807, y:CY-105, cost:1, stat:'luck_bonus',    val:2, requires:['ar8'] },
+  { id:'arc7', label:'+2 CTR',     type:'small', branch:'arcane', x:CX+620, y:CY-350, cost:1, stat:'control_bonus', val:2, requires:['ar7'] },
+  { id:'arl7', label:'+2 Luck',    type:'small', branch:'arcane', x:CX+760, y:CY-220, cost:1, stat:'luck_bonus',    val:2, requires:['ar8'] },
   // Keystones
-  { id:'ar_ks1',  label:'Sixth Sense',  type:'keystone', branch:'arcane', x:CX+714, y:CY-390, cost:3, requires:['ar7','arc7'],
+  { id:'ar_ks1',  label:'Sixth Sense',  type:'keystone', branch:'arcane', x:CX+714, y:CY-390, cost:3, requires:['ar7'],
     desc:'★ KEYSTONE — ARCANE × OFFENSE: Insight adds +2 ATK per point. Magic and martial become one — this is the Spellblade pinnacle. Out-damage brute force with pure mind.' },
-  { id:'ar_ks2', label:'Chaos Engine', type:'keystone', branch:'arcane', x:CX+807, y:CY-105, cost:3, requires:['ar8','arl7'],
+  { id:'ar_ks2', label:'Chaos Engine', type:'keystone', branch:'arcane', x:CX+807, y:CY-105, cost:3, requires:['ar8'],
     desc:'★ KEYSTONE — ARCANE: Every attack and spell has a random bonus effect (burn, slow, drain, chain, or double damage). Luck determines frequency. Chaos cannot be predicted — even by you.' },
 
   // ═══════════════════════════════════════════════════════════════
@@ -426,12 +426,12 @@ const NODES = [
   // Pre-keystone
   { id:'dc7',  label:'+4 SPD',     type:'small', branch:'decay', x:CX-367, y:CY+624, cost:1, stat:'speed_bonus',  val:4, requires:['dcn4','dcn6'] },
   { id:'dc8',  label:'+4 Guard',   type:'small', branch:'decay', x:CX-480, y:CY+542, cost:1, stat:'guard_bonus',  val:4, requires:['dcn5','dcn6'] },
-  { id:'dck7', label:'+3 Power',   type:'small', branch:'decay', x:CX-349, y:CY+736, cost:1, stat:'power_bonus',  val:3, requires:['dc7'] },
-  { id:'dcs7', label:'+3 Guard',   type:'small', branch:'decay', x:CX-592, y:CY+559, cost:1, stat:'guard_bonus',  val:3, requires:['dc8'] },
+  { id:'dck7', label:'+3 Power',   type:'small', branch:'decay', x:CX-310, y:CY+690, cost:1, stat:'power_bonus',  val:3, requires:['dc7'] },
+  { id:'dcs7', label:'+3 Guard',   type:'small', branch:'decay', x:CX-530, y:CY+615, cost:1, stat:'guard_bonus',  val:3, requires:['dc8'] },
   // Keystones
-  { id:'dc_ks1',   label:'Soul Sever',   type:'keystone', branch:'decay', x:CX-349, y:CY+736, cost:3, requires:['dc7','dck7'],
+  { id:'dc_ks1',   label:'Soul Sever',   type:'keystone', branch:'decay', x:CX-349, y:CY+736, cost:3, requires:['dc7'],
     desc:'★ KEYSTONE — DECAY: Every kill restores 25% max HP and grants +10 Power for the rest of combat. The more enemies fall, the stronger and healthier you become. Momentum is survival.' },
-  { id:'dc_ks2', label:'Ancient Root', type:'keystone', branch:'decay', x:CX-592, y:CY+559, cost:3, requires:['dc8','dcs7'],
+  { id:'dc_ks2', label:'Ancient Root', type:'keystone', branch:'decay', x:CX-592, y:CY+559, cost:3, requires:['dc8'],
     desc:'★ KEYSTONE — DECAY × DEFENSE: Max HP is doubled. Guard regenerates 3 per turn. You always act last — but you are effectively unkillable given time. Patience wins.' },
 ]
 
