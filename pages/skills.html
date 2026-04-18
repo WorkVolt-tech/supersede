@@ -608,20 +608,21 @@ function buildNodeHTML(nd) {
     />`
   } else {
     const STAT_ICON = {
-      atk_bonus:     { icon:'⚔', color:'#e05555' },
-      power_bonus:   { icon:'🔥', color:'#992222' },
-      def_bonus:     { icon:'🛡', color:'#5ec45e' },
-      guard_bonus:   { icon:'◈',  color:'#3db89a' },
-      speed_bonus:   { icon:'⚡', color:'#5eaee0' },
-      insight_bonus: { icon:'◉',  color:'#b06eff' },
-      luck_bonus:    { icon:'✦',  color:'#d4a843' },
-      control_bonus: { icon:'◎',  color:'#d4783a' },
+      atk_bonus:     { icon:'attack',  color:'#e05555' },
+      power_bonus:   { icon:'power',   color:'#992222' },
+      def_bonus:     { icon:'defense', color:'#5ec45e' },
+      guard_bonus:   { icon:'guard',   color:'#3db89a' },
+      speed_bonus:   { icon:'speed',   color:'#5eaee0' },
+      insight_bonus: { icon:'insight', color:'#b06eff' },
+      luck_bonus:    { icon:'luck',    color:'#d4a843' },
+      control_bonus: { icon:'control', color:'#d4783a' },
+      agility_bonus: { icon:'agility', color:'#5ec45e' },
     }
     const si = nd.stat ? STAT_ICON[nd.stat] : null
     if (si) {
-      const sz = nd.type === 'notable' ? 12 : 10
-      const op = locked ? 'opacity:.2;filter:grayscale(1)' : available ? `opacity:.7;filter:drop-shadow(0 0 3px ${si.color}66)` : `filter:drop-shadow(0 0 3px ${si.color}99)`
-      inner = `<span style="font-size:${sz}px;line-height:1;${op}">${si.icon}</span>`
+      const sz  = nd.type === 'notable' ? '20px' : '16px'
+      const op  = locked ? 'opacity:.25;filter:grayscale(1)' : available ? `opacity:.65;filter:drop-shadow(0 0 3px ${si.color}66)` : `filter:drop-shadow(0 0 3px ${si.color}99)`
+      inner = `<img src="../assets/skills/${si.icon}.webp" style="width:${sz};height:${sz};object-fit:contain;border-radius:2px;pointer-events:none;${op}" onerror="this.outerHTML='<span style=\\'font-size:10px;line-height:1\\'></span>'">`
     } else {
       inner = `<span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:${locked?'rgba(200,160,60,.3)':available?col+'aa':col};font-weight:600">+</span>`
     }
