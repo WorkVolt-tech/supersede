@@ -474,44 +474,51 @@ window.respondRequest = async (response, type, fromId, fromName, encounterId) =>
 }
 
 // ── PVP Combat System ─────────────────────────────────────
-let pvpState = null
+let pvpState   = null
+let pvpChannel = null  // single persistent channel for the whole fight
 
 async function openPvpCombat(opponentId, opponentName, encounterId, isAttacker) {
   document.getElementById('waiting-modal')?.remove()
   document.getElementById('pvp-combat')?.remove()
 
-  // Fetch both players' stats
+  // Clean up any existing pvp channel
+  if (pvpChannel) { supabase.removeChannel(pvpChannel); pvpChannel = null }
+
   const { data: op } = await supabase.from('players')
     .select('level,atk,def,power,guard,hp,max_hp,badge').eq('id', opponentId).single()
 
   const myMaxHp = player.max_hp || 100
-  const opMaxHp = op?.max_hp || 100
+  const opMaxHp = op?.max_hp   || 100
 
   pvpState = {
     encounterId,
     opponentId,
     opponentName,
     isAttacker,
-    myHp:   myMaxHp,
-    opHp:   opMaxHp,
+    myHp:    myMaxHp,
+    opHp:    opMaxHp,
     myMaxHp,
     opMaxHp,
     myAtk:   (player.atk||1) + (player.power||0),
     myDef:   (player.def||0) + (player.guard||0),
-    opAtk:   (op?.atk||1) + (op?.power||0),
-    opDef:   (op?.def||0) + (op?.guard||0),
-    myTurn:  isAttacker, // attacker goes first
+    opAtk:   (op?.atk||1)   + (op?.power||0),
+    opDef:   (op?.def||0)   + (op?.guard||0),
+    myTurn:  isAttacker,
     round:   1,
     log:     [],
   }
 
-  renderPvpCombat()
-  // Subscribe to opponent moves
-  supabase.channel('pvp:'+encounterId)
-    .on('broadcast', { event:'pvp_move' }, ({ payload }) => {
+  // Subscribe ONE persistent channel for the whole fight
+  pvpChannel = supabase.channel('pvp:' + encounterId)
+  pvpChannel
+    .on('broadcast', { event: 'pvp_move' }, ({ payload }) => {
       receivePvpMove(payload)
     })
-    .subscribe()
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') {
+        renderPvpCombat()
+      }
+    })
 }
 
 function renderPvpCombat() {
@@ -586,35 +593,30 @@ window.pvpMove = async (action) => {
   const s = pvpState
   if (!s || !s.myTurn) return
 
-  let dmg = 0, myDef = s.myDef
+  let dmg = 0
   if (action === 'strike') {
-    dmg = Math.max(1, s.myAtk - Math.floor(s.opDef * 0.4) + Math.floor(Math.random()*4)-2)
+    dmg = Math.max(1, s.myAtk - Math.floor(s.opDef * 0.4) + Math.floor(Math.random()*4) - 2)
   } else if (action === 'heavy') {
     dmg = Math.max(1, Math.floor(s.myAtk * 1.5) - Math.floor(s.opDef * 0.3))
-    s.myHp = Math.max(0, s.myHp - Math.floor(s.myMaxHp * 0.1)) // cost
-  } else if (action === 'defend') {
-    dmg = 0
-    myDef = s.myDef * 2 // doubles this round
+    s.myHp = Math.max(0, s.myHp - Math.floor(s.myMaxHp * 0.1))
   }
+  // defend: dmg stays 0, opponent gets no damage this round
 
-  s.opHp = Math.max(0, s.opHp - dmg)
+  s.opHp   = Math.max(0, s.opHp - dmg)
   s.myTurn = false
 
-  const logMsg = action==='defend'
-    ? `${player.username} defends (+${s.myDef} DEF this round)`
-    : `${player.username} ${action==='heavy'?'heavy strikes':'strikes'} for ${dmg} damage`
+  const logMsg = action === 'defend'
+    ? `${player.username} defends`
+    : `${player.username} ${action === 'heavy' ? 'heavy strikes' : 'strikes'} for ${dmg} dmg`
   s.log.push(logMsg)
 
-  // Broadcast move to opponent
-  const ch = supabase.channel('pvp:'+s.encounterId)
-  ch.subscribe(status => {
-    if (status==='SUBSCRIBED') {
-      ch.send({ type:'broadcast', event:'pvp_move', payload:{
-        action, dmg, myHp: s.myHp, opHp: s.opHp, fromName: player.username, log: logMsg
-      }})
-      setTimeout(()=>supabase.removeChannel(ch), 500)
-    }
-  })
+  // Send on the persistent shared channel
+  if (pvpChannel) {
+    pvpChannel.send({
+      type: 'broadcast', event: 'pvp_move',
+      payload: { action, dmg, attackerHp: s.myHp, defenderHp: s.opHp, fromName: player.username, log: logMsg }
+    })
+  }
 
   if (s.opHp <= 0) { endPvpCombat(true); return }
   renderPvpCombat()
@@ -623,9 +625,12 @@ window.pvpMove = async (action) => {
 function receivePvpMove(payload) {
   const s = pvpState
   if (!s) return
-  // From opponent's perspective, their opHp = our myHp
-  s.myHp  = payload.opHp  // opponent hit us
-  s.opHp  = payload.myHp  // opponent's own HP
+
+  // Payload from opponent's perspective:
+  // attackerHp = their HP after they paid any cost (heavy)
+  // defenderHp = our HP after they hit us
+  s.myHp  = payload.defenderHp  // we are the defender — this is our new HP
+  s.opHp  = payload.attackerHp  // opponent's HP after their action
   s.myTurn = true
   s.round++
   s.log.push(payload.log)
@@ -636,6 +641,8 @@ function receivePvpMove(payload) {
 
 async function endPvpCombat(won) {
   document.getElementById('pvp-combat')?.remove()
+  // Clean up persistent channel
+  if (pvpChannel) { supabase.removeChannel(pvpChannel); pvpChannel = null }
   const s = pvpState
 
   // Save result
