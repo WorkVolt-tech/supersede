@@ -283,11 +283,20 @@ let vehicleData = null  // from players table: { type, parts, upgrades[] }
 player = await renderNav('nav')
 if (!player) throw new Error('no player')
 
+// Read destination from URL — e.g. garage.html?dest=2
+const urlDest = new URLSearchParams(window.location.search).get('dest')
+const destination = urlDest ? parseInt(urlDest) : null
+
 vehicleData = player.vehicle_data || { type: null, upgrades: [] }
 await loadMaterials()
 renderMaterials()
 renderVehicleGrid()
 updateDriveButton()
+
+// Show destination info if coming from book
+if (destination) {
+  document.getElementById('drive-label').textContent = `DESTINATION: CHAPTER ${destination}`
+}
 
 // ── Load materials from inventory ─────────────────────────
 async function loadMaterials() {
@@ -541,7 +550,8 @@ function updateDriveButton() {
 
 window.drive = function() {
   if (!vehicleData.type) return
-  window.location.href = 'vehicle.html'
+  const dest = destination ? `?dest=${destination}` : ''
+  window.location.href = 'vehicle.html' + dest
 }
 
 // ── Toast ─────────────────────────────────────────────────
