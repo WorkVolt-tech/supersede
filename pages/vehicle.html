@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>SuperSede — Drive</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#000; overflow:hidden; font-family:'Share Tech Mono',monospace; touch-action:none; }
+
+    #game-canvas { display:block; position:fixed; inset:0; width:100%; height:100%; }
+
+    /* ── HUD overlay ── */
+    #hud {
+      position:fixed; top:0; left:0; right:0; z-index:10;
+      padding:.5rem .75rem;
+      background:linear-gradient(180deg,rgba(0,0,0,.85),transparent);
+      display:flex; align-items:center; justify-content:space-between;
+      pointer-events:none;
+    }
+    .hud-stat { text-align:center; }
+    .hud-label { font-size:.42rem; color:#7a6435; letter-spacing:.08em; }
+    .hud-val   { font-family:'Orbitron',monospace; font-size:.75rem; font-weight:700; color:#c8b96e; }
+    .hud-bar-wrap { width:80px; height:5px; background:rgba(255,255,255,.08); border-radius:3px; margin-top:2px; }
+    .hud-bar { height:100%; border-radius:3px; transition:width .2s; }
+
+    /* ── Chapter selector ── */
+    #chapter-select {
+      position:fixed; inset:0; z-index:50;
+      background:rgba(0,0,0,.92);
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:1rem; padding:1.5rem;
+    }
+    #chapter-select h1 {
+      font-family:'Orbitron',monospace; font-size:1.1rem; font-weight:800;
+      color:#c8512a; letter-spacing:.15em; text-align:center; margin-bottom:.25rem;
+    }
+    #chapter-select p {
+      font-size:.6rem; color:#7a6435; letter-spacing:.06em; text-align:center; margin-bottom:.5rem;
+    }
+    .chapter-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:.5rem; width:100%; max-width:360px; }
+    .ch-btn {
+      aspect-ratio:1; border-radius:5px; border:1.5px solid;
+      font-family:'Orbitron',monospace; font-size:.65rem; font-weight:700;
+      cursor:pointer; transition:all .2s; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:2px;
+    }
+    .ch-btn.unlocked  { border-color:rgba(200,81,42,.6); color:#c8b96e; background:rgba(200,81,42,.08); }
+    .ch-btn.unlocked:hover { border-color:#c8512a; background:rgba(200,81,42,.18); box-shadow:0 0 15px rgba(200,81,42,.3); }
+    .ch-btn.locked    { border-color:rgba(200,184,128,.1); color:#3a2808; background:rgba(0,0,0,.3); cursor:not-allowed; }
+    .ch-btn .ch-num   { font-size:.85rem; }
+    .ch-btn .ch-lbl   { font-size:.35rem; letter-spacing:.06em; }
+    .ch-current { border-color:#c8b96e !important; color:#c8b96e; background:rgba(200,184,128,.1) !important; }
+
+    .back-btn {
+      font-family:'Share Tech Mono',monospace; font-size:.6rem; color:#7a6435;
+      background:none; border:.5px solid rgba(200,184,128,.2); padding:.4rem .8rem;
+      border-radius:3px; cursor:pointer; margin-top:.25rem;
+    }
+    .back-btn:hover { color:#c8b96e; border-color:rgba(200,184,128,.4); }
+
+    /* ── Game over / win overlay ── */
+    #end-overlay {
+      position:fixed; inset:0; z-index:60; display:none;
+      background:rgba(0,0,0,.88);
+      flex-direction:column; align-items:center; justify-content:center; gap:1rem;
+    }
+    #end-overlay.show { display:flex; }
+    #end-title { font-family:'Orbitron',monospace; font-size:1.4rem; font-weight:800; letter-spacing:.2em; }
+    #end-sub   { font-size:.62rem; color:#7a6435; letter-spacing:.08em; max-width:280px; text-align:center; }
+    .end-btn {
+      font-family:'Orbitron',monospace; font-size:.7rem; font-weight:600; letter-spacing:.1em;
+      padding:.65rem 1.5rem; border-radius:4px; cursor:pointer; transition:all .2s;
+      background:linear-gradient(135deg,#5a1000,#c8512a); border:1px solid #c8512a; color:#fff;
+    }
+    .end-btn:hover { box-shadow:0 0 20px rgba(200,81,42,.5); }
+    .end-btn.secondary { background:none; border:.5px solid rgba(200,184,128,.3); color:#9a8050; }
+
+    /* ── Controls hint ── */
+    #controls-hint {
+      position:fixed; bottom:.75rem; left:0; right:0; text-align:center; z-index:10;
+      pointer-events:none; font-size:.48rem; color:rgba(200,184,128,.35); letter-spacing:.06em;
+    }
+
+    /* ── Touch zones ── */
+    #touch-left  { position:fixed; left:0; top:0; bottom:60px; width:45%; z-index:5; }
+    #touch-right { position:fixed; right:0; top:0; bottom:60px; width:45%; z-index:5; }
+    #touch-shoot { position:fixed; bottom:0; left:0; right:0; height:60px; z-index:5; }
+
+    /* ── Wave indicator ── */
+    #wave-banner {
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      font-family:'Orbitron',monospace; font-size:1.5rem; font-weight:800;
+      color:#c8512a; letter-spacing:.2em; pointer-events:none; z-index:15;
+      opacity:0; transition:opacity .5s; text-shadow:0 0 30px rgba(200,81,42,.8);
+    }
+    #wave-banner.show { opacity:1; }
+  </style>
+</head>
+<body>
+<canvas id="game-canvas"></canvas>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-stat">
+    <div class="hud-label">HULL</div>
+    <div class="hud-val" id="hud-hp">100</div>
+    <div class="hud-bar-wrap"><div class="hud-bar" id="bar-hp" style="background:#5ec45e"></div></div>
+  </div>
+  <div class="hud-stat" style="text-align:center">
+    <div class="hud-label" id="hud-dest-label">DESTINATION</div>
+    <div class="hud-val" id="hud-dest" style="font-size:.65rem">---</div>
+  </div>
+  <div class="hud-stat" style="text-align:right">
+    <div class="hud-label">EYES</div>
+    <div class="hud-val" id="hud-eyes">0</div>
+  </div>
+</div>
+
+<!-- Wave banner -->
+<div id="wave-banner">WAVE 1</div>
+
+<!-- Chapter select -->
+<div id="chapter-select">
+  <h1>📡 SELECT DESTINATION</h1>
+  <p>Choose a chapter to travel to. Reach the end of the road to arrive.</p>
+  <div class="chapter-grid" id="chapter-grid"></div>
+  <button class="back-btn" onclick="window.location.href='garage.html'">← Back to Garage</button>
+</div>
+
+<!-- Touch controls -->
+<div id="touch-left"></div>
+<div id="touch-right"></div>
+<div id="touch-shoot"></div>
+
+<!-- Controls hint -->
+<div id="controls-hint">← → STEER &nbsp;|&nbsp; SPACE / TAP SHOOT &nbsp;|&nbsp; ESC PAUSE</div>
+
+<!-- End overlay -->
+<div id="end-overlay">
+  <div id="end-title"></div>
+  <div id="end-sub"></div>
+  <button class="end-btn" id="end-primary" onclick="handleEndPrimary()">Continue</button>
+  <button class="end-btn secondary" onclick="window.location.href='garage.html'">← Garage</button>
+</div>
+
+<script type="module">
+import { supabase } from '../supabase.js'
+import { renderNav } from '../components/nav.js'
+
+// ── Player + vehicle ──────────────────────────────────────
+let player = await renderNav('nav', { minimal: true })
+if (!player) { window.location.href = 'book.html'; throw new Error('no player') }
+
+document.getElementById('nav').style.display = 'none'
+
+const vehicleData = player.vehicle_data || { type: 'car', upgrades: [] }
+const vtype = vehicleData.type || 'car'
+
+// Vehicle base stats
+const VEHICLE_BASES = {
+  motorcycle: { hp:60,  speed:9,   fireRate:12, bulletSpd:14, width:22, height:38 },
+  car:        { hp:100, speed:7,   fireRate:18, bulletSpd:12, width:28, height:46 },
+  van:        { hp:160, speed:5,   fireRate:22, bulletSpd:10, width:36, height:54 },
+}
+const UPGRADE_DEFS = {
+  eng_boost:  { speed:+2 }, eng_heavy: { speed:+1, hp:+20 }, eng_lite: { speed:+3, hp:-15 },
+  arm_plate:  { hp:+40 },   arm_reactive:{ hp:+25 }, arm_shield: { hp:+30 },
+  wpn_cannon: { fireRate:+6, bulletSpd:+2 }, wpn_rapid: { fireRate:+4 }, wpn_beam: { bulletSpd:+4 },
+  spc_boost:  {}, spc_drone: { fireRate:+2 }, spc_repair: {},
+}
+
+function computeVehicleStats() {
+  const base = { ...VEHICLE_BASES[vtype] }
+  ;(vehicleData.upgrades||[]).forEach(uid => {
+    const d = UPGRADE_DEFS[uid] || {}
+    if (d.speed)     base.speed     += d.speed
+    if (d.hp)        base.hp        += d.hp
+    if (d.fireRate)  base.fireRate  += d.fireRate
+    if (d.bulletSpd) base.bulletSpd += d.bulletSpd
+  })
+  return base
+}
+
+const vstats = computeVehicleStats()
+
+// ── Chapter select screen ─────────────────────────────────
+const unlocked = player.chapters_unlocked || [1]
+const current  = player.current_chapter   || 1
+let destination = null
+
+function renderChapterGrid() {
+  const grid = document.getElementById('chapter-grid')
+  grid.innerHTML = Array.from({length:10}, (_,i) => {
+    const ch = i + 1
+    const isUnlocked = unlocked.includes(ch) || ch === 1
+    const isCurrent  = ch === current
+    return `
+      <button class="ch-btn ${isUnlocked?'unlocked':'locked'}${isCurrent?' ch-current':''}"
+        ${isUnlocked?`onclick="chooseDest(${ch})"`:'disabled'}>
+        <span class="ch-num">${ch}</span>
+        <span class="ch-lbl">CH.${ch}</span>
+      </button>`
+  }).join('')
+}
+renderChapterGrid()
+
+window.chooseDest = function(ch) {
+  destination = ch
+  document.getElementById('hud-dest').textContent = 'CHAPTER ' + ch
+  document.getElementById('chapter-select').style.display = 'none'
+  startGame()
+}
+
+// ── Canvas setup ──────────────────────────────────────────
+const canvas = document.getElementById('game-canvas')
+const ctx    = canvas.getContext('2d')
+
+function resize() {
+  canvas.width  = window.innerWidth
+  canvas.height = window.innerHeight
+}
+resize()
+window.addEventListener('resize', () => { resize(); initLane() })
+
+// ── Game state ────────────────────────────────────────────
+const GAME = {
+  running: false, paused: false,
+  hp: vstats.hp, maxHp: vstats.hp,
+  eyesKilled: 0,
+  wave: 1, waveEyes: 0, waveKills: 0, waveTarget: 8,
+  progress: 0,   // 0-100 → arrival
+  speed: vstats.speed,
+  finished: false,
+}
+
+// Road
+let roadLines = []
+let sideLines = []
+const ROAD_W = () => Math.min(320, canvas.width * 0.72)
+const ROAD_X = () => (canvas.width - ROAD_W()) / 2
+const LANE_W = () => ROAD_W() / 3
+
+function initLane() {
+  roadLines = Array.from({length:12}, (_,i) => ({ y: i * (canvas.height/11), spd: GAME.speed*1.5 }))
+  sideLines = []
+}
+initLane()
+
+// Player vehicle
+const PV = {
+  x: 0, y: 0,
+  w: vstats.width, h: vstats.height,
+  vx: 0, speed: vstats.speed,
+}
+
+function resetPV() {
+  PV.x = canvas.width / 2
+  PV.y = canvas.height - PV.h - 60
+}
+resetPV()
+
+// Bullets, eyes, particles
+let bullets    = []
+let eyes       = []
+let particles  = []
+let shootCooldown = 0
+
+// Input state
+const keys = { left:false, right:false, shoot:false }
+
+// ── Input ─────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if (e.code==='ArrowLeft'  || e.code==='KeyA') keys.left  = true
+  if (e.code==='ArrowRight' || e.code==='KeyD') keys.right = true
+  if (e.code==='Space') { e.preventDefault(); keys.shoot = true }
+  if (e.code==='Escape') togglePause()
+})
+window.addEventListener('keyup', e => {
+  if (e.code==='ArrowLeft'  || e.code==='KeyA') keys.left  = false
+  if (e.code==='ArrowRight' || e.code==='KeyD') keys.right = false
+  if (e.code==='Space') keys.shoot = false
+})
+
+// Touch
+let touchLeft=false, touchRight=false
+document.getElementById('touch-left').addEventListener('touchstart',  ()=>{ touchLeft=true },  {passive:true})
+document.getElementById('touch-left').addEventListener('touchend',    ()=>{ touchLeft=false }, {passive:true})
+document.getElementById('touch-right').addEventListener('touchstart', ()=>{ touchRight=true }, {passive:true})
+document.getElementById('touch-right').addEventListener('touchend',   ()=>{ touchRight=false },{passive:true})
+document.getElementById('touch-shoot').addEventListener('touchstart', ()=>{ keys.shoot=true },  {passive:true})
+document.getElementById('touch-shoot').addEventListener('touchend',   ()=>{ keys.shoot=false }, {passive:true})
+
+function togglePause() {
+  if (GAME.finished) return
+  GAME.paused = !GAME.paused
+}
+
+// ── Eye spawner ───────────────────────────────────────────
+const EYE_TYPES = [
+  { name:'Scout Eye', hp:1, spd:2.5, atk:8,  size:18, color:'#b06eff', glow:'#b06eff' },
+  { name:'Watcher Eye', hp:2, spd:1.8, atk:12, size:24, color:'#e05555', glow:'#e05555' },
+  { name:'Drone Eye',   hp:1, spd:4.0, atk:6,  size:14, color:'#5eaee0', glow:'#5eaee0' },
+  { name:'Cluster Eye', hp:4, spd:1.2, atk:20, size:32, color:'#c8512a', glow:'#c8512a' },
+]
+
+function spawnEye() {
+  const rx = ROAD_X()
+  const rw = ROAD_W()
+  const type = GAME.wave <= 2
+    ? EYE_TYPES[Math.floor(Math.random()*2)]
+    : EYE_TYPES[Math.floor(Math.random()*EYE_TYPES.length)]
+  const x = rx + Math.random() * rw
+  eyes.push({
+    x, y: -30,
+    vx: (Math.random()-.5) * 1.5,
+    vy: type.spd + GAME.wave * 0.3,
+    hp: type.hp, maxHp: type.hp,
+    atk: type.atk, size: type.size,
+    color: type.color, glow: type.glow,
+    angle: 0, pulse: 0,
+  })
+}
+
+// ── Particle system ───────────────────────────────────────
+function explode(x, y, color, n=12) {
+  for (let i=0; i<n; i++) {
+    const ang = Math.random()*Math.PI*2
+    const spd = 1 + Math.random()*4
+    particles.push({
+      x, y, vx: Math.cos(ang)*spd, vy: Math.sin(ang)*spd,
+      life:1, decay: .03+Math.random()*.04,
+      size: 1.5+Math.random()*3, color,
+    })
+  }
+}
+
+// ── Wave system ───────────────────────────────────────────
+let spawnTimer = 0
+let spawnRate  = 90  // frames between spawns
+let waveTransition = false
+let waveShowTimer  = 0
+
+function showWaveBanner(txt) {
+  const el = document.getElementById('wave-banner')
+  el.textContent = txt
+  el.classList.add('show')
+  waveShowTimer = 120
+}
+
+function nextWave() {
+  GAME.wave++
+  GAME.waveKills  = 0
+  GAME.waveTarget = 8 + GAME.wave * 4
+  spawnRate = Math.max(30, 90 - GAME.wave * 10)
+  if (GAME.wave <= 5) showWaveBanner('WAVE ' + GAME.wave)
+  waveTransition = false
+  GAME.progress = Math.min(90, GAME.progress + 15) // advance toward arrival
+}
+
+// ── HUD update ────────────────────────────────────────────
+function updateHUD() {
+  const hp = Math.max(0, GAME.hp)
+  const pct = hp / GAME.maxHp * 100
+  document.getElementById('hud-hp').textContent = Math.round(hp)
+  document.getElementById('hud-eyes').textContent = GAME.eyesKilled
+  const bar = document.getElementById('bar-hp')
+  bar.style.width = pct + '%'
+  bar.style.background = pct>60?'#5ec45e':pct>30?'#c8b96e':'#e05555'
+}
+
+// ── Vehicle drawing ───────────────────────────────────────
+const VEHICLE_COLORS = { motorcycle:'#e05555', car:'#5eaee0', van:'#5ec45e' }
+const vcol = VEHICLE_COLORS[vtype] || '#c8b96e'
+
+function drawVehicle(x, y) {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.shadowColor = vcol
+  ctx.shadowBlur  = 15
+
+  if (vtype === 'motorcycle') {
+    // Body
+    ctx.fillStyle = vcol
+    ctx.fillRect(-8, -18, 16, 36)
+    // Wheels
+    ctx.fillStyle = '#333'
+    ctx.beginPath(); ctx.ellipse(0,-22,5,8,0,0,Math.PI*2); ctx.fill()
+    ctx.beginPath(); ctx.ellipse(0,22,5,8,0,0,Math.PI*2); ctx.fill()
+    // Headlight
+    ctx.fillStyle = '#fff'
+    ctx.beginPath(); ctx.ellipse(0,-19,3,2,0,0,Math.PI*2); ctx.fill()
+  } else if (vtype === 'van') {
+    ctx.fillStyle = vcol
+    ctx.fillRect(-16,-26,32,52)
+    ctx.fillStyle = '#1a1a2e'
+    ctx.fillRect(-12,-20,24,14) // windshield
+    ctx.fillStyle = '#333'
+    ctx.fillRect(-18,-18,4,12); ctx.fillRect(14,-18,4,12) // wheels
+    ctx.fillRect(-18,10,4,12); ctx.fillRect(14,10,4,12)
+    ctx.fillStyle = '#ffcc00'
+    ctx.fillRect(-14,-26,4,4); ctx.fillRect(10,-26,4,4) // headlights
+  } else {
+    // Car
+    ctx.fillStyle = vcol
+    ctx.beginPath()
+    ctx.roundRect(-13,-22,26,44,5)
+    ctx.fill()
+    ctx.fillStyle = '#1a1a2e'
+    ctx.fillRect(-9,-16,18,12) // windshield
+    ctx.fillStyle = '#333'
+    ctx.fillRect(-16,-15,4,10); ctx.fillRect(12,-15,4,10)
+    ctx.fillRect(-16,8,4,10);   ctx.fillRect(12,8,4,10)
+    ctx.fillStyle = '#ffcc00'
+    ctx.fillRect(-11,-22,5,4); ctx.fillRect(6,-22,5,4)
+    // Exhaust flame
+    ctx.fillStyle = '#ff6600'
+    ctx.fillRect(-5,22,3,4+Math.random()*4)
+    ctx.fillRect(2,22,3,4+Math.random()*4)
+  }
+  ctx.restore()
+}
+
+// ── Eye drawing ───────────────────────────────────────────
+function drawEye(e) {
+  ctx.save()
+  ctx.translate(e.x, e.y)
+  e.pulse += .08
+  const ps = 1 + Math.sin(e.pulse) * .15
+
+  ctx.shadowColor = e.glow
+  ctx.shadowBlur  = 20
+
+  // Outer ring
+  ctx.strokeStyle = e.color
+  ctx.lineWidth   = 2
+  ctx.beginPath(); ctx.arc(0,0, e.size*ps,0,Math.PI*2); ctx.stroke()
+
+  // Inner eye white
+  ctx.fillStyle = 'rgba(255,255,255,.85)'
+  ctx.beginPath(); ctx.ellipse(0,0, e.size*.55*ps, e.size*.38*ps, 0,0,Math.PI*2); ctx.fill()
+
+  // Iris
+  ctx.fillStyle = e.color
+  ctx.beginPath(); ctx.arc(0,0, e.size*.28*ps,0,Math.PI*2); ctx.fill()
+
+  // Pupil
+  ctx.fillStyle = '#000'
+  ctx.beginPath(); ctx.arc(0,0, e.size*.14*ps,0,Math.PI*2); ctx.fill()
+
+  // HP bar
+  if (e.maxHp > 1) {
+    const bw = e.size*2
+    ctx.fillStyle = 'rgba(0,0,0,.5)'
+    ctx.fillRect(-bw/2, e.size+4, bw, 4)
+    ctx.fillStyle = e.color
+    ctx.fillRect(-bw/2, e.size+4, bw*(e.hp/e.maxHp), 4)
+  }
+  ctx.restore()
+}
+
+// ── Road drawing ──────────────────────────────────────────
+function drawRoad() {
+  const rx = ROAD_X()
+  const rw = ROAD_W()
+
+  // Asphalt
+  ctx.fillStyle = '#111'
+  ctx.fillRect(rx, 0, rw, canvas.height)
+
+  // Road edges
+  ctx.strokeStyle = 'rgba(200,184,128,.4)'
+  ctx.lineWidth = 3
+  ctx.beginPath(); ctx.moveTo(rx,0);    ctx.lineTo(rx,canvas.height);    ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(rx+rw,0); ctx.lineTo(rx+rw,canvas.height); ctx.stroke()
+
+  // Center dashes
+  ctx.strokeStyle = 'rgba(200,184,128,.15)'
+  ctx.lineWidth = 1.5
+  ctx.setLineDash([30,20])
+  ctx.beginPath(); ctx.moveTo(rx+rw/2,0); ctx.lineTo(rx+rw/2,canvas.height); ctx.stroke()
+  ctx.setLineDash([])
+
+  // Lane dashes (moving)
+  roadLines.forEach(l => {
+    ctx.strokeStyle = 'rgba(200,184,128,.08)'
+    ctx.lineWidth = 1
+    ctx.setLineDash([20,30])
+    ctx.beginPath(); ctx.moveTo(rx+rw/3, l.y); ctx.lineTo(rx+rw/3, l.y+25); ctx.stroke()
+    ctx.beginPath(); ctx.moveTo(rx+rw*2/3, l.y); ctx.lineTo(rx+rw*2/3, l.y+25); ctx.stroke()
+    ctx.setLineDash([])
+  })
+
+  // Dirt/grass on sides
+  const dirtCol = 'rgba(30,20,10,.95)'
+  ctx.fillStyle = dirtCol
+  ctx.fillRect(0,0, rx, canvas.height)
+  ctx.fillRect(rx+rw,0, canvas.width-(rx+rw), canvas.height)
+
+  // Road side markings
+  ctx.fillStyle = 'rgba(200,184,128,.06)'
+  for (let i=0; i<canvas.height; i+=80) {
+    ctx.fillRect(rx-8, i, 8, 40)
+    ctx.fillRect(rx+rw, i, 8, 40)
+  }
+}
+
+// ── Progress bar ──────────────────────────────────────────
+function drawProgress() {
+  const pw = 6, ph = canvas.height * .6
+  const px = canvas.width - 20, py = canvas.height * .2
+  ctx.fillStyle = 'rgba(0,0,0,.5)'
+  ctx.fillRect(px,py,pw,ph)
+  ctx.fillStyle = '#c8512a'
+  const filled = ph * (GAME.progress/100)
+  ctx.fillRect(px,py+ph-filled,pw,filled)
+  // Icon
+  ctx.font = '14px serif'
+  ctx.fillText('🏁', px-4, py-4)
+  ctx.fillText('🚗', px-4, py+ph-filled-4)
+}
+
+// ── Bullet drawing ────────────────────────────────────────
+function drawBullet(b) {
+  ctx.save()
+  ctx.fillStyle = '#ffcc00'
+  ctx.shadowColor = '#ffcc00'
+  ctx.shadowBlur  = 8
+  ctx.fillRect(b.x-2, b.y-6, 4, 12)
+  ctx.restore()
+}
+
+// ── Game loop ─────────────────────────────────────────────
+let frameId
+let lastTime = 0
+
+function gameLoop(ts) {
+  frameId = requestAnimationFrame(gameLoop)
+  const dt = Math.min(ts - lastTime, 50)
+  lastTime = ts
+
+  if (!GAME.running || GAME.paused) {
+    // Draw static frame
+    ctx.fillStyle = '#0a0805'
+    ctx.fillRect(0,0,canvas.width,canvas.height)
+    drawRoad()
+    return
+  }
+
+  // Clear
+  ctx.fillStyle = '#0a0805'
+  ctx.fillRect(0,0,canvas.width,canvas.height)
+
+  // Road lines scroll
+  roadLines.forEach(l => {
+    l.y += GAME.speed * 1.5
+    if (l.y > canvas.height) l.y = -30
+  })
+
+  drawRoad()
+
+  // Player movement
+  const isLeft  = keys.left  || touchLeft
+  const isRight = keys.right || touchRight
+  if (isLeft)  PV.x -= PV.speed
+  if (isRight) PV.x += PV.speed
+
+  // Clamp to road
+  const rx = ROAD_X(), rw = ROAD_W()
+  PV.x = Math.max(rx + PV.w/2 + 4, Math.min(rx + rw - PV.w/2 - 4, PV.x))
+
+  // Shooting
+  if (keys.shoot && shootCooldown <= 0) {
+    const fr = vstats.fireRate
+    shootCooldown = fr
+    bullets.push({ x:PV.x, y:PV.y - PV.h/2, spd: vstats.bulletSpd })
+    // Drone upgrade — auto second bullet
+    if ((vehicleData.upgrades||[]).includes('spc_drone') && Math.random()<.4) {
+      bullets.push({ x:PV.x+12, y:PV.y-PV.h/2, spd:vstats.bulletSpd })
+    }
+  }
+  if (shootCooldown > 0) shootCooldown--
+
+  // Auto-shoot for slower vehicles to keep it fun
+  if (vtype === 'van' && shootCooldown <= 0) {
+    bullets.push({ x:PV.x, y:PV.y - PV.h/2, spd:vstats.bulletSpd })
+    shootCooldown = vstats.fireRate
+  }
+
+  // Bullets update
+  bullets = bullets.filter(b => b.y > -20)
+  bullets.forEach(b => { b.y -= b.spd; drawBullet(b) })
+
+  // Spawn eyes
+  spawnTimer++
+  if (spawnTimer >= spawnRate && !waveTransition && GAME.waveKills < GAME.waveTarget) {
+    spawnTimer = 0
+    const batch = GAME.wave >= 4 ? 2 : 1
+    for (let i=0; i<batch; i++) spawnEye()
+    GAME.waveEyes++
+  }
+
+  // Eyes update
+  eyes.forEach(e => {
+    e.x += e.vx
+    e.y += e.vy
+    e.angle += .03
+
+    // Bounce off road edges
+    if (e.x < rx+e.size) { e.x=rx+e.size; e.vx*=-1 }
+    if (e.x > rx+rw-e.size) { e.x=rx+rw-e.size; e.vx*=-1 }
+
+    // Bullet collision
+    bullets = bullets.filter(b => {
+      if (Math.abs(b.x-e.x)<e.size && Math.abs(b.y-e.y)<e.size) {
+        e.hp--
+        explode(b.x,b.y,'#ffcc00',5)
+        return false
+      }
+      return true
+    })
+
+    // Eye died
+    if (e.hp <= 0) {
+      GAME.eyesKilled++
+      GAME.waveKills++
+      explode(e.x, e.y, e.color, 18)
+      e.dead = true
+    }
+
+    // Eye reached player
+    if (!e.dead && e.y > canvas.height - 80) {
+      GAME.hp -= e.atk
+      e.dead = true
+      explode(PV.x, PV.y, '#e05555', 10)
+    }
+
+    if (!e.dead) drawEye(e)
+  })
+  eyes = eyes.filter(e => !e.dead && e.y < canvas.height)
+
+  // Repair kit upgrade
+  if ((vehicleData.upgrades||[]).includes('spc_repair')) {
+    GAME.hp = Math.min(GAME.maxHp, GAME.hp + 0.02)
+  }
+
+  // Wave complete
+  if (GAME.waveKills >= GAME.waveTarget && !waveTransition) {
+    waveTransition = true
+    GAME.progress = Math.min(95, GAME.progress + 18)
+
+    if (GAME.wave >= 5) {
+      // Journey complete
+      GAME.progress = 100
+      GAME.finished = true
+      GAME.running  = false
+      onArrival()
+    } else {
+      setTimeout(nextWave, 1800)
+    }
+  }
+
+  // Wave banner timer
+  if (waveShowTimer > 0) {
+    waveShowTimer--
+    if (waveShowTimer === 0) document.getElementById('wave-banner').classList.remove('show')
+  }
+
+  // Particles
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy
+    p.life -= p.decay
+    ctx.globalAlpha = p.life
+    ctx.fillStyle = p.color
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill()
+    ctx.globalAlpha = 1
+  })
+  particles = particles.filter(p => p.life > 0)
+
+  // Draw vehicle
+  drawVehicle(PV.x, PV.y)
+
+  // Progress bar
+  drawProgress()
+
+  updateHUD()
+
+  // Death check
+  if (GAME.hp <= 0 && !GAME.finished) {
+    GAME.hp = 0
+    GAME.running  = false
+    GAME.finished = true
+    onDeath()
+  }
+}
+
+// ── Game start ────────────────────────────────────────────
+function startGame() {
+  GAME.running = true
+  GAME.hp = GAME.maxHp
+  GAME.progress = 0
+  GAME.wave = 1
+  GAME.waveKills = 0
+  GAME.waveTarget = 8
+  GAME.eyesKilled = 0
+  GAME.finished = false
+  spawnRate = 90
+  bullets = []; eyes = []; particles = []
+  resetPV()
+  initLane()
+  showWaveBanner('WAVE 1')
+  frameId = requestAnimationFrame(gameLoop)
+  document.getElementById('controls-hint').style.opacity = '.35'
+}
+
+// ── Arrival ───────────────────────────────────────────────
+async function onArrival() {
+  // Unlock destination chapter if not already
+  const uls = player.chapters_unlocked || [1]
+  if (!uls.includes(destination)) uls.push(destination)
+  await supabase.from('players').update({
+    chapters_unlocked: uls,
+    current_chapter: destination,
+    current_node: `ch${destination}_opening`,
+  }).eq('id', player.id)
+
+  const el = document.getElementById('end-overlay')
+  document.getElementById('end-title').textContent = '✦ ARRIVED'
+  document.getElementById('end-title').style.color = '#5ec45e'
+  document.getElementById('end-sub').textContent =
+    `Chapter ${destination} reached. ${GAME.eyesKilled} Watcher Eyes destroyed on the way.`
+  document.getElementById('end-primary').textContent = '→ Enter Chapter ' + destination
+  el.classList.add('show')
+}
+
+// ── Death ─────────────────────────────────────────────────
+function onDeath() {
+  const el = document.getElementById('end-overlay')
+  document.getElementById('end-title').textContent = '✖ WRECKED'
+  document.getElementById('end-title').style.color = '#e05555'
+  document.getElementById('end-sub').textContent =
+    `The Eyes overwhelmed your ${vtype}. Return to the garage and upgrade before trying again.`
+  document.getElementById('end-primary').textContent = '↺ Try Again'
+  el.classList.add('show')
+}
+
+// ── End actions ───────────────────────────────────────────
+window.handleEndPrimary = function() {
+  const title = document.getElementById('end-title').textContent
+  if (title.includes('ARRIVED')) {
+    window.location.href = `chapter${destination}.html`
+  } else {
+    // Retry
+    document.getElementById('end-overlay').classList.remove('show')
+    GAME.finished = false
+    startGame()
+  }
+}
+
+// Start loop immediately (idle until chapter selected)
+frameId = requestAnimationFrame(gameLoop)
+</script>
+</body>
+</html>
