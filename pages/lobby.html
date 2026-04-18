@@ -190,11 +190,16 @@ function renderList() {
               <button onclick="sendAction('team','${p.player_id}','${p.username}')"
                 style="flex:1;font-family:'IM Fell English',serif;font-size:.78rem;padding:5px;border-radius:3px;border:.5px solid #5ec45e40;cursor:pointer;background:none;color:#3a6a3a">🤝 Team</button>
             </div>
-            <button onclick="sendAction('attack','${p.player_id}','${p.username}',${online})"
-              style="width:100%;font-family:'IM Fell English',serif;font-size:.78rem;padding:5px;border-radius:3px;border:.5px solid ${online?'#e0555540':'#b06eff40'};cursor:pointer;background:none;color:${online?'#6a2a2a':'#4a2a6a'}">
-              ${online?'⚔ PVP Challenge':'🌑 Raid Attack'}
-            </button>
-            ${!online?`<p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#b06eff;margin-top:3px;text-align:center">Player is away — auto-resolved raid</p>`:''}
+            <div style="display:flex;gap:4px">
+              <button onclick="sendAction('pvp','${p.player_id}','${p.username}')"
+                style="flex:1;font-family:'IM Fell English',serif;font-size:.78rem;padding:5px;border-radius:3px;border:.5px solid #e0555540;cursor:pointer;background:none;color:#6a2a2a">
+                ⚔ PVP ${online?'<span style="font-size:.44rem;color:#5ec45e">● Live</span>':'<span style="font-size:.44rem;color:#888">○ Away</span>'}
+              </button>
+              <button onclick="sendAction('raid','${p.player_id}','${p.username}')"
+                style="flex:1;font-family:'IM Fell English',serif;font-size:.78rem;padding:5px;border-radius:3px;border:.5px solid #b06eff40;cursor:pointer;background:none;color:#4a2a6a">
+                🌑 Raid
+              </button>
+            </div>
           </div>` : ''}
       </div>`
   }).join('')
@@ -209,10 +214,123 @@ function renderList() {
   })
 }
 
-window.sendAction = (type, targetId, targetName, isOnline) => {
+window.sendAction = (type, targetId, targetName) => {
   if (type === 'observe') { showObserveModal(targetId, targetName); return }
   if (type === 'team')    { showTeamModal(targetId, targetName);    return }
-  if (type === 'attack')  { showAttackModal(targetId, targetName, isOnline); return }
+  if (type === 'pvp')     { showPvpModal(targetId, targetName);     return }
+  if (type === 'raid')    { showRaidModal(targetId, targetName);    return }
+}
+
+// ── PVP Challenge Modal ───────────────────────────────────
+function showPvpModal(targetId, targetName) {
+  document.getElementById('pvp-modal')?.remove()
+  const modal = document.createElement('div')
+  modal.id = 'pvp-modal'
+  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
+  modal.innerHTML = `
+    <div style="background:#b8a568;border:1px solid #e05555;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin-bottom:.4rem">⚔ PVP Challenge</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#1a1208;margin-bottom:.4rem">
+        Challenge <strong>${targetName}</strong> to live combat?
+      </p>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#c04040;margin-bottom:.75rem">
+        ⚠ They must accept within 30s. Combat resolves in real time.
+      </p>
+      <div style="display:flex;gap:6px">
+        <button onclick="confirmPvp('${targetId}','${targetName}')" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(224,85,85,.25);border:1px solid #e05555;border-radius:3px;padding:.45rem;cursor:pointer">⚔ Send Challenge</button>
+        <button onclick="document.getElementById('pvp-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
+      </div>
+    </div>`
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove() })
+  document.body.appendChild(modal)
+}
+
+window.confirmPvp = async (targetId, targetName) => {
+  document.getElementById('pvp-modal')?.remove()
+  await supabase.from('players').update({ reputation:'red', badge:'red' }).eq('id', player.id)
+  player.badge = 'red'
+  const { data: enc } = await supabase.from('encounters').insert({
+    initiator_id: player.id, target_id: targetId,
+    type: 'pvp_challenge', chapter, result: 'pending',
+  }).select().single()
+  await notifyPlayer(targetId, 'pvp_challenge', { from:player.username, fromId:player.id, encounterId:enc?.id })
+  addPing('PVP challenge sent to ' + targetName, 'red')
+  showToast('⚔ Challenge sent — waiting for ' + targetName)
+  // Show waiting modal
+  showWaitingModal(targetName, enc?.id)
+  selected = null; renderList()
+}
+
+function showWaitingModal(targetName, encounterId) {
+  document.getElementById('waiting-modal')?.remove()
+  const modal = document.createElement('div')
+  modal.id = 'waiting-modal'
+  modal.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:800;min-width:240px;max-width:300px;background:#1a1208;border:1px solid #e05555;border-radius:6px;padding:.85rem 1rem;box-shadow:0 8px 40px rgba(0,0,0,.9);text-align:center'
+  modal.innerHTML = `
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#e05555;letter-spacing:.08em;margin-bottom:.3rem">⚔ WAITING FOR RESPONSE</p>
+    <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#c8b96e;margin-bottom:.5rem"><strong>${targetName}</strong> has 30 seconds…</p>
+    <div style="height:4px;background:rgba(224,85,85,.15);border-radius:2px;overflow:hidden">
+      <div id="pvp-timer-bar" style="height:100%;background:#e05555;width:100%;transition:width 30s linear"></div>
+    </div>`
+  document.body.appendChild(modal)
+  requestAnimationFrame(() => { document.getElementById('pvp-timer-bar').style.width = '0%' })
+  setTimeout(() => modal.remove(), 31000)
+}
+
+// ── Raid Modal ────────────────────────────────────────────
+async function showRaidModal(targetId, targetName) {
+  document.getElementById('raid-modal')?.remove()
+  const { data: tp } = await supabase.from('players').select('level,atk,def,hp,max_hp').eq('id', targetId).single()
+  const myAtk   = (player.atk||1) + (player.power||0)
+  const theirDef = tp?.def || 0
+  const raidDmg  = Math.max(1, myAtk - Math.floor(theirDef * 0.5))
+  const outcome  = raidDmg >= (tp?.hp||50) ? 'victory' : 'partial'
+
+  const modal = document.createElement('div')
+  modal.id = 'raid-modal'
+  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
+  modal.innerHTML = `
+    <div style="background:#b8a568;border:1px solid #b06eff;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin-bottom:.4rem">🌑 Raid Attack</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#1a1208;margin-bottom:.4rem">
+        Auto-resolved using your current stats vs <strong>${targetName}</strong>'s defense.
+      </p>
+      <div style="background:rgba(176,110,255,.08);border:.5px solid rgba(176,110,255,.25);border-radius:4px;padding:.5rem .65rem;margin-bottom:.6rem">
+        <div style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#3a2008;line-height:2">
+          Your ATK: <span style="color:#e05555">${myAtk}</span> &nbsp;·&nbsp;
+          Their DEF: <span style="color:#5ec45e">${theirDef}</span> &nbsp;·&nbsp;
+          Damage: <span style="color:#c8b96e">${raidDmg}</span><br>
+          Outcome: <span style="color:${outcome==='victory'?'#5ec45e':'#c8b96e'};font-weight:600">${outcome==='victory'?'TARGET DEFEATED':'PARTIAL HIT'}</span>
+        </div>
+      </div>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#b06eff;margin-bottom:.75rem">
+        They will receive a Revenge notice on their next login.
+      </p>
+      <div style="display:flex;gap:6px">
+        <button onclick="confirmRaid('${targetId}','${targetName}',${raidDmg},'${outcome}')" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(176,110,255,.25);border:1px solid #b06eff;border-radius:3px;padding:.45rem;cursor:pointer">🌑 Execute Raid</button>
+        <button onclick="document.getElementById('raid-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
+      </div>
+    </div>`
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove() })
+  document.body.appendChild(modal)
+}
+
+window.confirmRaid = async (targetId, targetName, raidDmg, outcome) => {
+  document.getElementById('raid-modal')?.remove()
+  await supabase.from('players').update({ reputation:'red', badge:'red' }).eq('id', player.id)
+  player.badge = 'red'
+  await supabase.from('encounters').insert({
+    initiator_id: player.id, target_id: targetId,
+    type: 'raid', chapter, result: outcome,
+    damage_dealt: raidDmg, notified: false,
+    initiated_at: new Date().toISOString(),
+  })
+  const { data: tp } = await supabase.from('players').select('hp').eq('id', targetId).single()
+  if (tp) await supabase.from('players').update({ hp: Math.max(1, (tp.hp||50) - raidDmg) }).eq('id', targetId)
+  if (outcome === 'victory') await supabase.from('players').update({ pvp_kills:(player.pvp_kills||0)+1 }).eq('id', player.id)
+  addPing('Raided ' + targetName + ' — ' + outcome, 'red')
+  showToast('🌑 Raid: ' + (outcome==='victory' ? 'Target defeated!' : 'Partial hit'))
+  selected = null; renderList()
 }
 
 // ── Observe ───────────────────────────────────────────────
@@ -280,77 +398,6 @@ window.confirmTeam = async (targetId, targetName) => {
   selected=null; renderList()
 }
 
-// ── Attack: PVP or Raid ───────────────────────────────────
-async function showAttackModal(targetId, targetName, isOnline) {
-  document.getElementById('attack-modal')?.remove()
-  const { data: tp } = await supabase.from('players').select('level,atk,def,hp,max_hp').eq('id', targetId).single()
-  const myAtk    = (player.atk||1) + (player.power||0)
-  const theirDef = tp?.def || 0
-  const raidDmg  = Math.max(1, myAtk - Math.floor(theirDef * 0.5))
-  const outcome  = raidDmg >= (tp?.hp||50) ? 'victory' : 'partial'
-
-  const modal = document.createElement('div')
-  modal.id = 'attack-modal'
-  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
-  modal.innerHTML = isOnline ? `
-    <div style="background:#b8a568;border:1px solid #e05555;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
-      <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin-bottom:.4rem">⚔ PVP Challenge</p>
-      <div style="background:rgba(224,85,85,.08);border:.5px solid rgba(224,85,85,.2);border-radius:4px;padding:.5rem .65rem;margin-bottom:.5rem">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#e05555;letter-spacing:.06em;margin-bottom:2px">TARGET IS ONLINE</p>
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.8rem;color:#1a1208"><strong>${targetName}</strong> will receive a challenge. They have 30 seconds to accept or it expires.</p>
-      </div>
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#c04040;margin-bottom:.75rem">⚠ Your reputation shifts to Red.</p>
-      <div style="display:flex;gap:6px">
-        <button onclick="confirmAttack('${targetId}','${targetName}',true,0,'')" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(224,85,85,.25);border:1px solid #e05555;border-radius:3px;padding:.45rem;cursor:pointer">⚔ Challenge</button>
-        <button onclick="document.getElementById('attack-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
-      </div>
-    </div>` : `
-    <div style="background:#b8a568;border:1px solid #b06eff;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
-      <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin-bottom:.4rem">🌑 Raid Attack</p>
-      <div style="background:rgba(176,110,255,.08);border:.5px solid rgba(176,110,255,.2);border-radius:4px;padding:.5rem .65rem;margin-bottom:.5rem">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#b06eff;letter-spacing:.06em;margin-bottom:2px">TARGET IS AWAY</p>
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.8rem;color:#1a1208;margin-bottom:4px"><strong>${targetName}</strong> is offline. Resolved by stats automatically.</p>
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#3a2008">
-          Your ATK <span style="color:#e05555">${myAtk}</span> vs Their DEF <span style="color:#5ec45e">${theirDef}</span> → Damage <span style="color:#c8b96e">${raidDmg}</span>
-          · <span style="color:${outcome==='victory'?'#5ec45e':'#c8b96e'}">${outcome==='victory'?'TARGET DEFEATED':'PARTIAL HIT'}</span>
-        </p>
-      </div>
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#b06eff;margin-bottom:.75rem">They will see a Revenge notice when they return.</p>
-      <div style="display:flex;gap:6px">
-        <button onclick="confirmAttack('${targetId}','${targetName}',false,${raidDmg},'${outcome}')" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(176,110,255,.25);border:1px solid #b06eff;border-radius:3px;padding:.45rem;cursor:pointer">🌑 Raid</button>
-        <button onclick="document.getElementById('attack-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
-      </div>
-    </div>`
-  modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
-  document.body.appendChild(modal)
-}
-
-window.confirmAttack = async (targetId, targetName, isOnline, raidDmg, outcome) => {
-  document.getElementById('attack-modal')?.remove()
-  await supabase.from('players').update({ reputation:'red', badge:'red' }).eq('id', player.id)
-  player.badge='red'; player.reputation='red'
-
-  if (isOnline) {
-    const { data: enc } = await supabase.from('encounters').insert({
-      initiator_id:player.id, target_id:targetId, type:'pvp_challenge', chapter, result:'pending',
-    }).select().single()
-    await notifyPlayer(targetId, 'pvp_challenge', { from:player.username, fromId:player.id, encounterId:enc?.id })
-    addPing('PVP challenge sent to '+targetName, 'red')
-    showToast('⚔ Challenge sent — waiting for '+targetName)
-  } else {
-    await supabase.from('encounters').insert({
-      initiator_id:player.id, target_id:targetId, type:'raid', chapter,
-      result:outcome, damage_dealt:raidDmg, notified:false,
-      initiated_at:new Date().toISOString(),
-    })
-    const { data: tp } = await supabase.from('players').select('hp').eq('id', targetId).single()
-    if (tp) await supabase.from('players').update({ hp:Math.max(1,(tp.hp||50)-raidDmg) }).eq('id', targetId)
-    if (outcome==='victory') await supabase.from('players').update({ pvp_kills:(player.pvp_kills||0)+1 }).eq('id', player.id)
-    addPing('Raided '+targetName+' — '+outcome, 'red')
-    showToast('🌑 Raid: '+(outcome==='victory'?'Target defeated!':'Partial hit'))
-  }
-  selected=null; renderList()
-}
 
 // ── CRITICAL FIX: subscribe before send ──────────────────
 async function notifyPlayer(targetId, event, payload) {
@@ -371,8 +418,14 @@ async function notifyPlayer(targetId, event, payload) {
 supabase.channel('notify:'+player.id)
   .on('broadcast', { event:'team_request' },  ({payload})=>showIncomingModal('team', payload.from, payload.fromId, payload.encounterId))
   .on('broadcast', { event:'pvp_challenge' }, ({payload})=>showIncomingModal('pvp',  payload.from, payload.fromId, payload.encounterId))
-  .on('broadcast', { event:'pvp_accepted' },  ({payload})=>{ showToast('⚔ '+payload.from+' accepted your challenge!'); addPing(payload.from+' accepted PVP','red') })
-  .on('broadcast', { event:'request_declined'},({payload})=>showToast(payload.from+' declined your request'))
+  .on('broadcast', { event:'pvp_accepted' },  ({payload})=>{
+    document.getElementById('waiting-modal')?.remove()
+    showToast('⚔ '+payload.from+' accepted! Combat starting…')
+    addPing(payload.from+' accepted PVP','red')
+    openPvpCombat(payload.fromId, payload.from, payload.encounterId, true) // true = we are attacker
+  })
+  .on('broadcast', { event:'request_accepted' },({payload})=>showToast('🤝 '+payload.from+' accepted your request!'))
+  .on('broadcast', { event:'request_declined' },({payload})=>showToast(payload.from+' declined your request'))
   .subscribe()
 
 function showIncomingModal(type, fromName, fromId, encounterId) {
@@ -399,16 +452,221 @@ window.respondRequest = async (response, type, fromId, fromName, encounterId) =>
   const modal = document.getElementById('incoming-modal')
   if (modal?._timer) clearTimeout(modal._timer)
   modal?.remove()
-  if (encounterId) await supabase.from('encounters').update({ result:type+'_'+response }).eq('id', encounterId)
-  else await supabase.from('encounters').insert({ initiator_id:fromId, target_id:player.id, type:type+'_request', chapter, result:type+'_'+response })
-  if (response==='accept') {
-    showToast(type==='pvp'?'⚔ PVP accepted!':'🤝 Allied with '+fromName)
-    addPing((type==='pvp'?'PVP accepted from ':'Allied with ')+fromName, type==='pvp'?'red':'green')
-    await notifyPlayer(fromId, 'pvp_accepted', { from:player.username, fromId:player.id })
+
+  if (encounterId) await supabase.from('encounters').update({ result: type+'_'+response }).eq('id', encounterId)
+  else await supabase.from('encounters').insert({
+    initiator_id: fromId, target_id: player.id,
+    type: type+'_request', chapter, result: type+'_'+response,
+  })
+
+  if (response === 'accept' && type === 'pvp') {
+    // Notify challenger then open combat for both
+    await notifyPlayer(fromId, 'pvp_accepted', { from:player.username, fromId:player.id, encounterId })
+    openPvpCombat(fromId, fromName, encounterId, false) // false = we are the defender
+  } else if (response === 'accept') {
+    showToast('🤝 Allied with ' + fromName)
+    addPing('Allied with ' + fromName, 'green')
+    await notifyPlayer(fromId, 'request_accepted', { from:player.username })
   } else {
-    showToast('Request from '+fromName+' declined')
+    showToast('Request from ' + fromName + ' declined')
     await notifyPlayer(fromId, 'request_declined', { from:player.username })
   }
+}
+
+// ── PVP Combat System ─────────────────────────────────────
+let pvpState = null
+
+async function openPvpCombat(opponentId, opponentName, encounterId, isAttacker) {
+  document.getElementById('waiting-modal')?.remove()
+  document.getElementById('pvp-combat')?.remove()
+
+  // Fetch both players' stats
+  const { data: op } = await supabase.from('players')
+    .select('level,atk,def,power,guard,hp,max_hp,badge').eq('id', opponentId).single()
+
+  const myMaxHp = player.max_hp || 100
+  const opMaxHp = op?.max_hp || 100
+
+  pvpState = {
+    encounterId,
+    opponentId,
+    opponentName,
+    isAttacker,
+    myHp:   myMaxHp,
+    opHp:   opMaxHp,
+    myMaxHp,
+    opMaxHp,
+    myAtk:   (player.atk||1) + (player.power||0),
+    myDef:   (player.def||0) + (player.guard||0),
+    opAtk:   (op?.atk||1) + (op?.power||0),
+    opDef:   (op?.def||0) + (op?.guard||0),
+    myTurn:  isAttacker, // attacker goes first
+    round:   1,
+    log:     [],
+  }
+
+  renderPvpCombat()
+  // Subscribe to opponent moves
+  supabase.channel('pvp:'+encounterId)
+    .on('broadcast', { event:'pvp_move' }, ({ payload }) => {
+      receivePvpMove(payload)
+    })
+    .subscribe()
+}
+
+function renderPvpCombat() {
+  document.getElementById('pvp-combat')?.remove()
+  const s = pvpState
+  const myPct = Math.round(s.myHp / s.myMaxHp * 100)
+  const opPct = Math.round(s.opHp / s.opMaxHp * 100)
+  const myCol = myPct>60?'#5ec45e':myPct>30?'#c8b96e':'#e05555'
+  const opCol = opPct>60?'#5ec45e':opPct>30?'#c8b96e':'#e05555'
+
+  const el = document.createElement('div')
+  el.id = 'pvp-combat'
+  el.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:1rem'
+  el.innerHTML = `
+    <div style="background:#0f0c09;border:1px solid #e05555;border-radius:8px;padding:1.25rem;width:100%;max-width:420px;box-shadow:0 0 60px rgba(224,85,85,.3)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <span style="font-family:'Cinzel',serif;font-size:.75rem;color:#e05555;font-weight:600">⚔ PVP COMBAT</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#7a6435">Round ${s.round}</span>
+      </div>
+
+      <!-- HP bars -->
+      <div style="display:flex;gap:.75rem;margin-bottom:.75rem">
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-family:'Cinzel',serif;font-size:.65rem;color:#c8b96e">${player.username}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:${myCol}">${s.myHp}/${s.myMaxHp}</span>
+          </div>
+          <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px">
+            <div style="height:100%;width:${myPct}%;background:${myCol};border-radius:3px;transition:width .4s"></div>
+          </div>
+        </div>
+        <div style="font-family:'Cinzel',serif;font-size:1rem;color:#e05555;align-self:center">VS</div>
+        <div style="flex:1">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+            <span style="font-family:'Cinzel',serif;font-size:.65rem;color:#c8b96e">${s.opponentName}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:${opCol}">${s.opHp}/${s.opMaxHp}</span>
+          </div>
+          <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px">
+            <div style="height:100%;width:${opPct}%;background:${opCol};border-radius:3px;transition:width .4s"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Combat log -->
+      <div id="pvp-log" style="background:rgba(0,0,0,.4);border:.5px solid rgba(200,184,128,.1);border-radius:4px;padding:.5rem .65rem;min-height:60px;max-height:100px;overflow-y:auto;margin-bottom:.75rem;font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#9a8050;line-height:1.6">
+        ${s.log.length ? s.log.slice(-5).map(l=>`<div>${l}</div>`).join('') : '<div style="color:#5a4825">Combat begins…</div>'}
+      </div>
+
+      <!-- Actions -->
+      ${s.myTurn ? `
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#5ec45e;letter-spacing:.08em;margin-bottom:.5rem">YOUR TURN</p>
+        <div style="display:flex;gap:.5rem">
+          <button onclick="pvpMove('strike')" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(224,85,85,.3);border:1px solid #e05555;border-radius:3px;padding:.5rem;cursor:pointer">
+            ⚔ Strike<br><span style="font-size:.5rem;color:#6a2a2a">${s.myAtk} ATK</span>
+          </button>
+          <button onclick="pvpMove('defend')" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(94,196,94,.2);border:1px solid #5ec45e;border-radius:3px;padding:.5rem;cursor:pointer">
+            🛡 Defend<br><span style="font-size:.5rem;color:#2a6a2a">${s.myDef} DEF</span>
+          </button>
+          <button onclick="pvpMove('heavy')" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(200,184,128,.2);border:1px solid rgba(200,184,128,.5);border-radius:3px;padding:.5rem;cursor:pointer">
+            💥 Heavy<br><span style="font-size:.5rem;color:#5a4825">×1.5 / -20%</span>
+          </button>
+        </div>` : `
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;letter-spacing:.08em;text-align:center;padding:.75rem">
+          ⏳ Waiting for ${s.opponentName}…
+        </p>`}
+      <button onclick="pvpForfeit()" style="width:100%;margin-top:.5rem;font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#5a4825;background:none;border:.5px solid rgba(200,184,128,.15);border-radius:3px;padding:.3rem;cursor:pointer">Forfeit</button>
+    </div>`
+  document.body.appendChild(el)
+}
+
+window.pvpMove = async (action) => {
+  const s = pvpState
+  if (!s || !s.myTurn) return
+
+  let dmg = 0, myDef = s.myDef
+  if (action === 'strike') {
+    dmg = Math.max(1, s.myAtk - Math.floor(s.opDef * 0.4) + Math.floor(Math.random()*4)-2)
+  } else if (action === 'heavy') {
+    dmg = Math.max(1, Math.floor(s.myAtk * 1.5) - Math.floor(s.opDef * 0.3))
+    s.myHp = Math.max(0, s.myHp - Math.floor(s.myMaxHp * 0.1)) // cost
+  } else if (action === 'defend') {
+    dmg = 0
+    myDef = s.myDef * 2 // doubles this round
+  }
+
+  s.opHp = Math.max(0, s.opHp - dmg)
+  s.myTurn = false
+
+  const logMsg = action==='defend'
+    ? `${player.username} defends (+${s.myDef} DEF this round)`
+    : `${player.username} ${action==='heavy'?'heavy strikes':'strikes'} for ${dmg} damage`
+  s.log.push(logMsg)
+
+  // Broadcast move to opponent
+  const ch = supabase.channel('pvp:'+s.encounterId)
+  ch.subscribe(status => {
+    if (status==='SUBSCRIBED') {
+      ch.send({ type:'broadcast', event:'pvp_move', payload:{
+        action, dmg, myHp: s.myHp, opHp: s.opHp, fromName: player.username, log: logMsg
+      }})
+      setTimeout(()=>supabase.removeChannel(ch), 500)
+    }
+  })
+
+  if (s.opHp <= 0) { endPvpCombat(true); return }
+  renderPvpCombat()
+}
+
+function receivePvpMove(payload) {
+  const s = pvpState
+  if (!s) return
+  // From opponent's perspective, their opHp = our myHp
+  s.myHp  = payload.opHp  // opponent hit us
+  s.opHp  = payload.myHp  // opponent's own HP
+  s.myTurn = true
+  s.round++
+  s.log.push(payload.log)
+
+  if (s.myHp <= 0) { endPvpCombat(false); return }
+  renderPvpCombat()
+}
+
+async function endPvpCombat(won) {
+  document.getElementById('pvp-combat')?.remove()
+  const s = pvpState
+
+  // Save result
+  await supabase.from('encounters').update({
+    result: won ? 'pvp_victory' : 'pvp_defeat',
+    resolved_at: new Date().toISOString(),
+  }).eq('id', s.encounterId)
+
+  if (won) {
+    await supabase.from('players').update({ pvp_kills:(player.pvp_kills||0)+1 }).eq('id', player.id)
+  }
+
+  // Show result modal
+  const el = document.createElement('div')
+  el.style.cssText = 'position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.88)'
+  el.innerHTML = `
+    <div style="background:#0f0c09;border:1px solid ${won?'#5ec45e':'#e05555'};border-radius:8px;padding:1.5rem;text-align:center;max-width:300px;box-shadow:0 0 40px ${won?'rgba(94,196,94,.3)':'rgba(224,85,85,.3)'}">
+      <p style="font-family:'Cinzel',serif;font-size:1.4rem;font-weight:700;color:${won?'#5ec45e':'#e05555'};margin-bottom:.4rem">${won?'⚔ VICTORY':'✖ DEFEAT'}</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.85rem;color:#c8b96e;margin-bottom:1rem">
+        ${won?'You defeated '+s.opponentName+'.':s.opponentName+' defeated you.'}
+      </p>
+      <button onclick="this.closest('[style]').remove()" style="font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(200,184,128,.6);border-radius:3px;padding:.45rem 1.5rem;cursor:pointer">Return to Lobby</button>
+    </div>`
+  document.body.appendChild(el)
+  addPing((won?'Victory over ':'Defeated by ') + s.opponentName, won?'green':'red')
+  pvpState = null
+}
+
+window.pvpForfeit = async () => {
+  if (!pvpState) return
+  await endPvpCombat(false)
 }
 
 // ── Raid notifications on login ───────────────────────────
@@ -446,7 +704,8 @@ window.takeRevenge = async (targetId, targetName, modalEl) => {
   modalEl?.remove()
   const { data: pres } = await supabase.from('presence').select('last_seen_at').eq('player_id', targetId).single()
   const online = pres && (Date.now() - new Date(pres.last_seen_at).getTime()) < 3 * 60 * 1000
-  showAttackModal(targetId, targetName, online)
+  if (online) showPvpModal(targetId, targetName)
+  else showRaidModal(targetId, targetName)
 }
 
 // ── Realtime lobby updates ────────────────────────────────
