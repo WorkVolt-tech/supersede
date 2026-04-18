@@ -214,8 +214,8 @@ const NODES = [
   // Pre-keystone
   { id:'of7',  label:'+3 ATK',     type:'small', branch:'offense', x:CX-70,   y:CY-720, cost:1, stat:'atk_bonus',   val:3, requires:['ofn4','ofn6'] },
   { id:'of8',  label:'+4 ATK',     type:'small', branch:'offense', x:CX+70,   y:CY-720, cost:1, stat:'atk_bonus',   val:4, requires:['ofn5','ofn6'] },
-  { id:'ofp7', label:'+3 Power',   type:'small', branch:'offense', x:CX-160,  y:CY-690, cost:1, stat:'power_bonus',  val:3, requires:['ofn4'] },
-  { id:'ofi7', label:'+3 Insight', type:'small', branch:'offense', x:CX+160,  y:CY-690, cost:1, stat:'insight_bonus', val:3, requires:['ofn5'] },
+  { id:'ofp7', label:'+3 Power',   type:'small', branch:'offense', x:CX-160,  y:CY-690, cost:1, stat:'power_bonus',  val:3, requires:['of7'] },
+  { id:'ofi7', label:'+3 Insight', type:'small', branch:'offense', x:CX+160,  y:CY-690, cost:1, stat:'insight_bonus', val:3, requires:['of8'] },
   // Keystones
   { id:'of_ks1', label:'Bloodthirst', type:'keystone', branch:'offense', x:CX-150, y:CY-820, cost:3, requires:['of7'],
     desc:'★ KEYSTONE — OFFENSE: ATK scales with missing HP. For every 10% HP missing, gain +10% ATK. At low HP you hit nearly double. High risk, maximum output.' },
