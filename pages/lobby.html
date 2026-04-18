@@ -474,77 +474,69 @@ window.respondRequest = async (response, type, fromId, fromName, encounterId) =>
 }
 
 // ── PVP Combat System ─────────────────────────────────────
+// Simultaneous: both pick → fastest goes first → speed breaks ties
+
 let pvpState   = null
-let pvpChannel = null  // single persistent channel for the whole fight
+let pvpChannel = null
 
 async function openPvpCombat(opponentId, opponentName, encounterId, isAttacker) {
   document.getElementById('waiting-modal')?.remove()
   document.getElementById('pvp-combat')?.remove()
-
-  // Clean up any existing pvp channel
   if (pvpChannel) { supabase.removeChannel(pvpChannel); pvpChannel = null }
 
   const { data: op } = await supabase.from('players')
-    .select('level,atk,def,power,guard,hp,max_hp,badge').eq('id', opponentId).single()
-
-  const myMaxHp = player.max_hp || 100
-  const opMaxHp = op?.max_hp   || 100
+    .select('level,atk,def,power,guard,speed,hp,max_hp').eq('id', opponentId).single()
 
   pvpState = {
-    encounterId,
-    opponentId,
-    opponentName,
-    isAttacker,
-    myHp:    myMaxHp,
-    opHp:    opMaxHp,
-    myMaxHp,
-    opMaxHp,
-    myAtk:   (player.atk||1) + (player.power||0),
-    myDef:   (player.def||0) + (player.guard||0),
-    opAtk:   (op?.atk||1)   + (op?.power||0),
-    opDef:   (op?.def||0)   + (op?.guard||0),
-    myTurn:  isAttacker,
-    round:   1,
-    log:     [],
+    encounterId, opponentId, opponentName, isAttacker,
+    myHp: player.max_hp||100, opHp: op?.max_hp||100,
+    myMaxHp: player.max_hp||100, opMaxHp: op?.max_hp||100,
+    myAtk: (player.atk||1)+(player.power||0),
+    myDef: (player.def||0)+(player.guard||0),
+    mySpd: player.speed||0,
+    opAtk: (op?.atk||1)+(op?.power||0),
+    opDef: (op?.def||0)+(op?.guard||0),
+    opSpd: op?.speed||0,
+    myPick: null, opPick: null,
+    myPickAt: null, opPickAt: null,
+    round: 1, log: [], ended: false,
   }
 
-  // Subscribe ONE persistent channel for the whole fight
   pvpChannel = supabase.channel('pvp:' + encounterId)
   pvpChannel
-    .on('broadcast', { event: 'pvp_move' }, ({ payload }) => {
-      receivePvpMove(payload)
+    .on('broadcast', { event: 'pvp_pick' }, ({ payload }) => receiveOpponentPick(payload))
+    .on('broadcast', { event: 'pvp_end'  }, ({ payload }) => {
+      if (pvpState?.ended) return
+      // winnerId null = draw, both lose
+      const won = payload.winnerId !== null && payload.winnerId === player.id
+      endPvpCombat(won, true)
     })
-    .subscribe(status => {
-      if (status === 'SUBSCRIBED') {
-        renderPvpCombat()
-      }
-    })
+    .subscribe(status => { if (status === 'SUBSCRIBED') renderPvpCombat() })
 }
 
 function renderPvpCombat() {
   document.getElementById('pvp-combat')?.remove()
   const s = pvpState
-  const myPct = Math.round(s.myHp / s.myMaxHp * 100)
-  const opPct = Math.round(s.opHp / s.opMaxHp * 100)
+  if (!s) return
+  const myPct = Math.max(0, Math.round(s.myHp/s.myMaxHp*100))
+  const opPct = Math.max(0, Math.round(s.opHp/s.opMaxHp*100))
   const myCol = myPct>60?'#5ec45e':myPct>30?'#c8b96e':'#e05555'
   const opCol = opPct>60?'#5ec45e':opPct>30?'#c8b96e':'#e05555'
 
   const el = document.createElement('div')
   el.id = 'pvp-combat'
-  el.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;padding:1rem'
+  el.style.cssText = 'position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.93);display:flex;align-items:center;justify-content:center;padding:1rem'
   el.innerHTML = `
-    <div style="background:#0f0c09;border:1px solid #e05555;border-radius:8px;padding:1.25rem;width:100%;max-width:420px;box-shadow:0 0 60px rgba(224,85,85,.3)">
+    <div style="background:#0f0c09;border:1px solid #e05555;border-radius:8px;padding:1.25rem;width:100%;max-width:420px;box-shadow:0 0 60px rgba(224,85,85,.25)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
         <span style="font-family:'Cinzel',serif;font-size:.75rem;color:#e05555;font-weight:600">⚔ PVP COMBAT</span>
         <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#7a6435">Round ${s.round}</span>
       </div>
-
-      <!-- HP bars -->
       <div style="display:flex;gap:.75rem;margin-bottom:.75rem">
         <div style="flex:1">
           <div style="display:flex;justify-content:space-between;margin-bottom:3px">
             <span style="font-family:'Cinzel',serif;font-size:.65rem;color:#c8b96e">${player.username}</span>
-            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:${myCol}">${s.myHp}/${s.myMaxHp}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:${myCol}">${Math.max(0,s.myHp)}/${s.myMaxHp}</span>
           </div>
           <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px">
             <div style="height:100%;width:${myPct}%;background:${myCol};border-radius:3px;transition:width .4s"></div>
@@ -554,126 +546,167 @@ function renderPvpCombat() {
         <div style="flex:1">
           <div style="display:flex;justify-content:space-between;margin-bottom:3px">
             <span style="font-family:'Cinzel',serif;font-size:.65rem;color:#c8b96e">${s.opponentName}</span>
-            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:${opCol}">${s.opHp}/${s.opMaxHp}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:${opCol}">${Math.max(0,s.opHp)}/${s.opMaxHp}</span>
           </div>
           <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px">
             <div style="height:100%;width:${opPct}%;background:${opCol};border-radius:3px;transition:width .4s"></div>
           </div>
         </div>
       </div>
-
-      <!-- Combat log -->
-      <div id="pvp-log" style="background:rgba(0,0,0,.4);border:.5px solid rgba(200,184,128,.1);border-radius:4px;padding:.5rem .65rem;min-height:60px;max-height:100px;overflow-y:auto;margin-bottom:.75rem;font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#9a8050;line-height:1.6">
-        ${s.log.length ? s.log.slice(-5).map(l=>`<div>${l}</div>`).join('') : '<div style="color:#5a4825">Combat begins…</div>'}
+      <div style="background:rgba(0,0,0,.4);border:.5px solid rgba(200,184,128,.1);border-radius:4px;padding:.5rem .65rem;min-height:52px;max-height:90px;overflow-y:auto;margin-bottom:.6rem;font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#9a8050;line-height:1.7">
+        ${s.log.length ? s.log.slice(-5).map(l=>`<div>${l}</div>`).join('') : '<div style="color:#5a4825">Both players choose…</div>'}
       </div>
-
-      <!-- Actions -->
-      ${s.myTurn ? `
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#5ec45e;letter-spacing:.08em;margin-bottom:.5rem">YOUR TURN</p>
-        <div style="display:flex;gap:.5rem">
-          <button onclick="pvpMove('strike')" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(224,85,85,.3);border:1px solid #e05555;border-radius:3px;padding:.5rem;cursor:pointer">
-            ⚔ Strike<br><span style="font-size:.5rem;color:#6a2a2a">${s.myAtk} ATK</span>
-          </button>
-          <button onclick="pvpMove('defend')" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(94,196,94,.2);border:1px solid #5ec45e;border-radius:3px;padding:.5rem;cursor:pointer">
-            🛡 Defend<br><span style="font-size:.5rem;color:#2a6a2a">${s.myDef} DEF</span>
-          </button>
-          <button onclick="pvpMove('heavy')" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(200,184,128,.2);border:1px solid rgba(200,184,128,.5);border-radius:3px;padding:.5rem;cursor:pointer">
-            💥 Heavy<br><span style="font-size:.5rem;color:#5a4825">×1.5 / -20%</span>
-          </button>
-        </div>` : `
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;letter-spacing:.08em;text-align:center;padding:.75rem">
-          ⏳ Waiting for ${s.opponentName}…
-        </p>`}
-      <button onclick="pvpForfeit()" style="width:100%;margin-top:.5rem;font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#5a4825;background:none;border:.5px solid rgba(200,184,128,.15);border-radius:3px;padding:.3rem;cursor:pointer">Forfeit</button>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:.5rem;letter-spacing:.07em;margin-bottom:.5rem;text-align:center;color:${s.myPick?'#5ec45e':'#c8b96e'}">
+        ${s.myPick ? (s.opPick ? '⚡ RESOLVING…' : `✓ ${s.myPick.toUpperCase()} locked — waiting for ${s.opponentName}…`) : 'CHOOSE YOUR ACTION'}
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+        <button onclick="pvpPick('strike')" ${s.myPick?'disabled':''} style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(224,85,85,${s.myPick==='strike'?.5:.25});border:${s.myPick==='strike'?'2px':'1px'} solid #e05555;border-radius:3px;padding:.5rem;cursor:${s.myPick?'default':'pointer'};opacity:${s.myPick&&s.myPick!=='strike'?.4:1}">
+          ⚔ Strike<br><span style="font-size:.48rem;color:#6a2a2a">${s.myAtk} ATK</span>
+        </button>
+        <button onclick="pvpPick('defend')" ${s.myPick?'disabled':''} style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(94,196,94,${s.myPick==='defend'?.4:.18});border:${s.myPick==='defend'?'2px':'1px'} solid #5ec45e;border-radius:3px;padding:.5rem;cursor:${s.myPick?'default':'pointer'};opacity:${s.myPick&&s.myPick!=='defend'?.4:1}">
+          🛡 Defend<br><span style="font-size:.48rem;color:#2a6a2a">${s.myDef} DEF</span>
+        </button>
+        <button onclick="pvpPick('heavy')" ${s.myPick?'disabled':''} style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:rgba(200,184,128,${s.myPick==='heavy'?.4:.18});border:${s.myPick==='heavy'?'2px':'1px'} solid rgba(200,184,128,.6);border-radius:3px;padding:.5rem;cursor:${s.myPick?'default':'pointer'};opacity:${s.myPick&&s.myPick!=='heavy'?.4:1}">
+          💥 Heavy<br><span style="font-size:.48rem;color:#5a4825">×1.5 −HP</span>
+        </button>
+      </div>
+      <button onclick="pvpForfeit()" style="width:100%;font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#5a4825;background:none;border:.5px solid rgba(200,184,128,.12);border-radius:3px;padding:.3rem;cursor:pointer">Forfeit</button>
     </div>`
   document.body.appendChild(el)
 }
 
-window.pvpMove = async (action) => {
+window.pvpPick = (action) => {
   const s = pvpState
-  if (!s || !s.myTurn) return
+  if (!s || s.myPick || s.ended) return
+  s.myPick = action
+  s.myPickAt = Date.now()
+  renderPvpCombat()
+  if (pvpChannel) pvpChannel.send({ type:'broadcast', event:'pvp_pick', payload:{ action, pickedAt: s.myPickAt, fromName: player.username } })
+  if (s.opPick) resolveRound()
+}
 
-  let dmg = 0
-  if (action === 'strike') {
-    dmg = Math.max(1, s.myAtk - Math.floor(s.opDef * 0.4) + Math.floor(Math.random()*4) - 2)
-  } else if (action === 'heavy') {
-    dmg = Math.max(1, Math.floor(s.myAtk * 1.5) - Math.floor(s.opDef * 0.3))
-    s.myHp = Math.max(0, s.myHp - Math.floor(s.myMaxHp * 0.1))
+function receiveOpponentPick(payload) {
+  const s = pvpState
+  if (!s || s.ended) return
+  s.opPick = payload.action
+  s.opPickAt = payload.pickedAt
+  renderPvpCombat()
+  if (s.myPick) resolveRound()
+}
+
+function resolveRound() {
+  const s = pvpState
+  if (!s || s.ended) return
+
+  const myFirst = s.myPickAt < s.opPickAt || (s.myPickAt === s.opPickAt && s.mySpd >= s.opSpd)
+  const first  = myFirst ? { name:player.username, action:s.myPick, atk:s.myAtk, def:s.myDef } : { name:s.opponentName, action:s.opPick, atk:s.opAtk, def:s.opDef }
+  const second = myFirst ? { name:s.opponentName, action:s.opPick, atk:s.opAtk, def:s.opDef } : { name:player.username, action:s.myPick, atk:s.myAtk, def:s.myDef }
+
+  function calcDmg(att, defAction, defDef) {
+    if (att.action === 'defend') return 0
+    const base = att.action === 'heavy' ? Math.floor(att.atk*1.5) : att.atk
+    const mit  = defAction === 'defend' ? defDef : Math.floor(defDef*0.4)
+    return Math.max(0, base - mit + Math.floor(Math.random()*3) - 1)
   }
-  // defend: dmg stays 0, opponent gets no damage this round
 
-  s.opHp   = Math.max(0, s.opHp - dmg)
-  s.myTurn = false
+  const firstDmg  = calcDmg(first,  second.action, second.def)
+  const secondDmg = calcDmg(second, first.action,  first.def)
+  const firstCost  = first.action  === 'heavy' ? Math.floor((myFirst?s.myMaxHp:s.opMaxHp)*0.1) : 0
+  const secondCost = second.action === 'heavy' ? Math.floor((myFirst?s.opMaxHp:s.myMaxHp)*0.1) : 0
 
-  const logMsg = action === 'defend'
-    ? `${player.username} defends`
-    : `${player.username} ${action === 'heavy' ? 'heavy strikes' : 'strikes'} for ${dmg} dmg`
-  s.log.push(logMsg)
-
-  // Send on the persistent shared channel
-  if (pvpChannel) {
-    pvpChannel.send({
-      type: 'broadcast', event: 'pvp_move',
-      payload: { action, dmg, attackerHp: s.myHp, defenderHp: s.opHp, fromName: player.username, log: logMsg }
-    })
+  if (myFirst) {
+    s.myHp = Math.max(0, s.myHp - firstCost)
+    s.opHp = Math.max(0, s.opHp - firstDmg)
+    if (s.opHp > 0) { s.opHp = Math.max(0, s.opHp - secondCost); s.myHp = Math.max(0, s.myHp - secondDmg) }
+  } else {
+    s.opHp = Math.max(0, s.opHp - firstCost)
+    s.myHp = Math.max(0, s.myHp - firstDmg)
+    if (s.myHp > 0) { s.myHp = Math.max(0, s.myHp - secondCost); s.opHp = Math.max(0, s.opHp - secondDmg) }
   }
 
-  if (s.opHp <= 0) { endPvpCombat(true); return }
+  const label = a => a==='defend'?'defends':a==='heavy'?'heavy strikes':'strikes'
+  s.log.push(`— Round ${s.round} (${myFirst?player.username:s.opponentName} faster) —`)
+  s.log.push(`${first.name} ${label(first.action)}${first.action!=='defend'?' for '+firstDmg+' dmg':''}`)
+  if (s.myHp > 0 || s.opHp > 0)
+    s.log.push(`${second.name} ${label(second.action)}${second.action!=='defend'?' for '+secondDmg+' dmg':''}`)
+
+  s.myPick=null; s.opPick=null; s.myPickAt=null; s.opPickAt=null; s.round++
+
+  const iWon  = s.opHp<=0 && s.myHp>0
+  const iLost = s.myHp<=0 && s.opHp>0
+  const isDraw= s.myHp<=0 && s.opHp<=0
+
+  if (iWon || iLost || isDraw) {
+    const winnerId = iWon ? player.id : iLost ? s.opponentId : null
+    // Mark ended before broadcast so the pvp_end echo doesn't double-fire
+    s.ended = true
+    if (pvpChannel) pvpChannel.send({ type:'broadcast', event:'pvp_end', payload:{ winnerId } })
+    setTimeout(() => endPvpCombat(iWon || isDraw, false), 200)
+    return
+  }
   renderPvpCombat()
 }
 
-function receivePvpMove(payload) {
-  const s = pvpState
-  if (!s) return
+async function endPvpCombat(won, fromRemote) {
+  // Guard against double-call
+  if (!pvpState || pvpState.ended) return
+  pvpState.ended = true
 
-  // Payload from opponent's perspective:
-  // attackerHp = their HP after they paid any cost (heavy)
-  // defenderHp = our HP after they hit us
-  s.myHp  = payload.defenderHp  // we are the defender — this is our new HP
-  s.opHp  = payload.attackerHp  // opponent's HP after their action
-  s.myTurn = true
-  s.round++
-  s.log.push(payload.log)
+  // Snapshot state before any async ops clear it
+  const s = { ...pvpState }
 
-  if (s.myHp <= 0) { endPvpCombat(false); return }
-  renderPvpCombat()
-}
-
-async function endPvpCombat(won) {
+  // Tear down UI and channel
   document.getElementById('pvp-combat')?.remove()
-  // Clean up persistent channel
   if (pvpChannel) { supabase.removeChannel(pvpChannel); pvpChannel = null }
-  const s = pvpState
+  pvpState = null
 
-  // Save result
-  await supabase.from('encounters').update({
-    result: won ? 'pvp_victory' : 'pvp_defeat',
-    resolved_at: new Date().toISOString(),
-  }).eq('id', s.encounterId)
+  // Save to DB
+  try {
+    await supabase.from('encounters').update({
+      result: won ? 'pvp_victory' : 'pvp_defeat',
+      resolved_at: new Date().toISOString(),
+    }).eq('id', s.encounterId)
+    if (won) await supabase.from('players').update({ pvp_kills: (player.pvp_kills||0)+1 }).eq('id', player.id)
+  } catch(e) { console.error('pvp save error', e) }
 
-  if (won) {
-    await supabase.from('players').update({ pvp_kills:(player.pvp_kills||0)+1 }).eq('id', player.id)
-  }
+  // Remove any existing result screen
+  document.getElementById('pvp-result')?.remove()
 
-  // Show result modal
+  // Build result screen
   const el = document.createElement('div')
-  el.style.cssText = 'position:fixed;inset:0;z-index:900;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.88)'
+  el.id = 'pvp-result'
+  el.style.cssText = 'position:fixed;inset:0;z-index:910;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.9)'
+  const borderCol = won ? '#5ec45e' : '#e05555'
+  const glowCol   = won ? 'rgba(94,196,94,.4)' : 'rgba(224,85,85,.4)'
+  const titleCol  = won ? '#5ec45e' : '#e05555'
+  const titleText = won ? 'VICTORY' : 'DEFEAT'
+  const subText   = won ? `You defeated ${s.opponentName}.` : `${s.opponentName} defeated you.`
+
   el.innerHTML = `
-    <div style="background:#0f0c09;border:1px solid ${won?'#5ec45e':'#e05555'};border-radius:8px;padding:1.5rem;text-align:center;max-width:300px;box-shadow:0 0 40px ${won?'rgba(94,196,94,.3)':'rgba(224,85,85,.3)'}">
-      <p style="font-family:'Cinzel',serif;font-size:1.4rem;font-weight:700;color:${won?'#5ec45e':'#e05555'};margin-bottom:.4rem">${won?'⚔ VICTORY':'✖ DEFEAT'}</p>
-      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.85rem;color:#c8b96e;margin-bottom:1rem">
-        ${won?'You defeated '+s.opponentName+'.':s.opponentName+' defeated you.'}
-      </p>
-      <button onclick="this.closest('[style]').remove()" style="font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.4);border:1px solid rgba(200,184,128,.6);border-radius:3px;padding:.45rem 1.5rem;cursor:pointer">Return to Lobby</button>
+    <div style="background:#0f0c09;border:2px solid ${borderCol};border-radius:8px;padding:1.75rem 1.5rem;text-align:center;max-width:300px;box-shadow:0 0 50px ${glowCol}">
+      <p style="font-family:'Cinzel',serif;font-size:1.6rem;font-weight:800;color:${titleCol};margin-bottom:.35rem;letter-spacing:.1em">${titleText}</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.85rem;color:#c8b96e;margin-bottom:1.25rem">${subText}</p>
+      <button id="pvp-result-btn" style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208;background:rgba(200,184,128,.45);border:1px solid rgba(200,184,128,.7);border-radius:4px;padding:.5rem 1.75rem;cursor:pointer;width:100%">← Return to Lobby</button>
     </div>`
   document.body.appendChild(el)
-  addPing((won?'Victory over ':'Defeated by ') + s.opponentName, won?'green':'red')
-  pvpState = null
+
+  // Use addEventListener so button always works regardless of pvpState
+  document.getElementById('pvp-result-btn').addEventListener('click', () => {
+    el.remove()
+    load()
+  })
+
+  addPing((won ? 'Victory over ' : 'Defeated by ') + s.opponentName, won ? 'green' : 'red')
 }
 
 window.pvpForfeit = async () => {
-  if (!pvpState) return
-  await endPvpCombat(false)
+  if (!pvpState || pvpState.ended) return
+  // Tell opponent they won
+  if (pvpChannel) {
+    pvpChannel.send({ type:'broadcast', event:'pvp_end', payload:{ winnerId: pvpState.opponentId } })
+  }
+  // Small delay so broadcast goes out before channel teardown
+  setTimeout(() => endPvpCombat(false, false), 150)
 }
 
 // ── Raid notifications on login ───────────────────────────
