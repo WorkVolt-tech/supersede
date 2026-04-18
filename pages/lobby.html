@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SuperSede — Lobby</title>
   <link rel="stylesheet" href="../styles/main.css">
+  <style>
+    @keyframes fadeIn  { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes shake   { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }
+    @keyframes blink   { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .incoming-pop { animation: fadeIn .3s ease, shake .4s ease .1s }
+    .blink { animation: blink 1.5s infinite }
+  </style>
 </head>
 <body>
 <div class="book-wrap">
@@ -15,8 +22,8 @@
         <p class="chapter-label">Chapter <span id="ch-num">1</span> · Lobby</p>
         <h1 class="page-title">Nearby Players</h1>
         <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.5rem">
-          <span style="width:6px;height:6px;border-radius:50%;background:#5ec45e;box-shadow:0 0 4px #5ec45e;display:inline-block;flex-shrink:0"></span>
-          <span id="count" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435;letter-spacing:.06em">0 detected</span>
+          <span class="blink" style="width:6px;height:6px;border-radius:50%;background:#5ec45e;box-shadow:0 0 4px #5ec45e;display:inline-block;flex-shrink:0"></span>
+          <span id="count" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#7a6435;letter-spacing:.06em">scanning…</span>
         </div>
         <hr class="ink-divider">
         <div id="ping-log" style="background:rgba(0,0,0,.06);border-left:2px solid rgba(139,106,32,.3);padding:.6rem .75rem;min-height:44px;border-radius:0 2px 2px 0;margin-bottom:.75rem">
@@ -33,347 +40,419 @@
         <hr class="ink-divider">
         <div id="own-stats"></div>
         <hr class="ink-divider">
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#6b5a35;line-height:1.6;margin-bottom:.75rem">
-          Tap a player to reveal encounter options. Alliance requests are sent in real time.
-        </p>
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#c04040;text-shadow:0 0 4px #c0404060;letter-spacing:.06em">
-          ⚠ Reputation shifts are permanent.
-        </p>
+        <div style="margin-top:.75rem">
+          <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#7a6435;letter-spacing:.08em;margin-bottom:.4rem">FIGHT MODES</p>
+          <div style="background:rgba(224,85,85,.06);border:.5px solid rgba(224,85,85,.2);border-radius:4px;padding:.5rem .65rem;margin-bottom:.4rem">
+            <p style="font-family:'Cinzel',serif;font-size:.72rem;color:#e05555;margin-bottom:2px">⚔ PVP Challenge</p>
+            <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.68rem;color:#6b5a35;line-height:1.4">Target is online. They receive a notification and must accept to fight.</p>
+          </div>
+          <div style="background:rgba(176,110,255,.06);border:.5px solid rgba(176,110,255,.2);border-radius:4px;padding:.5rem .65rem">
+            <p style="font-family:'Cinzel',serif;font-size:.72rem;color:#b06eff;margin-bottom:2px">🌑 Raid Attack</p>
+            <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.68rem;color:#6b5a35;line-height:1.4">Target is away. Auto-resolved by stats. They get a Revenge notice on return.</p>
+          </div>
+        </div>
+        <hr class="ink-divider" style="margin-top:.75rem">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#c04040;letter-spacing:.06em">⚠ Reputation shifts are permanent.</p>
       </div>
     </div>
   </div>
 </div>
 
 <script type="module">
-  import { supabase }             from '../supabase.js'
+import { supabase }          from '../supabase.js'
+import { renderNav, showToast } from '../components/nav.js'
 
-  // ── Admin config ─────────────────────────────────
-  // Set this to your Supabase user ID so your cloaked figure appears
-  // Find it: Supabase dashboard → Authentication → Users → your email → copy the UUID
-  const ADMIN_USER_IDS = new Set([
-    'YOUR_USER_ID_HERE',  // ← replace with your actual Supabase user ID
-  ])
+const ADMIN_USER_IDS = new Set(['YOUR_USER_ID_HERE'])
+function isAdmin(uid) { return ADMIN_USER_IDS.has(uid) }
 
-  function isAdmin(userId) { return ADMIN_USER_IDS.has(userId) }
-  import { renderNav, showToast } from '../components/nav.js'
+const BC = {
+  neutral:{ label:'Neutral', color:'#c8b96e' },
+  red:    { label:'Hunter',  color:'#e05555' },
+  green:  { label:'Helper',  color:'#5ec45e' },
+  elite:  { label:'Elite',   color:'#a07de0' },
+  unknown:{ label:'Unknown', color:'#666'    },
+}
+const SC = {
+  online:    { label:'Online',    color:'#5ec45e' },
+  in_combat: { label:'In Combat', color:'#e05555' },
+  idle:      { label:'Idle',      color:'#888'    },
+  boss_fight:{ label:'Boss Fight',color:'#a07de0' },
+}
 
-  const BC = { neutral:{label:'Neutral',color:'#c8b96e'}, red:{label:'Hunter',color:'#e05555'}, green:{label:'Helper',color:'#5ec45e'}, elite:{label:'Elite',color:'#a07de0'}, unknown:{label:'Unknown',color:'#666'} }
-  const SC = { online:{label:'Online',color:'#5ec45e'}, in_combat:{label:'In Combat',color:'#e05555'}, idle:{label:'Idle',color:'#888'}, boss_fight:{label:'Boss Fight',color:'#a07de0'} }
+let player = await renderNav('nav')
+if (!player) throw new Error('no player')
 
-  let player = await renderNav('nav')
-  if (!player) throw new Error('no player')
-  let nearby = [], selected = null
-  const chapter = player.current_chapter||1
+let nearby = [], selected = null
+const chapter = player.current_chapter || 1
 
-  document.getElementById('ch-num').textContent = chapter
-  document.getElementById('own-name').textContent = player.username
-  // Show cloaked avatar next to your own name if you're the admin
-  if (isAdmin(player.id)) {
-    const nameEl = document.getElementById('own-name')
-    const wrap = document.createElement('div')
-    wrap.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem'
-    const img = document.createElement('img')
-    img.src   = '../assets/mysterious_cloaked_player.png'
-    img.alt   = 'Admin'
-    img.style.cssText = 'width:48px;height:48px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid #00ffe7;box-shadow:0 0 12px #00ffe750'
-    nameEl.parentNode.insertBefore(wrap, nameEl)
-    wrap.appendChild(img)
-    wrap.appendChild(nameEl)
-    const tag = document.createElement('p')
-    tag.style.cssText = 'font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:#00ffe7;text-shadow:0 0 8px #00ffe7;letter-spacing:.12em'
-    tag.textContent = '⚠ ADMIN'
-    wrap.appendChild(tag)
-  }
+document.getElementById('ch-num').textContent = chapter
+document.getElementById('own-name').textContent = player.username
 
-  const badgeColor = BC[player.badge]?.color||'#c8b96e'
-  document.getElementById('own-stats').innerHTML = [
-    ['Badge', `<span style="color:${badgeColor}">${BC[player.badge]?.label||'Neutral'}</span>`],
-    ['Level', player.level], ['Chapter', chapter],
-    ['Status', `<span style="color:#5ec45e">Online</span>`],
-  ].map(([k,v])=>`
-    <div style="display:flex;justify-content:space-between;padding:.55rem 0;border-bottom:.5px solid rgba(139,106,32,.15)">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#9a8050;letter-spacing:.08em">${k}</span>
-      <span style="font-family:'Cinzel',serif;font-size:.85rem;color:#1a1208;font-weight:500">${v}</span>
-    </div>
-  `).join('')
+if (isAdmin(player.id)) {
+  const nameEl = document.getElementById('own-name')
+  const wrap = document.createElement('div')
+  wrap.style.cssText = 'display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem'
+  const img = document.createElement('img')
+  img.src = '../assets/mysterious_cloaked_player.png'
+  img.style.cssText = 'width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #00ffe7;box-shadow:0 0 12px #00ffe750'
+  nameEl.parentNode.insertBefore(wrap, nameEl)
+  wrap.appendChild(img); wrap.appendChild(nameEl)
+  const tag = document.createElement('p')
+  tag.style.cssText = "font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#00ffe7;letter-spacing:.12em"
+  tag.textContent = '⚠ ADMIN'
+  wrap.appendChild(tag)
+}
 
-  // Push own presence
+const badgeColor = BC[player.badge]?.color || '#c8b96e'
+document.getElementById('own-stats').innerHTML = [
+  ['Badge',   `<span style="color:${badgeColor}">${BC[player.badge]?.label||'Neutral'}</span>`],
+  ['Level',   player.level],
+  ['Chapter', chapter],
+  ['Status',  `<span style="color:#5ec45e">● Online</span>`],
+].map(([k,v]) => `
+  <div style="display:flex;justify-content:space-between;padding:.55rem 0;border-bottom:.5px solid rgba(139,106,32,.15)">
+    <span style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#9a8050;letter-spacing:.08em">${k}</span>
+    <span style="font-family:'Cinzel',serif;font-size:.85rem;color:#1a1208;font-weight:500">${v}</span>
+  </div>`).join('')
+
+// ── Presence ──────────────────────────────────────────────
+async function pushPresence(status = 'online') {
   await supabase.from('presence').upsert({
-    player_id:player.id, username:player.username,
-    chapter, node:player.current_node||'opening',
-    badge:player.badge||'neutral', level:player.level||1, status:'online'
-  },{onConflict:'player_id'})
+    player_id: player.id, username: player.username,
+    chapter, node: player.current_node || 'opening',
+    badge: player.badge || 'neutral', level: player.level || 1,
+    status, last_seen_at: new Date().toISOString(),
+  }, { onConflict: 'player_id' })
+}
+await pushPresence()
 
-  // Load nearby
-  async function load() {
-    const {data} = await supabase.from('presence').select('*').eq('chapter',chapter).neq('player_id',player.id).order('updated_at',{ascending:false})
-    nearby = data||[]
-    document.getElementById('count').textContent = nearby.length + ' detected'
-    renderList()
+// ── Load nearby (active in last 5 min) ───────────────────
+async function load() {
+  const since = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+  const { data } = await supabase.from('presence')
+    .select('*').eq('chapter', chapter).neq('player_id', player.id)
+    .gte('last_seen_at', since).order('last_seen_at', { ascending: false })
+  nearby = data || []
+  document.getElementById('count').textContent = nearby.length + ' detected'
+  renderList()
+}
+
+function addPing(msg, badge = 'neutral') {
+  const log = document.getElementById('ping-log')
+  const p = document.createElement('p')
+  p.style.cssText = "font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#8a7850;margin:0 0 2px;letter-spacing:.04em"
+  p.innerHTML = `<span style="color:${BC[badge]?.color||'#c8b96e'}">▲</span> ${msg}`
+  log.insertBefore(p, log.firstChild)
+  while (log.children.length > 6) log.removeChild(log.lastChild)
+}
+
+function isPlayerOnline(p) {
+  return (Date.now() - new Date(p.last_seen_at).getTime()) < 3 * 60 * 1000
+}
+
+function renderList() {
+  const el = document.getElementById('player-list')
+  if (!nearby.length) {
+    el.innerHTML = `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#7a6435">No other players in this chapter yet.</p>`
+    return
   }
-
-  function addPing(msg, badge='neutral') {
-    const log = document.getElementById('ping-log')
-    const p = document.createElement('p')
-    p.style.cssText = 'font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:#8a7850;margin:0 0 2px;letter-spacing:.04em'
-    p.innerHTML = `<span style="color:${BC[badge]?.color||'#c8b96e'}">▲</span> ${msg}`
-    log.insertBefore(p, log.firstChild)
-    while(log.children.length>5) log.removeChild(log.lastChild)
-  }
-
-  function renderList() {
-    const el = document.getElementById('player-list')
-    if (!nearby.length) { el.innerHTML=`<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#7a6435">No other players in this chapter yet.</p>`; return }
-    el.innerHTML = nearby.map(p=>{
-      const bc = BC[p.badge]||BC.neutral
-      const sc = SC[p.status]||SC.online
-      const isSel = selected===p.player_id
-      return `
-        <div data-pid="${p.player_id}" style="border:.5px solid ${isSel?bc.color:bc.color+'30'};border-radius:5px;padding:.7rem .75rem;cursor:pointer;margin-bottom:6px;background:${isSel?'rgba(200,184,128,.1)':'rgba(0,0,0,.04)'};transition:all .15s">
-          <div style="display:flex;align-items:center;gap:.6rem">
-            ${isAdmin(p.player_id)
-            ? '<img src=\'../assets/mysterious_cloaked_player.png\' alt=\'Admin\' style=\'width:32px;height:32px;border-radius:50%;object-fit:cover;object-position:top;border:2px solid #00ffe7;box-shadow:0 0 10px #00ffe750;flex-shrink:0\'>'
-            : '<div style=\'width:32px;height:32px;border-radius:50%;border:1px solid '+bc.color+';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;background:rgba(0,0,0,.15);color:'+bc.color+';font-family:\'Cinzel\',serif;flex-shrink:0\'>' + p.username[0].toUpperCase() + '</div>'}
-            <div style="flex:1;min-width:0">
-              <p style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208;margin:0 0 1px">${p.username}</p>
-              <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#7a6435;margin:0;letter-spacing:.04em">Lvl ${p.level} · ${p.node} · <span style="color:${sc.color}">${sc.label}</span></p>
-            </div>
-            <span style="font-family:'Share Tech Mono',monospace;font-size:.56rem;border:.5px solid ${bc.color+'40'};padding:1px 6px;border-radius:20px;color:${bc.color};letter-spacing:.06em">${bc.label}</span>
+  el.innerHTML = nearby.map(p => {
+    const bc     = BC[p.badge]  || BC.neutral
+    const isSel  = selected === p.player_id
+    const online = isPlayerOnline(p)
+    return `
+      <div data-pid="${p.player_id}" style="border:.5px solid ${isSel?bc.color:bc.color+'30'};border-radius:5px;padding:.7rem .75rem;cursor:pointer;margin-bottom:6px;background:${isSel?'rgba(200,184,128,.1)':'rgba(0,0,0,.04)'};transition:all .15s">
+        <div style="display:flex;align-items:center;gap:.6rem">
+          ${isAdmin(p.player_id)
+            ? `<img src='../assets/mysterious_cloaked_player.png' style='width:32px;height:32px;border-radius:50%;object-fit:cover;border:2px solid #00ffe7;box-shadow:0 0 10px #00ffe750;flex-shrink:0'>`
+            : `<div style='width:32px;height:32px;border-radius:50%;border:1px solid ${bc.color};display:flex;align-items:center;justify-content:center;font-size:12px;font-family:Cinzel,serif;color:${bc.color};background:rgba(0,0,0,.15);flex-shrink:0'>${p.username[0].toUpperCase()}</div>`}
+          <div style="flex:1;min-width:0">
+            <p style="font-family:'Cinzel',serif;font-size:.82rem;color:#1a1208;margin:0 0 1px">${p.username}</p>
+            <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#7a6435;margin:0;letter-spacing:.04em">
+              Lvl ${p.level} · <span style="color:${online?'#5ec45e':'#888'}">${online?'● Online':'○ Away'}</span>
+            </p>
           </div>
-          ${isSel?`
-            <div style="display:flex;gap:4px;margin-top:8px;padding-top:7px;border-top:.5px solid rgba(139,106,32,.2)">
-              <button onclick="sendAction('team','${p.player_id}','${p.username}')"   style="flex:1;font-family:'IM Fell English',serif;font-size:.8rem;padding:5px 3px;border-radius:3px;border:.5px solid #5ec45e40;cursor:pointer;background:none;color:#3a6a3a">🤝 Team</button>
-              <button onclick="sendAction('attack','${p.player_id}','${p.username}')" style="flex:1;font-family:'IM Fell English',serif;font-size:.8rem;padding:5px 3px;border-radius:3px;border:.5px solid #e0555540;cursor:pointer;background:none;color:#6a2a2a">⚔ Attack</button>
-              <button onclick="sendAction('observe','${p.player_id}','${p.username}')" style="flex:1;font-family:'IM Fell English',serif;font-size:.8rem;padding:5px 3px;border-radius:3px;border:.5px solid #a07de040;cursor:pointer;background:none;color:#3a3a6a">👁 Observe</button>
+          <span style="font-family:'Share Tech Mono',monospace;font-size:.56rem;border:.5px solid ${bc.color+'40'};padding:1px 6px;border-radius:20px;color:${bc.color};letter-spacing:.06em">${bc.label}</span>
+        </div>
+        ${isSel ? `
+          <div style="margin-top:8px;padding-top:7px;border-top:.5px solid rgba(139,106,32,.2)">
+            <div style="display:flex;gap:4px;margin-bottom:4px">
+              <button onclick="sendAction('observe','${p.player_id}','${p.username}')"
+                style="flex:1;font-family:'IM Fell English',serif;font-size:.78rem;padding:5px;border-radius:3px;border:.5px solid #a07de040;cursor:pointer;background:none;color:#3a3a6a">👁 Observe</button>
+              <button onclick="sendAction('team','${p.player_id}','${p.username}')"
+                style="flex:1;font-family:'IM Fell English',serif;font-size:.78rem;padding:5px;border-radius:3px;border:.5px solid #5ec45e40;cursor:pointer;background:none;color:#3a6a3a">🤝 Team</button>
             </div>
-          `:''}
-        </div>
-      `
-    }).join('')
+            <button onclick="sendAction('attack','${p.player_id}','${p.username}',${online})"
+              style="width:100%;font-family:'IM Fell English',serif;font-size:.78rem;padding:5px;border-radius:3px;border:.5px solid ${online?'#e0555540':'#b06eff40'};cursor:pointer;background:none;color:${online?'#6a2a2a':'#4a2a6a'}">
+              ${online?'⚔ PVP Challenge':'🌑 Raid Attack'}
+            </button>
+            ${!online?`<p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#b06eff;margin-top:3px;text-align:center">Player is away — auto-resolved raid</p>`:''}
+          </div>` : ''}
+      </div>`
+  }).join('')
 
-    document.querySelectorAll('[data-pid]').forEach(el=>{
-      el.addEventListener('click', e=>{
-        if (e.target.tagName==='BUTTON') return
-        const pid = el.dataset.pid
-        selected = selected===pid ? null : pid
-        renderList()
-      })
+  document.querySelectorAll('[data-pid]').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.tagName === 'BUTTON') return
+      const pid = el.dataset.pid
+      selected  = selected === pid ? null : pid
+      renderList()
     })
-  }
+  })
+}
 
-  // ── Observe: show player profile modal ─────────────────
-  window.sendAction = async (type, targetId, targetName) => {
-    if (type === 'observe') {
-      showObserveModal(targetId, targetName)
-      return
-    }
+window.sendAction = (type, targetId, targetName, isOnline) => {
+  if (type === 'observe') { showObserveModal(targetId, targetName); return }
+  if (type === 'team')    { showTeamModal(targetId, targetName);    return }
+  if (type === 'attack')  { showAttackModal(targetId, targetName, isOnline); return }
+}
 
-    if (type === 'team') {
-      showTeamRequestModal(targetId, targetName)
-      return
-    }
-
-    if (type === 'attack') {
-      showAttackModal(targetId, targetName)
-      return
-    }
-  }
-
-  // ── Observe Modal ─────────────────────────────────────
-  async function showObserveModal(targetId, targetName) {
-    document.getElementById('observe-modal')?.remove()
-    // Fetch target player data
-    const { data: tp } = await supabase.from('players').select('*').eq('id', targetId).single()
-    const { data: tpres } = await supabase.from('presence').select('*').eq('player_id', targetId).single()
-
-    const modal = document.createElement('div')
-    modal.id = 'observe-modal'
-    modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
-
-    const badge = tp?.badge || 'neutral'
-    const bc2 = BC[badge] || BC.neutral
-    const pvpKills   = tp?.pvp_kills   || 0
-    const helpsGiven = tp?.helps_given || 0
-    const backstabs  = tp?.backstabs   || 0
-    const reputation = tp?.reputation  || 'neutral'
-
-    modal.innerHTML = `
-      <div style="background:#b8a568;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:300px;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-          <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">Player Profile</p>
-          <button onclick="document.getElementById('observe-modal').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#1a1208">✕</button>
-        </div>
-        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;padding:.6rem;background:rgba(0,0,0,.08);border-radius:4px">
-          <div style="width:44px;height:44px;border-radius:50%;border:2px solid ${bc2.color};display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:1.1rem;font-weight:600;color:${bc2.color};background:rgba(0,0,0,.2);flex-shrink:0">${targetName[0].toUpperCase()}</div>
-          <div>
-            <p style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:600;color:#1a1208;margin:0 0 2px">${targetName}</p>
-            <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:${bc2.color};margin:0;letter-spacing:.06em">${bc2.label} · Level ${tp?.level||'?'}</p>
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:.75rem">
-          ${[
-            ['Reputation', reputation, '#c8b96e'],
-            ['Element', tp?.element||'—', '#a8d8ea'],
-            ['⚔ PVP Kills', pvpKills, '#e05555'],
-            ['🤝 Helps Given', helpsGiven, '#5ec45e'],
-            ['🗡 Backstabs', backstabs, '#b06eff'],
-            ['Chapter', tp?.current_chapter||1, '#c8b96e'],
-          ].map(([k,v,c]) => '<div style="background:rgba(0,0,0,.1);border-radius:3px;padding:5px 7px"><span style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#3a2008;display:block">'+k+'</span><span style="font-family:\'Cinzel\',serif;font-size:.82rem;font-weight:600;color:'+c+'">'+v+'</span></div>').join('')}
-        </div>
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#3a2008;letter-spacing:.06em">
-          Status: <span style="color:${(SC[tpres?.status||'online']||SC.online).color}">${(SC[tpres?.status||'online']||SC.online).label}</span>
-        </p>
+// ── Observe ───────────────────────────────────────────────
+async function showObserveModal(targetId, targetName) {
+  document.getElementById('observe-modal')?.remove()
+  const { data: tp }    = await supabase.from('players').select('*').eq('id', targetId).single()
+  const { data: tpres } = await supabase.from('presence').select('*').eq('player_id', targetId).single()
+  const bc2 = BC[tp?.badge] || BC.neutral
+  const modal = document.createElement('div')
+  modal.id = 'observe-modal'
+  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
+  modal.innerHTML = `
+    <div style="background:#b8a568;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:300px;max-width:360px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">Player Profile</p>
+        <button onclick="document.getElementById('observe-modal').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#1a1208">✕</button>
       </div>
-    `
-    modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
-    document.body.appendChild(modal)
-    addPing('Observing ' + targetName, 'neutral')
-  }
-
-  // ── Team Request Modal ────────────────────────────────
-  async function showTeamRequestModal(targetId, targetName) {
-    document.getElementById('team-modal')?.remove()
-    const modal = document.createElement('div')
-    modal.id = 'team-modal'
-    modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
-    modal.innerHTML = `
-      <div style="background:#b8a568;border:1px solid #5ec45e;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
-        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin-bottom:.5rem">Alliance Request</p>
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#1a1208;margin-bottom:.75rem">
-          Send a team request to <strong>${targetName}</strong>?<br>
-          They will be notified and can accept or decline.
-        </p>
-        <div style="display:flex;gap:6px">
-          <button onclick="confirmTeam('${targetId}','${targetName}')" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(94,196,94,.3);border:1px solid #5ec45e;border-radius:3px;padding:.45rem;cursor:pointer">🤝 Send Request</button>
-          <button onclick="document.getElementById('team-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.2);border:1px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;padding:.6rem;background:rgba(0,0,0,.08);border-radius:4px">
+        <div style="width:44px;height:44px;border-radius:50%;border:2px solid ${bc2.color};display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:1.1rem;font-weight:600;color:${bc2.color};background:rgba(0,0,0,.2);flex-shrink:0">${targetName[0].toUpperCase()}</div>
+        <div>
+          <p style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:600;color:#1a1208;margin:0 0 2px">${targetName}</p>
+          <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:${bc2.color};margin:0;letter-spacing:.06em">${bc2.label} · Level ${tp?.level||'?'}</p>
         </div>
       </div>
-    `
-    modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
-    document.body.appendChild(modal)
-  }
-
-  window.confirmTeam = async (targetId, targetName) => {
-    document.getElementById('team-modal')?.remove()
-    await supabase.from('encounters').insert({
-      initiator_id: player.id, target_id: targetId,
-      chapter, result: 'team_request'
-    })
-    addPing('Alliance request sent to ' + targetName, 'green')
-    showToast('Team request sent to ' + targetName)
-    // Notify target via realtime
-    await supabase.channel('notify:' + targetId).send({
-      type: 'broadcast', event: 'team_request',
-      payload: { from: player.username, fromId: player.id }
-    })
-    selected = null
-    renderList()
-  }
-
-  // ── Attack Modal ──────────────────────────────────────
-  async function showAttackModal(targetId, targetName) {
-    document.getElementById('attack-modal')?.remove()
-    const modal = document.createElement('div')
-    modal.id = 'attack-modal'
-    modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
-    modal.innerHTML = `
-      <div style="background:#b8a568;border:1px solid #e05555;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
-        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin-bottom:.5rem">⚔ Initiate PVP</p>
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#1a1208;margin-bottom:.4rem">
-          Challenge <strong>${targetName}</strong> to combat?
-        </p>
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#c04040;margin-bottom:.75rem">
-          ⚠ This will shift your reputation toward Red.
-        </p>
-        <div style="display:flex;gap:6px">
-          <button onclick="confirmAttack('${targetId}','${targetName}')" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(224,85,85,.25);border:1px solid #e05555;border-radius:3px;padding:.45rem;cursor:pointer">⚔ Attack</button>
-          <button onclick="document.getElementById('attack-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.2);border:1px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
-        </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:.75rem">
+        ${[['Reputation',tp?.reputation||'neutral','#c8b96e'],['Element',tp?.element||'—','#a8d8ea'],
+           ['⚔ PVP Kills',tp?.pvp_kills||0,'#e05555'],['🤝 Helps',tp?.helps_given||0,'#5ec45e'],
+           ['🗡 Backstabs',tp?.backstabs||0,'#b06eff'],['Chapter',tp?.current_chapter||1,'#c8b96e']
+          ].map(([k,v,c])=>`<div style="background:rgba(0,0,0,.1);border-radius:3px;padding:5px 7px"><span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#3a2008;display:block">${k}</span><span style="font-family:'Cinzel',serif;font-size:.82rem;font-weight:600;color:${c}">${v}</span></div>`).join('')}
       </div>
-    `
-    modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
-    document.body.appendChild(modal)
-  }
-
-  window.confirmAttack = async (targetId, targetName) => {
-    document.getElementById('attack-modal')?.remove()
-    await supabase.from('encounters').insert({
-      initiator_id: player.id, target_id: targetId,
-      chapter, result: 'pvp_initiated'
-    })
-    // Update reputation
-    await supabase.from('players').update({ reputation: 'red', badge: 'red' }).eq('id', player.id)
-    // Notify target
-    await supabase.channel('notify:' + targetId).send({
-      type: 'broadcast', event: 'pvp_challenge',
-      payload: { from: player.username, fromId: player.id }
-    })
-    addPing('Attack initiated on ' + targetName, 'red')
-    showToast('Challenge sent to ' + targetName)
-    selected = null
-    renderList()
-  }
-
-  // ── Listen for incoming notifications ────────────────
-  supabase.channel('notify:' + player.id)
-    .on('broadcast', { event: 'team_request' }, ({ payload }) => {
-      showIncomingRequest('team', payload.from, payload.fromId)
-    })
-    .on('broadcast', { event: 'pvp_challenge' }, ({ payload }) => {
-      showIncomingRequest('pvp', payload.from, payload.fromId)
-    })
-    .subscribe()
-
-  function showIncomingRequest(type, fromName, fromId) {
-    document.getElementById('incoming-modal')?.remove()
-    const isPvp = type === 'pvp'
-    const modal = document.createElement('div')
-    modal.id = 'incoming-modal'
-    modal.style.cssText = 'position:fixed;top:80px;right:20px;z-index:800;min-width:260px;max-width:320px;background:'+(isPvp?'#4a1a1a':'#1a3a1a')+';border:1px solid '+(isPvp?'#e05555':'#5ec45e')+';border-radius:6px;padding:1rem;box-shadow:0 8px 40px rgba(0,0,0,.8);animation:fadeIn .3s ease'
-    modal.innerHTML = `
-      <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${isPvp?'#e05555':'#5ec45e'};margin-bottom:.4rem">
-        ${isPvp?'⚔ PVP Challenge!':'🤝 Alliance Request!'}
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#3a2008;letter-spacing:.06em">
+        Status: <span style="color:${(SC[tpres?.status||'online']||SC.online).color}">${(SC[tpres?.status||'online']||SC.online).label}</span>
       </p>
-      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#d4c090;margin-bottom:.75rem">
-        <strong>${fromName}</strong> wants to ${isPvp?'fight you':'team up with you'}.
-      </p>
+    </div>`
+  modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
+  document.body.appendChild(modal)
+  addPing('Observing ' + targetName)
+}
+
+// ── Team ──────────────────────────────────────────────────
+function showTeamModal(targetId, targetName) {
+  document.getElementById('team-modal')?.remove()
+  const modal = document.createElement('div')
+  modal.id = 'team-modal'
+  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
+  modal.innerHTML = `
+    <div style="background:#b8a568;border:1px solid #5ec45e;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin-bottom:.5rem">🤝 Alliance Request</p>
+      <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#1a1208;margin-bottom:.75rem">Send a team request to <strong>${targetName}</strong>?</p>
       <div style="display:flex;gap:6px">
-        <button onclick="respondRequest('accept','${type}','${fromId}','${fromName}')" style="flex:1;font-family:'Cinzel',serif;font-size:.75rem;color:#1a1208;background:rgba(${isPvp?'224,85,85':'94,196,94'},.4);border:1px solid ${isPvp?'#e05555':'#5ec45e'};border-radius:3px;padding:.4rem;cursor:pointer">Accept</button>
-        <button onclick="respondRequest('decline','${type}','${fromId}','${fromName}')" style="flex:1;font-family:'Cinzel',serif;font-size:.75rem;color:#c8c0a0;background:rgba(200,184,128,.1);border:.5px solid rgba(200,184,128,.3);border-radius:3px;padding:.4rem;cursor:pointer">Decline</button>
+        <button onclick="confirmTeam('${targetId}','${targetName}')" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(94,196,94,.3);border:1px solid #5ec45e;border-radius:3px;padding:.45rem;cursor:pointer">🤝 Send</button>
+        <button onclick="document.getElementById('team-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
       </div>
-    `
-    document.body.appendChild(modal)
-    setTimeout(() => modal.remove(), 30000)
-  }
+    </div>`
+  modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
+  document.body.appendChild(modal)
+}
 
-  window.respondRequest = async (response, type, fromId, fromName) => {
-    document.getElementById('incoming-modal')?.remove()
+window.confirmTeam = async (targetId, targetName) => {
+  document.getElementById('team-modal')?.remove()
+  await supabase.from('encounters').insert({ initiator_id:player.id, target_id:targetId, type:'team_request', chapter, result:'pending' })
+  await notifyPlayer(targetId, 'team_request', { from:player.username, fromId:player.id })
+  addPing('Alliance request sent to '+targetName, 'green')
+  showToast('Team request sent to '+targetName)
+  selected=null; renderList()
+}
+
+// ── Attack: PVP or Raid ───────────────────────────────────
+async function showAttackModal(targetId, targetName, isOnline) {
+  document.getElementById('attack-modal')?.remove()
+  const { data: tp } = await supabase.from('players').select('level,atk,def,hp,max_hp').eq('id', targetId).single()
+  const myAtk    = (player.atk||1) + (player.power||0)
+  const theirDef = tp?.def || 0
+  const raidDmg  = Math.max(1, myAtk - Math.floor(theirDef * 0.5))
+  const outcome  = raidDmg >= (tp?.hp||50) ? 'victory' : 'partial'
+
+  const modal = document.createElement('div')
+  modal.id = 'attack-modal'
+  modal.style.cssText = 'position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
+  modal.innerHTML = isOnline ? `
+    <div style="background:#b8a568;border:1px solid #e05555;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin-bottom:.4rem">⚔ PVP Challenge</p>
+      <div style="background:rgba(224,85,85,.08);border:.5px solid rgba(224,85,85,.2);border-radius:4px;padding:.5rem .65rem;margin-bottom:.5rem">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#e05555;letter-spacing:.06em;margin-bottom:2px">TARGET IS ONLINE</p>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.8rem;color:#1a1208"><strong>${targetName}</strong> will receive a challenge. They have 30 seconds to accept or it expires.</p>
+      </div>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.56rem;color:#c04040;margin-bottom:.75rem">⚠ Your reputation shifts to Red.</p>
+      <div style="display:flex;gap:6px">
+        <button onclick="confirmAttack('${targetId}','${targetName}',true,0,'')" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(224,85,85,.25);border:1px solid #e05555;border-radius:3px;padding:.45rem;cursor:pointer">⚔ Challenge</button>
+        <button onclick="document.getElementById('attack-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
+      </div>
+    </div>` : `
+    <div style="background:#b8a568;border:1px solid #b06eff;border-radius:6px;padding:1.25rem;min-width:280px;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208;margin-bottom:.4rem">🌑 Raid Attack</p>
+      <div style="background:rgba(176,110,255,.08);border:.5px solid rgba(176,110,255,.2);border-radius:4px;padding:.5rem .65rem;margin-bottom:.5rem">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#b06eff;letter-spacing:.06em;margin-bottom:2px">TARGET IS AWAY</p>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.8rem;color:#1a1208;margin-bottom:4px"><strong>${targetName}</strong> is offline. Resolved by stats automatically.</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#3a2008">
+          Your ATK <span style="color:#e05555">${myAtk}</span> vs Their DEF <span style="color:#5ec45e">${theirDef}</span> → Damage <span style="color:#c8b96e">${raidDmg}</span>
+          · <span style="color:${outcome==='victory'?'#5ec45e':'#c8b96e'}">${outcome==='victory'?'TARGET DEFEATED':'PARTIAL HIT'}</span>
+        </p>
+      </div>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#b06eff;margin-bottom:.75rem">They will see a Revenge notice when they return.</p>
+      <div style="display:flex;gap:6px">
+        <button onclick="confirmAttack('${targetId}','${targetName}',false,${raidDmg},'${outcome}')" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(176,110,255,.25);border:1px solid #b06eff;border-radius:3px;padding:.45rem;cursor:pointer">🌑 Raid</button>
+        <button onclick="document.getElementById('attack-modal').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:3px;padding:.45rem;cursor:pointer">Cancel</button>
+      </div>
+    </div>`
+  modal.addEventListener('click', e => { if (e.target===modal) modal.remove() })
+  document.body.appendChild(modal)
+}
+
+window.confirmAttack = async (targetId, targetName, isOnline, raidDmg, outcome) => {
+  document.getElementById('attack-modal')?.remove()
+  await supabase.from('players').update({ reputation:'red', badge:'red' }).eq('id', player.id)
+  player.badge='red'; player.reputation='red'
+
+  if (isOnline) {
+    const { data: enc } = await supabase.from('encounters').insert({
+      initiator_id:player.id, target_id:targetId, type:'pvp_challenge', chapter, result:'pending',
+    }).select().single()
+    await notifyPlayer(targetId, 'pvp_challenge', { from:player.username, fromId:player.id, encounterId:enc?.id })
+    addPing('PVP challenge sent to '+targetName, 'red')
+    showToast('⚔ Challenge sent — waiting for '+targetName)
+  } else {
     await supabase.from('encounters').insert({
-      initiator_id: fromId, target_id: player.id,
-      chapter, result: type + '_' + response
+      initiator_id:player.id, target_id:targetId, type:'raid', chapter,
+      result:outcome, damage_dealt:raidDmg, notified:false,
+      initiated_at:new Date().toISOString(),
     })
-    if (response === 'accept') {
-      showToast(type === 'pvp' ? 'PVP challenge accepted!' : 'Alliance formed with ' + fromName)
-      addPing((type==='pvp'?'PVP accepted from ':'Allied with ') + fromName, type==='pvp'?'red':'green')
-    } else {
-      showToast('Request from ' + fromName + ' declined')
-    }
+    const { data: tp } = await supabase.from('players').select('hp').eq('id', targetId).single()
+    if (tp) await supabase.from('players').update({ hp:Math.max(1,(tp.hp||50)-raidDmg) }).eq('id', targetId)
+    if (outcome==='victory') await supabase.from('players').update({ pvp_kills:(player.pvp_kills||0)+1 }).eq('id', player.id)
+    addPing('Raided '+targetName+' — '+outcome, 'red')
+    showToast('🌑 Raid: '+(outcome==='victory'?'Target defeated!':'Partial hit'))
   }
+  selected=null; renderList()
+}
 
-  // Realtime
-  supabase.channel('lobby:ch'+chapter)
-    .on('postgres_changes',{event:'*',schema:'public',table:'presence',filter:`chapter=eq.${chapter}`}, payload=>{
-      const row = payload.new
-      if (!row||row.player_id===player.id) return
-      if (payload.eventType==='INSERT') addPing(`${row.username} entered the area`, row.badge||'neutral')
-      load()
-    }).subscribe()
+// ── CRITICAL FIX: subscribe before send ──────────────────
+async function notifyPlayer(targetId, event, payload) {
+  return new Promise(resolve => {
+    const ch = supabase.channel('notify:'+targetId)
+    ch.subscribe(status => {
+      if (status==='SUBSCRIBED') {
+        ch.send({ type:'broadcast', event, payload })
+          .then(()=>setTimeout(()=>{ supabase.removeChannel(ch); resolve() }, 400))
+          .catch(()=>{ supabase.removeChannel(ch); resolve() })
+      }
+    })
+    setTimeout(()=>{ supabase.removeChannel(ch); resolve() }, 5000)
+  })
+}
 
-  setInterval(()=>{
-    supabase.from('presence').upsert({player_id:player.id,username:player.username,chapter,node:player.current_node||'opening',badge:player.badge||'neutral',level:player.level||1,status:'online'},{onConflict:'player_id'})
-  }, 20000)
+// ── Listen for incoming notifications ─────────────────────
+supabase.channel('notify:'+player.id)
+  .on('broadcast', { event:'team_request' },  ({payload})=>showIncomingModal('team', payload.from, payload.fromId, payload.encounterId))
+  .on('broadcast', { event:'pvp_challenge' }, ({payload})=>showIncomingModal('pvp',  payload.from, payload.fromId, payload.encounterId))
+  .on('broadcast', { event:'pvp_accepted' },  ({payload})=>{ showToast('⚔ '+payload.from+' accepted your challenge!'); addPing(payload.from+' accepted PVP','red') })
+  .on('broadcast', { event:'request_declined'},({payload})=>showToast(payload.from+' declined your request'))
+  .subscribe()
 
-  await load()
+function showIncomingModal(type, fromName, fromId, encounterId) {
+  document.getElementById('incoming-modal')?.remove()
+  const isPvp = type==='pvp'
+  const modal = document.createElement('div')
+  modal.id = 'incoming-modal'
+  modal.className = 'incoming-pop'
+  modal.style.cssText = `position:fixed;top:80px;right:16px;z-index:800;min-width:260px;max-width:320px;background:${isPvp?'#3a1010':'#101a10'};border:1.5px solid ${isPvp?'#e05555':'#5ec45e'};border-radius:6px;padding:1rem;box-shadow:0 8px 40px rgba(0,0,0,.9)`
+  modal.innerHTML = `
+    <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:${isPvp?'#e05555':'#5ec45e'};margin-bottom:.3rem">${isPvp?'⚔ PVP Challenge!':'🤝 Alliance Request!'}</p>
+    <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#d4c090;margin-bottom:.5rem"><strong>${fromName}</strong> wants to ${isPvp?'fight you':'team up'}.</p>
+    ${isPvp?`<p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#e07070;margin-bottom:.5rem">30 seconds to respond.</p>`:''}
+    <div style="display:flex;gap:6px">
+      <button onclick="respondRequest('accept','${type}','${fromId}','${fromName}','${encounterId||''}')" style="flex:1;font-family:'Cinzel',serif;font-size:.75rem;color:#1a1208;background:rgba(${isPvp?'224,85,85':'94,196,94'},.4);border:1px solid ${isPvp?'#e05555':'#5ec45e'};border-radius:3px;padding:.4rem;cursor:pointer">✓ Accept</button>
+      <button onclick="respondRequest('decline','${type}','${fromId}','${fromName}','${encounterId||''}')" style="flex:1;font-family:'Cinzel',serif;font-size:.75rem;color:#c8c0a0;background:rgba(200,184,128,.1);border:.5px solid rgba(200,184,128,.3);border-radius:3px;padding:.4rem;cursor:pointer">✕ Decline</button>
+    </div>`
+  document.body.appendChild(modal)
+  const timer = setTimeout(()=>{ modal.remove(); if(isPvp) respondRequest('timeout',type,fromId,fromName,encounterId) }, 30000)
+  modal._timer = timer
+}
+
+window.respondRequest = async (response, type, fromId, fromName, encounterId) => {
+  const modal = document.getElementById('incoming-modal')
+  if (modal?._timer) clearTimeout(modal._timer)
+  modal?.remove()
+  if (encounterId) await supabase.from('encounters').update({ result:type+'_'+response }).eq('id', encounterId)
+  else await supabase.from('encounters').insert({ initiator_id:fromId, target_id:player.id, type:type+'_request', chapter, result:type+'_'+response })
+  if (response==='accept') {
+    showToast(type==='pvp'?'⚔ PVP accepted!':'🤝 Allied with '+fromName)
+    addPing((type==='pvp'?'PVP accepted from ':'Allied with ')+fromName, type==='pvp'?'red':'green')
+    await notifyPlayer(fromId, 'pvp_accepted', { from:player.username, fromId:player.id })
+  } else {
+    showToast('Request from '+fromName+' declined')
+    await notifyPlayer(fromId, 'request_declined', { from:player.username })
+  }
+}
+
+// ── Raid notifications on login ───────────────────────────
+async function checkRaidNotifications() {
+  const { data: raids } = await supabase.from('encounters')
+    .select('*').eq('target_id', player.id).eq('type', 'raid').eq('notified', false)
+    .order('initiated_at', { ascending:false })
+  if (!raids?.length) return
+  for (const raid of raids) {
+    const { data: att } = await supabase.from('players').select('username').eq('id', raid.initiator_id).single()
+    showRaidNotice(raid, att?.username||'Unknown')
+    await supabase.from('encounters').update({ notified:true }).eq('id', raid.id)
+  }
+}
+
+function showRaidNotice(raid, attackerName) {
+  const modal = document.createElement('div')
+  modal.className = 'incoming-pop'
+  modal.style.cssText = 'position:fixed;top:80px;left:16px;z-index:800;min-width:260px;max-width:300px;background:#2a1030;border:1.5px solid #b06eff;border-radius:6px;padding:1rem;box-shadow:0 8px 40px rgba(0,0,0,.9)'
+  modal.innerHTML = `
+    <p style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:600;color:#b06eff;margin-bottom:.3rem">🌑 You Were Raided!</p>
+    <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#d4c090;margin-bottom:.4rem"><strong>${attackerName}</strong> attacked while you were away.</p>
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#b06eff;margin-bottom:.65rem">
+      Result: <span style="color:${raid.result==='victory'?'#e05555':'#c8b96e'}">${raid.result==='victory'?'YOU WERE DEFEATED':'PARTIAL HIT'}</span> · Damage: <span style="color:#e05555">${raid.damage_dealt||0}</span>
+    </p>
+    <div style="display:flex;gap:6px">
+      <button onclick="takeRevenge('${raid.initiator_id}','${attackerName}',this.closest('[style]'))" style="flex:1;font-family:'Cinzel',serif;font-size:.75rem;color:#1a1208;background:rgba(176,110,255,.4);border:1px solid #b06eff;border-radius:3px;padding:.4rem;cursor:pointer">⚔ Revenge</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;font-family:'Cinzel',serif;font-size:.75rem;color:#c8c0a0;background:rgba(200,184,128,.1);border:.5px solid rgba(200,184,128,.3);border-radius:3px;padding:.4rem;cursor:pointer">Dismiss</button>
+    </div>`
+  document.body.appendChild(modal)
+  addPing('You were raided by '+attackerName, 'red')
+}
+
+window.takeRevenge = async (targetId, targetName, modalEl) => {
+  modalEl?.remove()
+  const { data: pres } = await supabase.from('presence').select('last_seen_at').eq('player_id', targetId).single()
+  const online = pres && (Date.now() - new Date(pres.last_seen_at).getTime()) < 3 * 60 * 1000
+  showAttackModal(targetId, targetName, online)
+}
+
+// ── Realtime lobby updates ────────────────────────────────
+supabase.channel('lobby:ch'+chapter)
+  .on('postgres_changes',{event:'*',schema:'public',table:'presence',filter:`chapter=eq.${chapter}`},payload=>{
+    const row=payload.new
+    if (!row||row.player_id===player.id) return
+    if (payload.eventType==='INSERT') addPing(row.username+' entered the area', row.badge||'neutral')
+    load()
+  }).subscribe()
+
+setInterval(()=>pushPresence(), 20000)
+await load()
+await checkRaidNotifications()
 </script>
 </body>
 </html>
