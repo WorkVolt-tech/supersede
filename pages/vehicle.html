@@ -155,8 +155,10 @@ if (!player) { window.location.href = 'book.html'; throw new Error('no player') 
 
 document.getElementById('nav').style.display = 'none'
 
-const vehicleData = player.vehicle_data || { type: 'car', upgrades: [] }
-const vtype = vehicleData.type || 'car'
+const vehicleData = player.vehicle_data || { active: 'car', upgrades: { motorcycle:[], car:[], van:[] } }
+// Normalise legacy format
+const vtype = vehicleData.active || vehicleData.type || 'car'
+const vUpgrades = vehicleData.upgrades?.[vtype] || vehicleData.upgrades || []
 
 // Read destination from URL — passed from garage.html?dest=N
 const urlParams  = new URLSearchParams(window.location.search)
