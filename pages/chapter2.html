@@ -1129,8 +1129,10 @@ async function addItem(itemKey, qty) {
 
 async function save(updates) {
   Object.assign(player, updates)
-  const { error } = await supabase.from('players').update(updates).eq('id', player.id)
+  const { data, error } = await supabase.from('players').update(updates).eq('id', player.id).select().single()
   if (error) console.error('[ch2 save]', error.message)
+  if (data) { player = data; currentHp = data.hp }
+  renderHUD()
 }
 
 function calcBadge(moral, pvpKills, helpsGiven) {
@@ -1490,41 +1492,139 @@ async function checkLevelUp(oldXp,newXp,oldLevel) {
   return{level,max_hp:newMaxHp,hp:newHp,xp:newXp,skill_points:newSP,sp_claimed:player.sp_claimed,...us}
 }
 
+function getEquippedBonus(stat) {
+  return (window._equippedItems||[]).reduce((s,i)=>s+(i[stat]||0),0)
+}
+function calcATK() {
+  return Math.max(1,Math.round((player.atk||1)+(player.power||0)*0.6+(player.speed||0)*0.2+getEquippedBonus('atk_bonus')))
+}
+function calcDEF() {
+  return Math.round((player.def||0)+(player.guard||0)*0.6+(player.control||0)*0.2+getEquippedBonus('def_bonus'))
+}
+function calcSPD() {
+  return Math.round((player.speed||0)+(player.insight||0)*0.1+getEquippedBonus('speed_bonus'))
+}
+
+window.openStatWindow = function() {
+  document.getElementById('stat-window')?.remove()
+  const eqItems=window._equippedItems||[]
+  const STATS=[
+    {label:'Power',  val:player.power||0,  color:'#ff5500',desc:'Scales ATK damage',         derived:'ATK +'+Math.round((player.power||0)*0.6)},
+    {label:'Control',val:player.control||0,color:'#0088ff',desc:'Scales DEF & retry chance',  derived:'DEF +'+Math.round((player.control||0)*0.2)},
+    {label:'Guard',  val:player.guard||0,  color:'#8b5e3c',desc:'Scales DEF & damage block',  derived:'DEF +'+Math.round((player.guard||0)*0.6)},
+    {label:'Speed',  val:player.speed||0,  color:'#a8d8ea',desc:'Scales ATK & turn order',    derived:'ATK +'+Math.round((player.speed||0)*0.2)},
+    {label:'Insight',val:player.insight||0,color:'#ffd700',desc:'Scales SPD & luck effects',  derived:'SPD +'+Math.round((player.insight||0)*0.1)},
+    {label:'Luck',   val:player.luck||0,   color:'#b06eff',desc:'Improves crit & loot chance',derived:'Loot +'+Math.round((player.luck||0)*5)+'%'},
+  ]
+  const modal=document.createElement('div')
+  modal.id='stat-window'
+  modal.style.cssText='position:fixed;inset:0;z-index:700;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.75)'
+  modal.innerHTML=`
+    <div style="background:#b8a568;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:320px;max-width:400px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.8)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">Character Stats</p>
+        <button onclick="document.getElementById('stat-window').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#1a1208">✕</button>
+      </div>
+      <div style="background:rgba(0,0,0,.08);border-radius:4px;padding:.6rem .75rem;margin-bottom:.75rem">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:4px">DERIVED STATS</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
+          ${[['ATK',calcATK(),'#e05555'],['DEF',calcDEF(),'#5ec45e'],['SPD',calcSPD(),'#a8d8ea'],
+             ['HP',player.max_hp||100,'#5eaee0'],['LVL',player.level||1,'#c8b96e'],['GOLD',player.gold||0,'#c8b96e']
+          ].map(([k,v,c])=>'<div style="text-align:center;background:rgba(0,0,0,.1);border-radius:3px;padding:4px 2px"><span style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#3a2008;display:block">'+k+'</span><span style="font-family:\'Cinzel\',serif;font-size:.95rem;font-weight:600;color:'+c+'">'+v+'</span></div>').join('')}
+        </div>
+      </div>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:6px">CORE STATS <span style="color:#a08858">· Unlocked via Skill Tree</span></p>
+      ${STATS.map(s=>`<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:5px;padding:5px 7px;background:rgba(0,0,0,.07);border-radius:3px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
+        <div style="flex:1">
+          <div style="display:flex;align-items:baseline;gap:4px">
+            <span style="font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;font-weight:600">${s.label}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208">${s.val}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#3a2008;margin-left:auto">${s.derived}</span>
+          </div>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.62rem;color:#3a2008;margin:0">${s.desc}</p>
+        </div></div>`).join('')}
+      <div style="margin-top:.75rem;padding:.6rem .75rem;background:rgba(0,0,0,.08);border-radius:4px">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:3px">EQUIPPED</p>
+        <p style="font-family:'IM Fell English',serif;font-size:.72rem;color:#1a1208;margin:0">${eqItems.map(i=>i.name).join(', ')||'None'}</p>
+      </div>
+      ${(player.skill_points||0)>0?`<button onclick="document.getElementById('stat-window').remove();window.location.href='skills.html'" style="width:100%;margin-top:.75rem;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(160,125,224,.35);border:1px solid rgba(160,125,224,.6);border-radius:3px;padding:.45rem;cursor:pointer">⬡ Spend ${player.skill_points} Skill Points → Skills Page</button>`:''}
+    </div>`
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()})
+  document.body.appendChild(modal)
+}
+
 function renderHUD() {
-  const hp=currentHp,mhp=player.max_hp||100,xp=player.xp||0,lvl=player.level||1
+  const hp=currentHp, mhp=player.max_hp||100, xp=player.xp||0, lvl=player.level||1
   const BC={neutral:'#c8b96e',red:'#e05555',green:'#5ec45e',elite:'#a07de0'}
   const BS={neutral:'🟡',red:'🔴',green:'🟢',elite:'🟣'}
-  const bc=BC[player.badge]||'#c8b96e',bs=BS[player.badge]||'🟡'
-  const hpPct=Math.max(0,Math.round(hp/mhp*100)),hpCol=hpPct>60?'#5ec45e':hpPct>30?'#c8b96e':'#e05555'
-  const xpNext=xpForLevel(lvl),xpPct=Math.min(100,Math.round(Math.max(0,Math.min(xp,xpNext-1))/xpNext*100))
+  const bc=BC[player.badge]||'#c8b96e', bs=BS[player.badge]||'🟡'
+  const hpPct=Math.max(0,Math.round(hp/mhp*100))
+  const hpCol=hpPct>60?'#5ec45e':hpPct>30?'#c8b96e':'#e05555'
+  const xpNext=xpForLevel(lvl)
+  const xpIntoLevel=Math.max(0,Math.min(xp,xpNext-1))
+  const xpPct=Math.min(100,Math.round(xpIntoLevel/xpNext*100))
   const moral=player.moral_score||0
   const moralPct=Math.round((moral+100)/2)
   const moralCol=moral>=60?'#a0d0ff':moral>=20?'#c8e8a0':moral>=-20?'#c8b96e':moral>=-60?'#e07a40':'#e05555'
-  const gold=player.gold||0
+  const moralLabel=moral>=70?'HERO':moral>=30?'GOOD':moral>=-10?'NEUTRAL':moral>=-40?'RUTHLESS':moral>=-70?'CORRUPT':'VILLAIN'
+  const dotLeft=Math.max(2,Math.min(94,moralPct))
+
   document.getElementById('hud').innerHTML=`
-    <div class="hud-row">
-      <div class="hud-stat"><span class="hud-label">CHAPTER</span><span class="hud-val">2 — Alliances</span></div>
-      <div class="hud-stat"><span class="hud-label">LEVEL</span><span class="hud-val">${lvl}</span></div>
-      <div class="hud-stat"><span class="hud-label">◈ GOLD</span><span class="hud-val" style="color:#c8b96e">${gold}</span></div>
-    </div>
-    <div class="hud-row" style="margin-top:4px">
-      <div class="hud-stat" style="flex:1">
-        <span class="hud-label">HP ${Math.round(hp)}/${mhp}</span>
-        <div class="stat-bar"><div class="stat-bar-fill" style="width:${hpPct}%;background:${hpCol}"></div></div>
-      </div>
-      <div class="hud-stat" style="flex:1">
-        <span class="hud-label">XP ${xp}/${xpNext}</span>
-        <div class="stat-bar"><div class="stat-bar-fill" style="width:${xpPct}%;background:#b06eff"></div></div>
+    <div class="hud-badge-row">
+      <span class="hud-seal">${bs}</span>
+      <div>
+        <p class="hud-seal-label" style="color:${bc}">${(player.badge||'neutral')[0].toUpperCase()+(player.badge||'neutral').slice(1)}</p>
+        <p class="hud-chapter">Chapter 2 · Lvl ${lvl}</p>
       </div>
     </div>
-    <div class="hud-row" style="margin-top:3px">
-      <div class="hud-stat" style="flex:1">
-        <span class="hud-label" style="color:${moralCol}">MORAL ${moral>0?'+':''}${moral}</span>
-        <div class="stat-bar"><div class="stat-bar-fill" style="width:${moralPct}%;background:${moralCol}"></div></div>
+    <div class="stat-row">
+      <span class="stat-key">HP</span>
+      <div class="stat-bar-wrap"><div class="stat-bar" id="hp-bar" style="width:${hpPct}%;background:${hpCol};transition:width .4s,background .4s"></div></div>
+      <span class="stat-val" id="hp-val">${Math.round(hp)}/${mhp}</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-key">XP</span>
+      <div class="stat-bar-wrap"><div class="stat-bar" style="width:${xpPct}%;background:#a07de0;transition:width .4s"></div></div>
+      <span class="stat-val" style="font-size:.52rem;min-width:60px;text-align:right">${xpIntoLevel}/${xpNext}</span>
+    </div>
+    <div style="margin-bottom:5px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;letter-spacing:.07em">REPUTATION</span>
+        <span style="font-family:'Cinzel',serif;font-size:.5rem;font-weight:600;color:${moralCol};letter-spacing:.06em">${moralLabel}</span>
       </div>
-      <div class="hud-stat"><span class="hud-label">BADGE</span><span style="font-size:.85rem">${bs}</span><span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:${bc}"> ${(player.badge||'neutral').toUpperCase()}</span></div>
+      <div style="position:relative;height:5px;background:linear-gradient(to right,#e05555,#e07a40,#c8b96e,#c8e8a0,#a0d0ff);border-radius:3px">
+        <div style="position:absolute;top:-2px;left:${dotLeft}%;width:9px;height:9px;background:${moralCol};border-radius:50%;transform:translateX(-50%);border:1px solid rgba(0,0,0,.3);transition:left .5s,background .5s"></div>
+      </div>
+    </div>
+    ${(player.skill_points||0)>0?`<div onclick="window.location.href='skills.html'" style="background:rgba(160,125,224,.25);border:1px solid rgba(160,125,224,.5);border-radius:3px;padding:4px 8px;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;cursor:pointer;text-align:center">⬡ ${player.skill_points} SKILL POINTS — tap to spend</div>`:''}
+    <div class="stat-grid">
+      <div class="stat-box"><span class="stat-box-key">ATK</span><span class="stat-box-val">${calcATK()}</span></div>
+      <div class="stat-box"><span class="stat-box-key">DEF</span><span class="stat-box-val">${calcDEF()}</span></div>
+      <div class="stat-box"><span class="stat-box-key">GOLD</span><span class="stat-box-val" style="color:#c8b96e">${player.gold||0}</span></div>
+    </div>
+    <div style="display:flex;gap:4px;margin-top:6px">
+      <button onclick="openStatWindow()" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">📊 STATS</button>
+      <button onclick="window.location.href='skills.html'" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(160,125,224,.2);border:.5px solid rgba(160,125,224,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">⬡ SKILLS</button>
     </div>`
 }
+
+function updateHpBar(hp) {
+  currentHp=hp
+  const mhp=player.max_hp||100, pct=Math.max(0,Math.round(hp/mhp*100))
+  const col=pct>60?'#5ec45e':pct>30?'#c8b96e':'#e05555'
+  const bar=document.getElementById('hp-bar'), val=document.getElementById('hp-val')
+  if(bar){bar.style.width=pct+'%';bar.style.background=col}
+  if(val)val.textContent=Math.round(hp)+'/'+mhp
+}
+
+// Also load equipped items for stat display
+;(async()=>{
+  if(!window._equippedItems){
+    const {data}=await supabase.from('inventory').select('*').eq('player_id',player.id).not('equipped_slot','is',null)
+    window._equippedItems=data||[]
+  }
+})()
 
 // ── Init ──────────────────────────────────────────
 let player   = await renderNav('nav')
