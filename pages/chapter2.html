@@ -1137,9 +1137,9 @@ async function save(updates) {
 
 function calcBadge(moral, pvpKills, helpsGiven) {
   const m=moral||0, pk=pvpKills||0, hg=helpsGiven||0
-  if (m>=60&&hg>=5) return 'elite'
-  if (m>=20&&hg>pk) return 'green'
-  if (m<=-20||(pk>=3&&pk>hg*2)) return 'red'
+  if (m>=60&&(hg>=3||pk===0)) return 'elite'
+  if (m>=20) return 'green'
+  if (m<=-20||(pk>=5&&pk>hg*3)) return 'red'
   return 'neutral'
 }
 
