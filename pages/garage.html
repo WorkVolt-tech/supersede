@@ -182,7 +182,8 @@
 
   <!-- Vehicle select -->
   <div class="section">
-    <div class="section-label">⚙ SELECT VEHICLE</div>
+    <div class="section-label">🚗 YOUR VEHICLES</div>
+    <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.72rem;color:#7a6435;margin-bottom:.75rem;line-height:1.5">All three vehicles are permanently yours. Select one to drive, then install upgrades using your materials.</p>
     <div class="vehicle-grid" id="vehicle-grid">Loading...</div>
   </div>
 
@@ -279,21 +280,42 @@ let player = null
 let materials = {}  // item_key → quantity
 let vehicleData = null  // from players table: { type, parts, upgrades[] }
 
+// ── vehicle_data shape: { active:'car', upgrades:{motorcycle:[],car:[],van:[]} }
+// All 3 vehicles are always owned. active = which one is selected to drive.
+
+// ── Normalise legacy vehicle_data ────────────────────────
+function normaliseVehicleData(raw) {
+  if (!raw) return { active: null, upgrades: { motorcycle:[], car:[], van:[] } }
+  // Legacy: { type:'car', upgrades:[] }
+  if (raw.type !== undefined && !raw.active) {
+    return {
+      active: raw.type,
+      upgrades: {
+        motorcycle: [],
+        car: raw.type === 'car' ? (raw.upgrades||[]) : [],
+        van: raw.type === 'van' ? (raw.upgrades||[]) : [],
+      }
+    }
+  }
+  // Already new format
+  if (!raw.upgrades?.motorcycle) raw.upgrades = { motorcycle:[], car:[], van:[] }
+  return raw
+}
+
 // ── Init ─────────────────────────────────────────────────
 player = await renderNav('nav')
 if (!player) throw new Error('no player')
 
-// Read destination from URL — e.g. garage.html?dest=2
 const urlDest = new URLSearchParams(window.location.search).get('dest')
 const destination = urlDest ? parseInt(urlDest) : null
 
-vehicleData = player.vehicle_data || { type: null, upgrades: [] }
+vehicleData = normaliseVehicleData(player.vehicle_data)
 await loadMaterials()
 renderMaterials()
 renderVehicleGrid()
+renderUpgrades()
 updateDriveButton()
 
-// Show destination info if coming from book
 if (destination) {
   document.getElementById('drive-label').textContent = `DESTINATION: CHAPTER ${destination}`
 }
@@ -326,32 +348,18 @@ function renderMaterials() {
 function renderVehicleGrid() {
   const el = document.getElementById('vehicle-grid')
   el.innerHTML = Object.entries(VEHICLES).map(([type, v]) => {
-    const owned    = vehicleData.type !== null
-    const isActive = vehicleData.type === type
-    const canAfford = canAffordVehicle(type)
-
-    let badge = ''
-    if (isActive) badge = `<div class="active-badge">◉ ACTIVE</div>`
-
+    const isActive = vehicleData.active === type
     const stats = computeStats(type)
     const statBars = [
       { label:'SPEED',     val:stats.speed,      max:130, color:'#5eaee0' },
       { label:'DURABILITY',val:stats.durability,  max:130, color:'#5ec45e' },
       { label:'FIREPOWER', val:stats.firepower,   max:130, color:'#e05555' },
     ]
-
-    const costHTML = !isActive ? `
-      <div class="vehicle-cost">
-        ${Object.entries(v.cost).map(([k,n]) =>
-          `<div class="cost-item">${MAT_ICONS[k]||'📦'} <span style="color:${(materials[k]||0)>=n?'#5ec45e':'#e05555'}">${n}</span></div>`
-        ).join('')}
-      </div>` : ''
-
+    const upgCount = (vehicleData.upgrades?.[type]||[]).length
     return `
-      <div class="vehicle-card${isActive?' selected':''}${owned&&!isActive?' opacity-60':''}"
-           onclick="selectVehicle('${type}')">
-        ${badge}
-        ${costHTML}
+      <div class="vehicle-card${isActive?' selected':''}" onclick="selectVehicle('${type}')">
+        ${isActive ? `<div class="active-badge">◉ ACTIVE</div>` : ''}
+        ${upgCount > 0 ? `<div style="position:absolute;top:.75rem;right:.75rem;font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#c8b96e;background:rgba(200,184,128,.1);border:.5px solid rgba(200,184,128,.2);padding:2px 6px;border-radius:10px">${upgCount} upgrade${upgCount>1?'s':''}</div>` : ''}
         <span class="vehicle-icon">${v.icon}</span>
         <div class="vehicle-name">${v.name}</div>
         <div class="vehicle-tagline">${v.tagline}</div>
@@ -371,13 +379,12 @@ function renderVehicleGrid() {
 
 function computeStats(type) {
   const base = { ...VEHICLES[type].base }
-  if (vehicleData.type === type) {
-    ;(vehicleData.upgrades || []).forEach(uid => {
-      const u = UPGRADES.find(u => u.id === uid)
-      if (!u) return
-      Object.entries(u.stat).forEach(([k,v]) => { base[k] = (base[k]||0) + v })
-    })
-  }
+  const typeUpgrades = vehicleData.upgrades?.[type] || []
+  typeUpgrades.forEach(uid => {
+    const u = UPGRADES.find(u => u.id === uid)
+    if (!u) return
+    Object.entries(u.stat).forEach(([k,v]) => { base[k] = (base[k]||0) + v })
+  })
   return base
 }
 
@@ -385,40 +392,13 @@ function canAffordVehicle(type) {
   return Object.entries(VEHICLES[type].cost).every(([k,n]) => (materials[k]||0) >= n)
 }
 
-// ── Select / build vehicle ────────────────────────────────
+// ── Select active vehicle (all are owned, just pick which to drive) ───────
 window.selectVehicle = async function(type) {
-  if (vehicleData.type === type) {
-    // Already owned — just show upgrades
-    renderUpgrades()
-    return
-  }
-  if (vehicleData.type !== null) {
-    toast('You already have a vehicle. Rebuild in the upgrade shop.', true)
-    return
-  }
-  if (!canAffordVehicle(type)) {
-    toast('Not enough materials!', true)
-    return
-  }
-  // Deduct materials
-  const cost = VEHICLES[type].cost
-  for (const [key, qty] of Object.entries(cost)) {
-    const { data } = await supabase.from('inventory').select('id,quantity').eq('player_id',player.id).eq('item_key',key).maybeSingle()
-    if (!data) { toast('Material not found: '+key, true); return }
-    if (data.quantity <= qty) {
-      await supabase.from('inventory').delete().eq('id', data.id)
-    } else {
-      await supabase.from('inventory').update({ quantity: data.quantity - qty }).eq('id', data.id)
-    }
-    materials[key] = Math.max(0, (materials[key]||0) - qty)
-  }
-
-  vehicleData = { type, upgrades: [] }
+  vehicleData.active = type
+  if (!vehicleData.upgrades) vehicleData.upgrades = { motorcycle:[], car:[], van:[] }
   await supabase.from('players').update({ vehicle_data: vehicleData }).eq('id', player.id)
   player.vehicle_data = vehicleData
-
-  toast(`${VEHICLES[type].icon} ${VEHICLES[type].name} built!`)
-  renderMaterials()
+  toast(`${VEHICLES[type].icon} ${VEHICLES[type].name} selected`)
   renderVehicleGrid()
   renderUpgrades()
   updateDriveButton()
@@ -426,14 +406,15 @@ window.selectVehicle = async function(type) {
 
 // ── Render installed upgrades ─────────────────────────────
 function renderUpgrades() {
-  const sec = document.getElementById('upgrade-section')
+  const sec  = document.getElementById('upgrade-section')
   const grid = document.getElementById('upgrade-grid')
-  if (!vehicleData.type) { sec.style.display='none'; return }
+  if (!vehicleData.active) { sec.style.display='none'; return }
   sec.style.display = 'block'
-
+  const type = vehicleData.active
+  const typeUpgrades = vehicleData.upgrades?.[type] || []
   const slots = ['engine','armor','weapon','special']
   grid.innerHTML = slots.map(slot => {
-    const installedId = (vehicleData.upgrades||[]).find(uid => {
+    const installedId = typeUpgrades.find(uid => {
       const u = UPGRADES.find(u=>u.id===uid)
       return u && u.slot === slot
     })
@@ -455,26 +436,25 @@ function renderUpgrades() {
 
 // ── Upgrade shop ──────────────────────────────────────────
 window.openUpgradeShop = function() {
-  if (!vehicleData.type) { toast('Build a vehicle first', true); return }
-  const type = vehicleData.type
+  if (!vehicleData.active) { toast('Select a vehicle first', true); return }
+  const type = vehicleData.active
+  const typeUpgrades = vehicleData.upgrades?.[type] || []
   const modal = document.getElementById('shop-modal')
   const list  = document.getElementById('shop-list')
 
   const available = UPGRADES.filter(u =>
-    u.vehicles.includes(type) &&
-    !(vehicleData.upgrades||[]).includes(u.id)
+    u.vehicles.includes(type) && !typeUpgrades.includes(u.id)
   )
 
   const bySlot = {}
-  available.forEach(u => { if (!bySlot[u.slot]) bySlot[u.slot]=[];  bySlot[u.slot].push(u) })
+  available.forEach(u => { if (!bySlot[u.slot]) bySlot[u.slot]=[]; bySlot[u.slot].push(u) })
 
   list.innerHTML = Object.entries(bySlot).map(([slot, ups]) => `
     <div style="margin-bottom:1rem">
       <div style="font-family:'Orbitron',monospace;font-size:.52rem;color:var(--rust);letter-spacing:.1em;margin-bottom:.4rem">${slot.toUpperCase()}</div>
       ${ups.map(u => {
         const afford = Object.entries(u.cost).every(([k,n])=>(materials[k]||0)>=n)
-        // Check slot conflict
-        const conflict = (vehicleData.upgrades||[]).find(uid => {
+        const conflict = typeUpgrades.find(uid => {
           const ex = UPGRADES.find(u2=>u2.id===uid)
           return ex && ex.slot === u.slot
         })
@@ -506,8 +486,8 @@ window.closeUpgradeShop = function() {
 
 window.installUpgrade = async function(uid) {
   const u = UPGRADES.find(u=>u.id===uid)
-  if (!u) return
-  // Deduct materials
+  if (!u || !vehicleData.active) return
+  const type = vehicleData.active
   for (const [key, qty] of Object.entries(u.cost)) {
     const { data } = await supabase.from('inventory').select('id,quantity').eq('player_id',player.id).eq('item_key',key).maybeSingle()
     if (!data || data.quantity < qty) { toast('Not enough '+MAT_NAMES[key], true); return }
@@ -515,9 +495,10 @@ window.installUpgrade = async function(uid) {
     else await supabase.from('inventory').update({ quantity: data.quantity - qty }).eq('id', data.id)
     materials[key] = Math.max(0, (materials[key]||0) - qty)
   }
-  vehicleData.upgrades = [...(vehicleData.upgrades||[]), uid]
+  if (!vehicleData.upgrades) vehicleData.upgrades = { motorcycle:[], car:[], van:[] }
+  vehicleData.upgrades[type] = [...(vehicleData.upgrades[type]||[]), uid]
   await supabase.from('players').update({ vehicle_data: vehicleData }).eq('id', player.id)
-  toast(`${u.icon} ${u.name} installed!`)
+  toast(`${u.icon} ${u.name} installed on ${VEHICLES[type].name}!`)
   await loadMaterials()
   renderMaterials()
   renderVehicleGrid()
@@ -526,7 +507,10 @@ window.installUpgrade = async function(uid) {
 }
 
 window.removeUpgrade = async function(uid) {
-  vehicleData.upgrades = (vehicleData.upgrades||[]).filter(id=>id!==uid)
+  const type = vehicleData.active
+  if (!type) return
+  if (!vehicleData.upgrades) vehicleData.upgrades = { motorcycle:[], car:[], van:[] }
+  vehicleData.upgrades[type] = (vehicleData.upgrades[type]||[]).filter(id=>id!==uid)
   await supabase.from('players').update({ vehicle_data: vehicleData }).eq('id', player.id)
   const u = UPGRADES.find(u=>u.id===uid)
   toast(`${u?.name||uid} removed`)
@@ -538,10 +522,12 @@ window.removeUpgrade = async function(uid) {
 function updateDriveButton() {
   const btn = document.getElementById('drive-btn')
   const lbl = document.getElementById('drive-label')
-  if (vehicleData.type) {
+  if (vehicleData.active) {
     btn.disabled = false
-    const v = VEHICLES[vehicleData.type]
-    lbl.textContent = `${v.icon} ${v.name.toUpperCase()} READY`
+    const v = VEHICLES[vehicleData.active]
+    lbl.textContent = destination
+      ? `${v.icon} ${v.name.toUpperCase()} — HEADING TO CHAPTER ${destination}`
+      : `${v.icon} ${v.name.toUpperCase()} READY`
   } else {
     btn.disabled = true
     lbl.textContent = 'SELECT A VEHICLE TO DRIVE'
@@ -549,7 +535,7 @@ function updateDriveButton() {
 }
 
 window.drive = function() {
-  if (!vehicleData.type) return
+  if (!vehicleData.active) return
   const dest = destination ? `?dest=${destination}` : ''
   window.location.href = 'vehicle.html' + dest
 }
