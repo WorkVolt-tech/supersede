@@ -696,9 +696,9 @@ async function endPvpCombat(won, fromRemote) {
       player.pvp_kills = newKills
       const m = player.moral_score||0, hg = player.helps_given||0, pk = newKills
       let newBadge = 'neutral'
-      if (m >= 60 && hg >= 5)                    newBadge = 'elite'
-      else if (m >= 20 && hg > pk)               newBadge = 'green'
-      else if (m <= -20 || (pk >= 3 && pk > hg*2)) newBadge = 'red'
+      if (m >= 60 && (hg >= 3 || pk === 0)) newBadge = 'elite'
+      else if (m >= 20)                      newBadge = 'green'
+      else if (m <= -20 || (pk >= 5 && pk > hg*3)) newBadge = 'red'
       player.badge = newBadge
       await supabase.from('players').update({ pvp_kills: newKills, badge: newBadge, reputation: newBadge }).eq('id', player.id)
     }
