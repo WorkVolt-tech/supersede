@@ -2700,6 +2700,7 @@ function renderHUD() {
       <button onclick="openStatWindow()" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">📊 STATS</button>
       <button onclick="window.location.href='skills.html'" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(160,125,224,.2);border:.5px solid rgba(160,125,224,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">⬡ SKILLS</button>
     </div>
+    ${getDefeatedBosses().length>0?`<button onclick="goTo('district_hub')" style="width:100%;margin-top:4px;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(94,174,224,.15);border:.5px solid rgba(94,174,224,.35);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">⚔ FARM ZONES</button>`:''}
   `
 }
 
@@ -3488,45 +3489,24 @@ function renderDistrictHub(panel) {
   const surveyor  = defeated.includes('surveyor')
   const unseen    = defeated.includes('unseen')
   const allDone   = sentinel && surveyor && unseen
+  const ch1Done   = (player.chapters_unlocked||[]).includes(2)
 
-  // Auto-advance to plaza if all three cleared
-  if (allDone) {
-    // Update story text
-    const stEl = document.getElementById('story-text')
-    if (stEl) stEl.textContent = `You return to the plaza center.
-
-The barrier is gone. You feel it the moment you step onto the stone — the air pressure normalizes, the interference clears, the radar opens up fully for the first time since you entered the district.
-
-Three guardians. Three zones. All of it sealed and recorded.
-
-Your interface pulses:
-
-CHAPTER PROGRESS: 90%
-DISTRICT CLEARED. THE WATCHER APPROACHES.`
-
-    panel.innerHTML = `
-      <p class="choices-label">The district is clear.</p>
-      <div class="choices">
-        <button class="choice" onclick="goTo('plaza_allies')">
-          <span class="choice-arrow">→</span>
-          <span class="choice-body">Move to the plaza
-            <span class="choice-sub">See who made it out.</span>
-          </span>
-        </button>
-      </div>
-    `
-    return
-  }
-
-  // Show remaining guardians
   const stEl = document.getElementById('story-text')
-  if (stEl) stEl.textContent = `You return to the plaza center.
+
+  // Always show zone cards — farming is always available for cleared zones
+  if (stEl) stEl.textContent = allDone
+    ? `The district is clear. All three guardians defeated.
+
+The zones remain accessible for farming — enemies respawn, loot cycles continue. Your interface marks each cleared zone as open.
+
+${ch1Done ? 'Chapter 1 is complete. You can replay the Watcher from the plaza, or farm here.' : 'The Watcher awaits in the plaza. Clear the zones or go face it.'}`
+    : `You return to the plaza center.
 
 The barrier is still up. You can feel where it gives — and where it doesn't.
 
 Your interface shows the district status. Not all zones are clear.
 
-The Watcher won't show itself until every guardian is defeated. The city is still sealed.`
+The Watcher won't show itself until every guardian is defeated.`
 
   const zones = [
     { id: 'loc_garage', bossKey: 'sentinel', introNode: 'garage_approach', name: 'Parking Garage',  guardian: 'Sentinel of the First Eye', icon: '🅿️', color: '#5ec45e', done: sentinel },
@@ -3535,7 +3515,7 @@ The Watcher won't show itself until every guardian is defeated. The city is stil
   ]
 
   panel.innerHTML = `
-    <p class="choices-label">District Status</p>
+    <p class="choices-label">District Zones</p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem">
       ${zones.map(z => z.done ? `
         <div onclick="enterZoneFromHub('${z.id}')" style="border:.5px solid ${z.color}50;border-radius:5px;padding:.65rem .75rem;background:${z.color}10;cursor:pointer;transition:all .2s"
@@ -3559,6 +3539,15 @@ The Watcher won't show itself until every guardian is defeated. The city is stil
         </div>
       `).join('')}
     </div>
+    ${allDone ? `
+      <div style="border-top:.5px solid rgba(139,106,32,.2);padding-top:.75rem">
+        <button class="choice" onclick="goTo('plaza_allies')" style="width:100%">
+          <span class="choice-arrow">→</span>
+          <span class="choice-body">Move to the plaza
+            <span class="choice-sub">${ch1Done ? 'Replay the Watcher encounter' : 'Face the Watcher — Chapter 1 finale'}</span>
+          </span>
+        </button>
+      </div>` : ''}
   `
 }
 
@@ -3999,32 +3988,27 @@ function renderCombat(panel, node) {
 
 // ── Boss cinematic video overlay ──────────────────
 function playCombatCinematic(src, onDone) {
-  // Remove any existing overlay
   document.getElementById('cinematic-overlay')?.remove()
 
   const overlay = document.createElement('div')
   overlay.id = 'cinematic-overlay'
-  overlay.style.cssText = `
-    position:fixed;inset:0;z-index:800;background:#000;
-    display:flex;align-items:center;justify-content:center;
-    opacity:0;transition:opacity .6s;
-  `
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000;opacity:0;transition:opacity .6s;'
   overlay.innerHTML = `
-    <video id="cinematic-video" 
-      src="${src}" 
+    <video id="cinematic-video"
+      src="${src}"
       autoplay playsinline muted
-      style="width:100%;height:100%;object-fit:cover;display:block">
+      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
     </video>
     <div id="cinematic-skip" style="
-      position:absolute;bottom:1.5rem;right:1.5rem;
+      position:absolute;bottom:1.5rem;right:1.5rem;z-index:1;
       font-family:'Share Tech Mono',monospace;font-size:.55rem;
-      color:rgba(200,184,128,.5);letter-spacing:.08em;cursor:pointer;
-      padding:4px 10px;border:.5px solid rgba(200,184,128,.15);border-radius:3px;
+      color:rgba(200,184,128,.55);letter-spacing:.08em;cursor:pointer;
+      padding:4px 10px;border:.5px solid rgba(200,184,128,.2);border-radius:3px;
+      background:rgba(0,0,0,.4);
     ">skip ›</div>
   `
   document.body.appendChild(overlay)
 
-  // Fade in
   requestAnimationFrame(() => requestAnimationFrame(() => overlay.style.opacity = '1'))
 
   function endCinematic() {
@@ -4034,7 +4018,7 @@ function playCombatCinematic(src, onDone) {
 
   const video = overlay.querySelector('#cinematic-video')
   video.addEventListener('ended', endCinematic)
-  video.addEventListener('error', endCinematic) // fallback if video missing
+  video.addEventListener('error', endCinematic)
   overlay.querySelector('#cinematic-skip').addEventListener('click', endCinematic)
 }
 
