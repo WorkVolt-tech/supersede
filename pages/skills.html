@@ -736,6 +736,8 @@ function showNodeDetail(nd) {
             <span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a08858;letter-spacing:.05em">${typeLabel} · ${nd.cost} SP${statLine?' · '+statLine:''}</span>
             ${btLabel ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:${btCol};background:${btCol}22;border:.5px solid ${btCol}66;border-radius:10px;padding:1px 7px;letter-spacing:.06em">${btLabel} · ${btSlotHint}</span>` : ''}
           </div>
+          ${nd.stat && nd.val && isUnlocked(nd) ? `<p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a9058;margin:3px 0 0;letter-spacing:.05em">✓ Stat bonus (+${nd.val} ${statToCol(nd.stat)}) is always active — unlocking applies it permanently</p>` : ''}
+          ${nd.battleType === 'passive' && isUnlocked(nd) ? `<p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#b06eff88;margin:2px 0 0;letter-spacing:.05em">Slot into P1–P2 to enable the combat ability</p>` : ''}
         </div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
           ${canUnlock(nd) ? `<button onclick="doUnlock('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(200,184,128,.55);border:1px solid rgba(139,106,32,.7);border-radius:3px;padding:.3rem .8rem;cursor:pointer">✦ Unlock (${nd.cost} SP)</button>` : ''}
@@ -796,18 +798,48 @@ function markSlotsDirty() {
 }
 
 window.stageAddToBattle = (id) => {
-  if (pendingBattleSkills.length >= 6) { showToast('All slots full!', true); return }
   if (pendingBattleSkills.includes(id)) return
-  pendingBattleSkills = [...pendingBattleSkills, id]
+  const nd = NODES.find(n => n.id === id)
+  if (!nd) return
+
+  const ACTIVE_SLOTS  = 4
+  const PASSIVE_SLOTS = 2
+  const isPassive = nd.battleType === 'passive'
+
+  // Pad array to at least 4 slots so passive indices are always 4+
+  const newSkills = [...pendingBattleSkills]
+  while (newSkills.length < ACTIVE_SLOTS) newSkills.push(null)
+
+  if (isPassive) {
+    // Passive goes into P1 (index 4) or P2 (index 5)
+    const passiveFilled = newSkills.slice(ACTIVE_SLOTS).filter(Boolean).length
+    if (passiveFilled >= PASSIVE_SLOTS) { showToast('Passive slots full — P1 and P2 are taken'); return }
+    newSkills.push(id)
+  } else {
+    // Active goes into first open A1–A4 slot (indices 0–3)
+    const firstEmpty = newSkills.findIndex((s, i) => i < ACTIVE_SLOTS && !s)
+    if (firstEmpty === -1) { showToast('Active slots full — A1 to A4 are taken'); return }
+    newSkills[firstEmpty] = id
+  }
+
+  pendingBattleSkills = newSkills
   closeSkillPicker()
   markSlotsDirty()
-  const nd = NODES.find(n => n.id === id)
-  if (nd) showNodeDetail(nd)
+  renderSlotsBar()
+  renderBattleSlotsPage()
+  showNodeDetail(nd)
 }
 
 window.stageRemoveFromBattle = (id) => {
-  pendingBattleSkills = pendingBattleSkills.filter(k => k !== id)
+  // Null out the slot so positions of other skills stay fixed
+  pendingBattleSkills = pendingBattleSkills.map(s => s === id ? null : s)
+  // Trim trailing nulls beyond the minimum needed
+  while (pendingBattleSkills.length > 0 && pendingBattleSkills[pendingBattleSkills.length - 1] === null) {
+    pendingBattleSkills.pop()
+  }
   markSlotsDirty()
+  renderSlotsBar()
+  renderBattleSlotsPage()
   const nd = NODES.find(n => n.id === id)
   if (nd) showNodeDetail(nd)
 }
