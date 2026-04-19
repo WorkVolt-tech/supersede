@@ -721,6 +721,7 @@ As if it's been watching you all along.`,
   // ═══════════════════════════════════════
   boss: {
     id:'boss', type:'boss',
+    video: '../assets/video/the_watcher.mp4',
     text:`The eye opens fully.
 
 Not a metaphor. Not a symbol. An actual eye, the size of a building, suspended in the torn sky above the plaza.
@@ -1945,6 +1946,7 @@ The lens-eyes click. The Surveyor raises its instrument.`,
   // BEAT 5 — The Surveyor
   boss_surveyor_fight_lena: {
     id: 'boss_surveyor_fight_lena', type: 'combat',
+    video: '../assets/video/the_surveyor.mp4',
     text: `Lena fights clean. No wasted movement. She reads the Surveyor's pattern in three passes and adjusts.
 
 The Surveyor's lenses click — faster now. It's recalculating. It didn't expect someone who thinks in logistics.
@@ -1961,6 +1963,7 @@ The Surveyor's lenses click — faster now. It's recalculating. It didn't expect
 
   boss_surveyor_fight_gio: {
     id: 'boss_surveyor_fight_gio', type: 'combat',
+    video: '../assets/video/the_surveyor.mp4',
     text: `Gio can't fight. He knows it. He holds the flank anyway — keeping The Surveyor from circling, forcing it to face front.
 
 "I'm just staying in the way," he says.
@@ -1979,6 +1982,7 @@ That's not in its data set.`,
 
   boss_surveyor_fight: {
     id: 'boss_surveyor_fight', type: 'combat',
+    video: '../assets/video/the_surveyor.mp4',
     text: `It does not rush. It calculates.
 
 Every time you move, the lenses click — adjusting, compensating, predicting your next action before you take it.
@@ -2400,6 +2404,7 @@ The moment it does — that's the target.`,
   // BEAT 5 — The Unseen
   boss_unseen_fight_team: {
     id: 'boss_unseen_fight_team', type: 'combat',
+    video: '../assets/video/the_unseen.mp4',
     text: `Four of you. Maybe. Rhen is somewhere — you can feel their presence the same way you feel the Unseen's, just at the edge of perception. Kai calculates. Yara fights. You hold the center.
 
 The Unseen exists at the edge of everything — a shimmer, a distortion. But it consolidates when it strikes, and when it does, there's a half-second of substance.
@@ -2416,6 +2421,7 @@ That's the window.
 
   boss_unseen_fight: {
     id: 'boss_unseen_fight', type: 'combat',
+    video: '../assets/video/the_unseen.mp4',
     text: `You can't see it clearly. Never fully.
 
 It exists at the edge of perception — a shimmer, a distortion in the air where something should be. When you strike, you're striking at probability. At suggestion.
@@ -4052,7 +4058,13 @@ function renderBoss(panel, node) {
     alive: true
   } : null
 
-  buildCombatUI(panel, enemy, 'chapter_end', 'pre_boss_check', 'pre_boss_check', true, yara)
+  const doBuild = () => buildCombatUI(panel, enemy, 'chapter_end', 'pre_boss_check', 'pre_boss_check', true, yara)
+
+  if (node.video) {
+    playCombatCinematic(node.video, doBuild)
+  } else {
+    doBuild()
+  }
 }
 
 // ── Shared combat UI builder ──────────────────────
@@ -4413,7 +4425,12 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
           }
         }
         if (runeKey) await addItem(runeKey, 1)
-        setTimeout(() => goTo(onWin), 1200)
+        // Watcher death cinematic before navigating to end
+        if (isBoss) {
+          playCombatCinematic('../assets/video/the_watcher_dead.mp4', () => goTo(onWin))
+        } else {
+          setTimeout(() => goTo(onWin), 1200)
+        }
       }
     } else {
       if (isBoss) {
