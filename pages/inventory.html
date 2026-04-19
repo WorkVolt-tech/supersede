@@ -18,6 +18,7 @@
         <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#3a2008;margin-bottom:.5rem" id="equip-hint">Select an item from the right, then click a slot.</p>
         <hr class="ink-divider">
         <div id="equip-slots"></div>
+        <div id="set-bonus-panel" style="margin-top:.5rem"></div>
         <hr class="ink-divider">
         <div id="total-stats" style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#3a2008;display:flex;gap:1.5rem;letter-spacing:.06em"></div>
       </div>
@@ -104,10 +105,6 @@ const ITEM_IMAGES = {
   'rune_aero':'../assets/runes/rune_aero.png',
   'rune_umbra':'../assets/runes/rune_umbra.png',
   'rune_lux':'../assets/runes/rune_lux.png',
-  'rune_venin':'../assets/runes/rune_venin.png',
-  'rune_ferro':'../assets/runes/rune_ferro.png',
-  'rune_flora':'../assets/runes/rune_flora.png',
-  'rune_volt':'../assets/runes/rune_volt.png',
   // Base items
   'scrap_blade':    '../assets/weapon/scrap_blade.png',
   'knife':          '../assets/weapon/knife.png',
@@ -195,7 +192,6 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
               (item.control_bonus||0)>0?'CTR +'+item.control_bonus:'',
               (item.insight_bonus||0)>0?'INS +'+item.insight_bonus:'',
               (item.luck_bonus||0)>0?'LCK +'+item.luck_bonus:'',
-              item.hp_restore>0?'+'+item.hp_restore+' HP':'',
             ].filter(Boolean).join(' ')
             const rwLine = _runeword ? '✦ '+_runeword : (_socketsTotal>0?_socketsUsed+'/'+_socketsTotal+' sockets':'')
             return '<span style="font-family:\'Share Tech Mono\',monospace;font-size:.44rem;color:#1a1208;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+bonuses+'</span>'
@@ -216,6 +212,32 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
         }
       })
     })
+
+    // ── Set bonus detection ───────────────────────────────
+    const WATCHER_KEYS = ['watcher_eye_ring','watcher_band','watcher_cloak','watcher_crown']
+    const SET_BONUSES = {
+      1: null,
+      2: { label:'2-Piece Set', effect:'Observer Stacks on hit (max 5): +2% Crit Chance & +2% Accuracy per stack.' },
+      3: { label:'3-Piece Set', effect:'Dodging or critting auto-applies Observed. Observed enemies take +10% damage.' },
+      4: { label:'4-Piece Set — THE WATCHER SEES ALL', effect:'After 5 hits: Total Observation — enemy Marked (+30% dmg), Slowed, cannot dodge.' },
+    }
+    const equippedWatcher = items.filter(i => i.equipped_slot && WATCHER_KEYS.includes(i.item_key))
+    const panel = document.getElementById('set-bonus-panel')
+    if (equippedWatcher.length >= 2) {
+      const bonus = SET_BONUSES[Math.min(equippedWatcher.length, 4)]
+      panel.innerHTML = `
+        <div style="padding:.5rem .65rem;background:rgba(94,174,224,.06);border:.5px solid rgba(94,174,224,.2);border-radius:4px">
+          <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#5eaee0;letter-spacing:.08em;margin-bottom:2px">
+            👁 WATCHER SET (${equippedWatcher.length}/4) — ${bonus.label}
+          </p>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.68rem;color:#3a2008;line-height:1.4;margin:0">${bonus.effect}</p>
+          ${equippedWatcher.length < 4 ? `<p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;margin-top:3px">${4-equippedWatcher.length} more piece${equippedWatcher.length<3?'s':''} for next bonus</p>` : ''}
+        </div>`
+    } else if (equippedWatcher.length === 1) {
+      panel.innerHTML = `<p style="font-family:'Share Tech Mono',monospace;font-size:.46rem;color:#7a6435;letter-spacing:.06em">👁 Watcher Set: 1/4 equipped — equip 1 more for set bonus</p>`
+    } else {
+      panel.innerHTML = ''
+    }
   }
 
   function renderGrid() {
@@ -425,8 +447,8 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
   function showEquippedModal(item) {
     document.getElementById('equipped-modal')?.remove()
 
-    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#44cc44',ferro:'#a0a8b8',flora:'#22aa55',volt:'#ffe033'}
-    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨',venin:'☠️',ferro:'⚙️',flora:'🌿',volt:'⚡'}
+    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
     const RC = {common:'#2a1208',uncommon:'#2a6020',rare:'#1a3a6e',epic:'#4a2a8a',legendary:'#6b5010',mythic:'#6a1a6a'}
 
     const sockets    = item.sockets_total || 0
@@ -514,31 +536,16 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     if (!runeItems || !runeItems.length) {
       pickerEl.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#1a1208">No runes in inventory.</p>'
     } else {
-      const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#44cc44',ferro:'#a0a8b8',flora:'#22aa55',volt:'#ffe033'}
-      const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨',venin:'☠️',ferro:'⚙️',flora:'🌿',volt:'⚡'}
-      const RUNE_NAMES  = {ignis:'Ignis Rune',aqua:'Aqua Rune',terra:'Terra Rune',aero:'Aero Rune',umbra:'Umbra Rune',lux:'Lux Rune',venin:'Venin Rune',ferro:'Ferro Rune',flora:'Flora Rune',volt:'Volt Rune'}
+      const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+      const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+      const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux'}
       pickerEl.innerHTML = `
         <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE</p>
         <div style="display:flex;flex-wrap:wrap;gap:5px">
           ${runeItems.map(r => {
-            const key  = r.item_key.replace('rune_','')
-            const col  = RUNE_COLORS[key] || '#888'
-            const stat = [
-              r.atk_bonus     > 0 ? '+'+r.atk_bonus+' ATK'    : '',
-              r.def_bonus     > 0 ? '+'+r.def_bonus+' DEF'    : '',
-              r.guard_bonus   > 0 ? '+'+r.guard_bonus+' Guard' : '',
-              r.power_bonus   > 0 ? '+'+r.power_bonus+' PWR'  : '',
-              r.speed_bonus   > 0 ? '+'+r.speed_bonus+' SPD'  : '',
-              r.insight_bonus > 0 ? '+'+r.insight_bonus+' INS': '',
-              r.luck_bonus    > 0 ? '+'+r.luck_bonus+' LCK'   : '',
-              r.control_bonus > 0 ? '+'+r.control_bonus+' CTR': '',
-              r.agility_bonus > 0 ? '+'+r.agility_bonus+' AGI': '',
-              r.max_hp_bonus  > 0 ? '+'+r.max_hp_bonus+' Max HP':'',
-            ].filter(Boolean).join(' ')
-            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\')" style="display:flex;flex-direction:column;align-items:center;gap:1px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:5px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'">'
-              +'<span style="display:flex;align-items:center;gap:4px"><span>'+(RUNE_ICONS[key]||'?')+'</span><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></span>'
-              +(stat?'<span style="font-size:.48rem;color:'+col+';opacity:.85">'+stat+'</span>':'')
-              +'</button>'
+            const key = r.item_key.replace('rune_','')
+            const col = RUNE_COLORS[key]||'#888'
+            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\')" style="display:flex;align-items:center;gap:4px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'"><span>'+(RUNE_ICONS[key]||'?')+'</span><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></button>'
           }).join('')}
         </div>`
     }
@@ -769,9 +776,9 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
       return
     }
 
-    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#44cc44',ferro:'#a0a8b8',flora:'#22aa55',volt:'#ffe033'}
-    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨',venin:'☠️',ferro:'⚙️',flora:'🌿',volt:'⚡'}
-    const RUNE_NAMES  = {ignis:'Ignis Rune',aqua:'Aqua Rune',terra:'Terra Rune',aero:'Aero Rune',umbra:'Umbra Rune',lux:'Lux Rune',venin:'Venin Rune',ferro:'Ferro Rune',flora:'Flora Rune',volt:'Volt Rune'}
+    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
+    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+    const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux'}
 
     picker.innerHTML = `
       <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a07de0;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE TO SOCKET</p>
@@ -781,22 +788,9 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           const color = RUNE_COLORS[key] || '#888'
           const icon  = RUNE_ICONS[key]  || '?'
           const name  = RUNE_NAMES[key]  || key
-          const stat  = [
-            r.atk_bonus     > 0 ? '+'+r.atk_bonus+' ATK'     : '',
-            r.def_bonus     > 0 ? '+'+r.def_bonus+' DEF'     : '',
-            r.guard_bonus   > 0 ? '+'+r.guard_bonus+' Guard'  : '',
-            r.power_bonus   > 0 ? '+'+r.power_bonus+' PWR'   : '',
-            r.speed_bonus   > 0 ? '+'+r.speed_bonus+' SPD'   : '',
-            r.insight_bonus > 0 ? '+'+r.insight_bonus+' INS' : '',
-            r.luck_bonus    > 0 ? '+'+r.luck_bonus+' LCK'    : '',
-            r.control_bonus > 0 ? '+'+r.control_bonus+' CTR' : '',
-            r.agility_bonus > 0 ? '+'+r.agility_bonus+' AGI' : '',
-            r.max_hp_bonus  > 0 ? '+'+r.max_hp_bonus+' Max HP':'',
-          ].filter(Boolean).join(' ')
           return `<button onclick="socketRuneToItem('${itemId}','${r.id}','${key}','${itemType}')"
-            style="display:flex;flex-direction:column;align-items:center;gap:1px;background:${color}18;border:1px solid ${color}60;border-radius:4px;padding:5px 8px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:${color}">
-            <span style="display:flex;align-items:center;gap:4px"><span>${icon}</span><span>${name}</span><span style="color:#3a2008;font-size:.5rem">×${r.quantity}</span></span>
-            ${stat ? `<span style="font-size:.48rem;color:${color};opacity:.85">${stat}</span>` : ''}
+            style="display:flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:${color}">
+            <span>${icon}</span><span>${name}</span><span style="color:#3a2008;font-size:.5rem">×${r.quantity}</span>
           </button>`
         }).join('')}
       </div>
