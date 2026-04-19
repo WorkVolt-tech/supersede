@@ -546,13 +546,22 @@ function buildTree() {
   // Connectors
   let lines = ''
   NODES.forEach(nd => {
+    const ndUnlocked = skillsUnlocked.includes(nd.id) || nd.id === 'center'
+    const ndAvailable = !ndUnlocked && (nd.requires.length === 0 || nd.requires.some(r => r === 'center' || skillsUnlocked.includes(r)))
     nd.requires.forEach(req => {
       const par = NODES.find(n => n.id === req)
       if (!par) return
-      const lit = skillsUnlocked.includes(nd.id) && skillsUnlocked.includes(req)
-      const col = lit ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(180,140,60,.45)'
-      const sw  = lit ? 2.5 : 1.5
-      lines += `<line x1="${par.x}" y1="${par.y}" x2="${nd.x}" y2="${nd.y}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"/>`
+      const parUnlocked = skillsUnlocked.includes(req) || req === 'center'
+      // Lit: both unlocked, OR parent unlocked and child available (shows the usable path)
+      const lit = (ndUnlocked && parUnlocked) || (ndAvailable && parUnlocked)
+      // Dashed: child available but this specific parent is locked (alternative path not yet met)
+      const dashed = ndAvailable && !parUnlocked
+      const col = lit ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e')
+                : dashed ? 'rgba(180,140,60,.2)'
+                : 'rgba(180,140,60,.35)'
+      const sw  = lit ? 2.5 : 1.2
+      const dash = dashed ? ' stroke-dasharray="4,4"' : ''
+      lines += `<line x1="${par.x}" y1="${par.y}" x2="${nd.x}" y2="${nd.y}" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"${dash}/>`
     })
   })
   svg.innerHTML = lines
@@ -689,6 +698,8 @@ function showNodeDetail(nd) {
   } else {
     const typeLabel = nd.type==='keystone' ? '★ KEYSTONE' : nd.type==='notable' ? '◆ NOTABLE' : '· NODE'
     const prereqsMet = nd.requires.length === 0 || nd.requires.some(r => r==='center' || skillsUnlocked.includes(r))
+    const metVia     = nd.requires.filter(r => r==='center' || skillsUnlocked.includes(r))
+    const unmetReqs  = nd.requires.filter(r => r!=='center' && !skillsUnlocked.includes(r))
     const statLine   = nd.stat && nd.val ? `+${nd.val} ${statToCol(nd.stat).replace('_',' ')}` : ''
     const inBattle   = pendingBattleSkills.includes(nd.id)
     const battleFull = pendingBattleSkills.length >= 6
@@ -701,8 +712,10 @@ function showNodeDetail(nd) {
         </div>
         <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
           ${canUnlock(nd) ? `<button onclick="doUnlock('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(200,184,128,.55);border:1px solid rgba(139,106,32,.7);border-radius:3px;padding:.3rem .8rem;cursor:pointer">✦ Unlock (${nd.cost} SP)</button>` : ''}
-          ${!isUnlocked(nd) && !canUnlock(nd) && !prereqsMet ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a08858">🔒 Unlock path first</span>` : ''}
-          ${!isUnlocked(nd) && !canUnlock(nd) && prereqsMet && skillPoints < nd.cost ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#c04040">Need ${nd.cost} SP</span>` : ''}
+          ${!isUnlocked(nd) && !canUnlock(nd) && !prereqsMet ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#a08858">🔒 Unlock a connected node first</span>` : ''}
+          ${!isUnlocked(nd) && prereqsMet && skillPoints < nd.cost ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#c04040">Need ${nd.cost} SP (have ${skillPoints})</span>` : ''}
+          ${!isUnlocked(nd) && prereqsMet && skillPoints >= nd.cost && !canUnlock(nd) ? `<span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#a08858">Path available ✓</span>` : ''}
+          ${prereqsMet && unmetReqs.length > 0 && !isUnlocked(nd) ? `<div style="font-family:'Share Tech Mono',monospace;font-size:.46rem;color:#7a6435;margin-top:3px">✓ Path met via ${metVia.map(r=>{ const n=NODES.find(x=>x.id===r); return n?.label||r }).join(', ')}</div>` : ''}
           ${isUnlocked(nd) && nd.type !== 'small' && nd.type !== 'start' && nd.type !== 'keystone' && !inBattle && !battleFull
             ? `<button onclick="stageAddToBattle('${nd.id}')" style="font-family:'Cinzel',serif;font-size:.7rem;color:#1a1208;background:rgba(94,174,224,.3);border:1px solid rgba(94,174,224,.5);border-radius:3px;padding:.3rem .8rem;cursor:pointer">+ Add to Battle</button>` : ''}
           ${isUnlocked(nd) && inBattle
