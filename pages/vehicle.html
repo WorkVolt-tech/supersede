@@ -600,9 +600,13 @@ function loop(ts){
       return true
     })
 
-    // Eye reaches player zone (only damages if on road — off-road eyes just pass)
-    if(!e.dead&&e.y>canvas.height-55){
-      if(PV.inv===0&&onRoad){G.hp-=e.atk;shake(e.sz/2);flash();G.combo=0}
+    // Eye reaches bottom — only damages if it actually overlaps player position
+    if(!e.dead&&e.y>canvas.height-80){
+      const dx=Math.abs(e.x-PV.x), dy=Math.abs(e.y-PV.y)
+      const hitW=e.sz+PV.w/2, hitH=e.sz+PV.h/2
+      if(PV.inv===0&&dx<hitW&&dy<hitH){
+        G.hp-=e.atk;shake(e.sz/2);flash();G.combo=0
+      }
       e.dead=true;explode(e.x,e.y,e.col,10)
     }
     if(!e.dead)drawEye(e)
