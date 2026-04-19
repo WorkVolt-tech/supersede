@@ -3355,14 +3355,17 @@ function calcBadge(moral, pvpKills, helpsGiven, backstabs) {
   const m  = moral      || 0
   const pk = pvpKills   || 0
   const hg = helpsGiven || 0
-  const bs = backstabs  || 0
-  // Elite: very high moral AND significant helping
-  if (m >= 60 && hg >= 5)  return 'elite'
-  // Helper: positive moral, more helps than kills
-  if (m >= 20 && hg > pk)  return 'green'
-  // Hunter: negative moral OR significantly more kills than helps
-  if (m <= -20 || (pk >= 3 && pk > hg * 2)) return 'red'
-  // Neutral: everything else
+
+  // Elite: high moral, boosted by helping others
+  if (m >= 60 && (hg >= 3 || pk === 0)) return 'elite'
+
+  // Green: positive moral score — helping actions reinforce it, but moral alone is enough
+  if (m >= 20) return 'green'
+
+  // Red: negative moral OR heavily pvp-focused
+  if (m <= -20 || (pk >= 5 && pk > hg * 3)) return 'red'
+
+  // Neutral: everything else (-19 to +19)
   return 'neutral'
 }
 
