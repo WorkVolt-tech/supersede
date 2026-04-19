@@ -105,6 +105,10 @@ const ITEM_IMAGES = {
   'rune_aero':'../assets/runes/rune_aero.png',
   'rune_umbra':'../assets/runes/rune_umbra.png',
   'rune_lux':'../assets/runes/rune_lux.png',
+  'rune_venin':'../assets/runes/rune_venin.png',
+  'rune_ferro':'../assets/runes/rune_ferro.png',
+  'rune_flora':'../assets/runes/rune_flora.png',
+  'rune_volt':'../assets/runes/rune_volt.png',
   // Base items
   'scrap_blade':    '../assets/weapon/scrap_blade.png',
   'knife':          '../assets/weapon/knife.png',
@@ -408,10 +412,12 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
             <div style="display:flex;gap:4px;margin-bottom:4px">
               ${Array.from({length:item.sockets_total||0}).map((_,i) => {
                 const rune = (item.socketed_runes||[])[i]
-                const runeColors = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
-                const runeIcons  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+                const runeColors = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#4caf50',ferro:'#90a4ae',flora:'#66bb6a',volt:'#ffee58'}
                 const color = rune ? (runeColors[rune]||'#a07de0') : 'rgba(160,125,224,.3)'
-                return '<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:.75rem;background:'+(rune?color+'22':'rgba(0,0,0,.15)')+'" title="'+(rune||'Empty socket')+'">'+(rune?(runeIcons[rune]||'?'):'○')+'</div>'
+                const imgSrc = rune ? `../assets/runes/rune_${rune}.png` : ''
+                return '<div style="width:22px;height:22px;border-radius:50%;border:1.5px solid '+color+';display:flex;align-items:center;justify-content:center;overflow:hidden;background:'+(rune?color+'22':'rgba(0,0,0,.15)')+'" title="'+(rune||'Empty socket')+'">'
+                  + (rune ? '<img src="'+imgSrc+'" style="width:18px;height:18px;object-fit:contain;border-radius:50%" onerror="this.outerHTML=\'<span style=\\\"font-size:.75rem\\\">◈</span>\'">' : '○')
+                  + '</div>'
               }).join('')}
             </div>
             ${item.runeword_name ? `
@@ -447,8 +453,8 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
   function showEquippedModal(item) {
     document.getElementById('equipped-modal')?.remove()
 
-    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
-    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
+    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#4caf50',ferro:'#90a4ae',flora:'#66bb6a',volt:'#ffee58'}
+    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨',venin:'☠️',ferro:'⚙️',flora:'🌿',volt:'⚡'}
     const RC = {common:'#2a1208',uncommon:'#2a6020',rare:'#1a3a6e',epic:'#4a2a8a',legendary:'#6b5010',mythic:'#6a1a6a'}
 
     const sockets    = item.sockets_total || 0
@@ -465,7 +471,9 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
           ${Array.from({length:sockets}).map((_,i) => {
             const rune = runes[i]
             const color = rune ? (RUNE_COLORS[rune]||'#a07de0') : 'rgba(100,80,40,.3)'
-            return '<div style="width:26px;height:26px;border-radius:50%;border:1.5px solid '+color+';display:flex;align-items:center;justify-content:center;font-size:.85rem;background:'+(rune?color+'22':'rgba(0,0,0,.1)')+'" title="'+(rune||'Empty socket')+'">'+(rune?(RUNE_ICONS[rune]||'?'):'○')+'</div>'
+            return '<div style="width:26px;height:26px;border-radius:50%;border:1.5px solid '+color+';display:flex;align-items:center;justify-content:center;overflow:hidden;background:'+(rune?color+'22':'rgba(0,0,0,.1)')+'" title="'+(rune||'Empty socket')+'">'
+              + (rune ? '<img src="../assets/runes/rune_'+rune+'.png" style="width:22px;height:22px;object-fit:contain;border-radius:50%" onerror="this.outerHTML=\'<span style=\\\"font-size:.85rem\\\">'+(RUNE_ICONS[rune]||'◈')+'</span>\'">' : '○')
+              + '</div>'
           }).join('')}
         </div>
         ${item.runeword_name ? `
@@ -536,16 +544,16 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
     if (!runeItems || !runeItems.length) {
       pickerEl.innerHTML = '<p style="font-family:\'IM Fell English\',serif;font-style:italic;font-size:.8rem;color:#1a1208">No runes in inventory.</p>'
     } else {
-      const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
-      const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
-      const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux'}
+      const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#4caf50',ferro:'#90a4ae',flora:'#66bb6a',volt:'#ffee58'}
+      const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨',venin:'☠️',ferro:'⚙️',flora:'🌿',volt:'⚡'}
+      const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux',venin:'Venin',ferro:'Ferro',flora:'Flora',volt:'Volt'}
       pickerEl.innerHTML = `
         <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE</p>
         <div style="display:flex;flex-wrap:wrap;gap:5px">
           ${runeItems.map(r => {
             const key = r.item_key.replace('rune_','')
             const col = RUNE_COLORS[key]||'#888'
-            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\')" style="display:flex;align-items:center;gap:4px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'"><span>'+(RUNE_ICONS[key]||'?')+'</span><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></button>'
+            return '<button onclick="socketRuneToItem(\''+itemId+'\',\''+r.id+'\',\''+key+'\',\''+itemType+'\')" style="display:flex;align-items:center;gap:4px;background:'+col+'18;border:1px solid '+col+'60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:\'Share Tech Mono\',monospace;font-size:.6rem;color:'+col+'"><img src="../assets/runes/rune_'+key+'.png" style="width:16px;height:16px;object-fit:contain;border-radius:2px" onerror="this.outerHTML=\'<span>'+(RUNE_ICONS[key]||'◈')+'</span>\'"><span>'+(RUNE_NAMES[key]||key)+'</span><span style="color:#1a1208;font-size:.5rem">×'+r.quantity+'</span></button>'
           }).join('')}
         </div>`
     }
@@ -776,9 +784,9 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
       return
     }
 
-    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700'}
-    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨'}
-    const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux'}
+    const RUNE_COLORS = {ignis:'#ff5500',aqua:'#0088ff',terra:'#8b5e3c',aero:'#a8d8ea',umbra:'#b06eff',lux:'#ffd700',venin:'#4caf50',ferro:'#90a4ae',flora:'#66bb6a',volt:'#ffee58'}
+    const RUNE_ICONS  = {ignis:'🔥',aqua:'💧',terra:'🪨',aero:'💨',umbra:'🌑',lux:'✨',venin:'☠️',ferro:'⚙️',flora:'🌿',volt:'⚡'}
+    const RUNE_NAMES  = {ignis:'Ignis',aqua:'Aqua',terra:'Terra',aero:'Aero',umbra:'Umbra',lux:'Lux',venin:'Venin',ferro:'Ferro',flora:'Flora',volt:'Volt'}
 
     picker.innerHTML = `
       <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#a07de0;letter-spacing:.07em;margin-bottom:5px">SELECT RUNE TO SOCKET</p>
@@ -786,11 +794,12 @@ function getItemImg(k) { return ITEM_IMAGES[k] || null }
         ${runeItems.map(r => {
           const key   = r.item_key.replace('rune_','')
           const color = RUNE_COLORS[key] || '#888'
-          const icon  = RUNE_ICONS[key]  || '?'
+          const icon  = RUNE_ICONS[key]  || '◈'
           const name  = RUNE_NAMES[key]  || key
           return `<button onclick="socketRuneToItem('${itemId}','${r.id}','${key}','${itemType}')"
             style="display:flex;align-items:center;gap:4px;background:${color}18;border:1px solid ${color}60;border-radius:4px;padding:4px 8px;cursor:pointer;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:${color}">
-            <span>${icon}</span><span>${name}</span><span style="color:#3a2008;font-size:.5rem">×${r.quantity}</span>
+            <img src="../assets/runes/rune_${key}.png" style="width:16px;height:16px;object-fit:contain;border-radius:2px" onerror="this.outerHTML='<span>${icon}</span>'">
+            <span>${name}</span><span style="color:#3a2008;font-size:.5rem">×${r.quantity}</span>
           </button>`
         }).join('')}
       </div>
