@@ -264,7 +264,7 @@ She doesn't say anything else. She lets you think.`,
     xp: 50,
     choices: [
       { label: 'Offer to be the partner',      sub: 'Alliance signature — moral +15',  next: 'builders_alliance', moral: 15 },
-      { label: 'Ask what you'd get out of it',  sub: 'Practical question',              next: 'builders_negotiation' },
+      { label: "Ask what you'd get out of it",  sub: 'Practical question',              next: 'builders_negotiation' },
       { label: 'Keep your options open',        sub: 'Non-committal',                   next: 'district_hub' },
     ],
   },
@@ -1195,14 +1195,18 @@ function render() {
 function renderChoices(panel,node) {
   const choices=node.choices||[]
   if (!choices.length) { panel.innerHTML=''; return }
-  panel.innerHTML=`<p class="choices-label">What do you do?</p><div class="choices">`+
+  panel.innerHTML='<p class="choices-label">What do you do?</p><div class="choices">'+
     choices.map(c=>{
-      const data=`'${c.next}',{moral:${c.moral||0},outcome:'${c.outcome||''}'}`
-      return `<button class="choice${c.variant?' choice-'+c.variant:''}" onclick="goTo(${data})">
-        <span class="choice-arrow">→</span>
-        <span class="choice-body">${c.label}${c.sub?`<span class="choice-sub">${c.sub}</span>`:''}</span>
-      </button>`
-    }).join('')+`</div>`
+      const next=c.next||''
+      const moral=c.moral||0
+      const outcome=c.outcome||''
+      const variant=c.variant?' choice-'+c.variant:''
+      const sub=c.sub?'<span class="choice-sub">'+c.sub+'</span>':''
+      return '<button class="choice'+variant+'" onclick="goTo(\''+next+'\',{moral:'+moral+',outcome:\''+outcome+'\'})">'+
+        '<span class="choice-arrow">→</span>'+
+        '<span class="choice-body">'+c.label+sub+'</span>'+
+        '</button>'
+    }).join('')+'</div>'
 }
 
 // District hub — 9 elemental zones
