@@ -134,100 +134,170 @@ const SOCKET_RULES = {
 
 const RARITY_COLORS = { common:'#888',uncommon:'#5ec45e',rare:'#5eaee0',epic:'#a07de0',legendary:'#c8b96e',mythic:'#ff88ff' }
 
-// All runewords — key is sorted rune array
+// All runewords — key is sorted rune array joined by +
+// Slot: 'weapon' | 'armor' | 'accessory' | 'any'
+// Runes: ignis🔥 aqua💧 terra🪨 aero💨 umbra🌑 lux✨ venin☠️ ferro⚙️ flora🌿 volt⚡
 const RUNEWORDS = {
-  'ignis+ignis':                     {name:'Ember Core',       rarity:'rare',      slot:'weapon',    effect:'Burn applies to all actions — enemies take 3 damage per turn',                            stats:{power_bonus:2,atk_bonus:2},icon:'🔥'},
-  'aero+ignis':                      {name:'Blazing Speed',    rarity:'epic',      slot:'weapon',    effect:'Aggressive choices always act first — Speed +4',                                          stats:{power_bonus:2,speed_bonus:4},icon:'🔥💨'},
-  'ignis+umbra':                     {name:'Hellfire Pact',    rarity:'legendary', slot:'weapon',    effect:'+Massive Power, 20% chance of backlash (-15 HP)',                                         stats:{power_bonus:6,atk_bonus:4},icon:'🔥🌑'},
-  'ignis+terra':                     {name:'Molten Strike',    rarity:'rare',      slot:'weapon',    effect:'Stable damage boost — guaranteed minimum damage',                                          stats:{power_bonus:2,atk_bonus:3,guard_bonus:1},icon:'🔥🪨'},
-  'aqua+ignis':                      {name:'Steam Burst',      rarity:'epic',      slot:'weapon',    effect:'Convert failure into partial success once per fight',                                      stats:{power_bonus:2,control_bonus:2},icon:'🔥💧'},
-  'aero+ignis+ignis':                {name:'Inferno Rush',     rarity:'epic',      slot:'weapon',    effect:'Chain burn — attack twice if first hit lands',                                             stats:{power_bonus:3,speed_bonus:2,atk_bonus:2},icon:'🔥🔥💨'},
-  'ignis+ignis+umbra':               {name:'Doom Flame',       rarity:'legendary', slot:'weapon',    effect:'Huge damage, adds chaos effect to enemy',                                                  stats:{power_bonus:5,atk_bonus:5},icon:'🔥🔥🌑'},
-  'ignis+terra+umbra':               {name:'Volcanic Doom',    rarity:'legendary', slot:'weapon',    effect:'Power scales with HP lost',                                                                stats:{power_bonus:4,atk_bonus:4,guard_bonus:1},icon:'🔥🪨🌑'},
-  'aqua+aqua':                       {name:'Flow State',       rarity:'rare',      slot:'weapon',    effect:'Retry any failed action once per fight',                                                   stats:{control_bonus:3,luck_bonus:2},icon:'💧💧'},
-  'aqua+lux':                        {name:'Sacred Tide',      rarity:'epic',      slot:'weapon',    effect:'Heal 10 HP after every successful action',                                                 stats:{control_bonus:2,insight_bonus:2},icon:'💧✨'},
-  'aero+aqua':                       {name:'Current Shift',    rarity:'epic',      slot:'weapon',    effect:'Reorder outcomes — see next choice before acting',                                         stats:{control_bonus:3,speed_bonus:2},icon:'💧💨'},
-  'aqua+umbra':                      {name:'Drowning Curse',   rarity:'legendary', slot:'weapon',    effect:'Control enemy 2 turns — self-risk after',                                                  stats:{control_bonus:5,power_bonus:2},icon:'💧🌑'},
-  'aqua+terra':                      {name:'Deep Stability',   rarity:'rare',      slot:'weapon',    effect:'Reduce critical failure chance by 40%',                                                    stats:{control_bonus:2,guard_bonus:2},icon:'💧🪨'},
-  'aqua+aqua+lux':                   {name:'Ocean Blessing',   rarity:'epic',      slot:'weapon',    effect:'Restore 20 HP and retry after any failure',                                               stats:{control_bonus:3,insight_bonus:2,luck_bonus:2},icon:'💧💧✨'},
-  'aero+aqua+umbra':                 {name:'Phantom Current',  rarity:'legendary', slot:'weapon',    effect:'Hidden chained actions — acts twice, no counter',                                          stats:{control_bonus:4,speed_bonus:3,power_bonus:2},icon:'💧💨🌑'},
-  'aero+aero':                       {name:'Wind Fury',        rarity:'rare',      slot:'weapon',    effect:'30% chance to act twice in one turn',                                                      stats:{speed_bonus:4,luck_bonus:2},icon:'💨💨'},
-  'aero+umbra':                      {name:'Phantom Strike',   rarity:'legendary', slot:'weapon',    effect:'Invisible action — enemy cannot react 1 turn',                                             stats:{speed_bonus:4,power_bonus:3},icon:'💨🌑'},
-  'aero+aero+ignis':                 {name:'Storm Inferno',    rarity:'legendary', slot:'weapon',    effect:'Chain attack then burn — acts three times if all hit',                                     stats:{speed_bonus:4,power_bonus:3,atk_bonus:3},icon:'💨💨🔥'},
-  'umbra+umbra':                     {name:'Abyss Core',       rarity:'epic',      slot:'weapon',    effect:'Double power — double penalty on miss',                                                    stats:{power_bonus:5,atk_bonus:3},icon:'🌑🌑'},
-  'aero+ignis+umbra':                {name:'Chaos Engine',     rarity:'mythic',    slot:'weapon',    effect:'Random massive effect each turn',                                                          stats:{power_bonus:6,speed_bonus:4,atk_bonus:4},icon:'🌑🔥💨'},
-  'ignis+ignis+umbra+umbra':         {name:'Hell Collapse',    rarity:'mythic',    slot:'weapon',    effect:'Extreme damage — heavy HP cost each use',                                                  stats:{power_bonus:8,atk_bonus:6},icon:'🌑🔥🔥'},
-  'lux+lux':                         {name:'Radiant Edge',     rarity:'rare',      slot:'weapon',    effect:'Remove all negative status after each fight',                                              stats:{insight_bonus:2,luck_bonus:2,guard_bonus:1},icon:'✨✨'},
-  'ignis+lux':                       {name:'Holy Flame',       rarity:'epic',      slot:'weapon',    effect:'Balanced aggression — damage without negatives',                                           stats:{power_bonus:2,insight_bonus:2,atk_bonus:2},icon:'✨🔥'},
-  'lux+terra':                       {name:'Sacred Strike',    rarity:'epic',      slot:'weapon',    effect:'Stable guaranteed success',                                                                stats:{insight_bonus:2,guard_bonus:2,atk_bonus:2},icon:'✨🪨'},
-  'aero+lux':                        {name:'Light Speed',      rarity:'epic',      slot:'weapon',    effect:'Faster actions, no penalty on speed moves',                                               stats:{speed_bonus:3,insight_bonus:2},icon:'✨💨'},
-  'lux+lux+terra':                   {name:'Divine Judgment',  rarity:'legendary', slot:'weapon',    effect:'Near-guaranteed success this fight',                                                       stats:{insight_bonus:4,guard_bonus:3,luck_bonus:3},icon:'✨✨🪨'},
-  'aqua+ignis+terra':                {name:'Steam Core',       rarity:'epic',      slot:'weapon',    effect:'Balanced offense — fire damage, water retry, earth stability',                             stats:{power_bonus:2,control_bonus:2,guard_bonus:1,atk_bonus:2},icon:'🔥💧🪨'},
-  'aero+terra+umbra':                {name:'Shadow Cyclone',   rarity:'legendary', slot:'weapon',    effect:'AoE chaos — hits all, random effects per target',                                          stats:{speed_bonus:2,power_bonus:3,atk_bonus:3},icon:'💨🪨🌑'},
-  'aero+aqua+lux':                   {name:'Radiant Flow',     rarity:'epic',      slot:'weapon',    effect:'Heal and speed — recover HP while acting quickly',                                         stats:{speed_bonus:2,control_bonus:2,insight_bonus:2},icon:'💨💧✨'},
-  'aero+aqua+ignis+lux+terra+umbra': {name:'Genesis Blade',    rarity:'mythic',    slot:'weapon',    effect:'Game transformation — all stats maximized',                                                stats:{power_bonus:6,control_bonus:6,guard_bonus:6,speed_bonus:6,insight_bonus:6,luck_bonus:6,atk_bonus:8},icon:'⚡'},
-  // ── Poison (venin) runewords ──────────────────────────────────────────────────────────
-  'venin+venin':                     {name:'Venom Core',       rarity:'rare',      slot:'weapon',    effect:'Every strike poisons — 3 dmg/turn × 3 turns, stacks on each hit',                          stats:{power_bonus:2,atk_bonus:2,luck_bonus:1},icon:'☠️☠️'},
-  'ignis+venin':                     {name:'Toxic Flame',      rarity:'epic',      slot:'weapon',    effect:'Burn and poison simultaneously — 3 fire + 3 poison dmg per turn',                          stats:{power_bonus:3,atk_bonus:3},icon:'🔥☠️'},
-  'aero+venin':                      {name:'Miasma',           rarity:'epic',      slot:'weapon',    effect:'Poison spreads on dodge — enemy poisoned if they miss you',                                 stats:{speed_bonus:3,atk_bonus:2,luck_bonus:2},icon:'💨☠️'},
-  'umbra+venin':                     {name:'Deathblight',      rarity:'legendary', slot:'weapon',    effect:'Poison dmg scales with enemy missing HP — more damage as they weaken',                     stats:{power_bonus:4,atk_bonus:3,luck_bonus:2},icon:'🌑☠️'},
-  'venin+venin+umbra':               {name:'Plague Harbinger', rarity:'legendary', slot:'weapon',    effect:'Poison cannot be cleansed — doubles after 2 turns',                                        stats:{power_bonus:5,atk_bonus:4},icon:'☠️☠️🌑'},
-  // ── Metal (ferro) runewords ───────────────────────────────────────────────────────────
-  'ferro+ferro':                     {name:'Iron Bastion',     rarity:'rare',      slot:'armor',     effect:'Reflect 10% of all incoming damage. Cannot be stunned.',                                    stats:{guard_bonus:4,def_bonus:4},icon:'⚙️⚙️'},
-  'ferro+terra':                     {name:'Tempered Earth',   rarity:'rare',      slot:'armor',     effect:'Massive DEF boost — take minimum 1 dmg from any hit',                                      stats:{guard_bonus:3,def_bonus:5},icon:'⚙️🪨'},
-  'ferro+lux':                       {name:'Radiant Steel',    rarity:'epic',      slot:'weapon',    effect:'Attacks bypass 30% of enemy DEF — strikes ring like a bell',                               stats:{atk_bonus:4,insight_bonus:2,guard_bonus:1},icon:'⚙️✨'},
-  'ferro+umbra':                     {name:'Shadow Alloy',     rarity:'legendary', slot:'weapon',    effect:'+40% crit damage — blade forged in the dark reflects nothing',                              stats:{power_bonus:4,atk_bonus:4,guard_bonus:1},icon:'⚙️🌑'},
-  'ferro+ferro+terra':               {name:'Fortress Core',    rarity:'legendary', slot:'armor',     effect:'Reduce all damage by 25%. Reflect 15%. Cannot be moved.',                                  stats:{guard_bonus:6,def_bonus:5},icon:'⚙️⚙️🪨'},
-  // ── Plant (flora) runewords ───────────────────────────────────────────────────────────
-  'flora+flora':                     {name:'Living Armor',     rarity:'rare',      slot:'armor',     effect:'Regenerate 4 HP per turn. Remove 1 debuff per turn.',                                      stats:{guard_bonus:2,def_bonus:2,control_bonus:2},icon:'🌿🌿'},
-  'aqua+flora':                      {name:'Tide Root',        rarity:'epic',      slot:'armor',     effect:'Regen 8 HP per turn. Revive once per fight at 1 HP.',                                     stats:{guard_bonus:3,def_bonus:2,control_bonus:3},icon:'🌿💧'},
-  'flora+lux':                       {name:'Sunbloom',         rarity:'epic',      slot:'weapon',    effect:'Heal 5 HP on every successful hit. Cleanse poison on victory.',                            stats:{atk_bonus:2,insight_bonus:3,luck_bonus:2},icon:'🌿✨'},
-  'flora+terra':                     {name:'Thornwall',        rarity:'rare',      slot:'armor',     effect:'Attackers take 4 thorn damage. DEF scales up each turn.',                                  stats:{guard_bonus:4,def_bonus:2},icon:'🌿🪨'},
-  'flora+venin':                     {name:'Spore Cloud',      rarity:'legendary', slot:'weapon',    effect:'On hit: 40% chance to poison and disorient — enemy loses next action',                     stats:{power_bonus:3,atk_bonus:2,luck_bonus:3},icon:'🌿☠️'},
-  'aqua+flora+lux':                  {name:'Garden of Life',   rarity:'legendary', slot:'armor',     effect:'Full regen build — 10 HP/turn, immune to poison, revive once',                            stats:{guard_bonus:4,def_bonus:3,control_bonus:3,insight_bonus:2},icon:'🌿💧✨'},
-  // ── Lightning (volt) runewords ────────────────────────────────────────────────────────
-  'volt+volt':                       {name:'Storm Core',       rarity:'rare',      slot:'weapon',    effect:'40% chain hit chance — lightning arcs to a second target for 60% dmg',                    stats:{atk_bonus:4,speed_bonus:2},icon:'⚡⚡'},
-  'aero+volt':                       {name:'Thunder Rush',     rarity:'epic',      slot:'weapon',    effect:'Always act first. Chain hit guaranteed on first strike of fight.',                          stats:{speed_bonus:5,atk_bonus:3},icon:'⚡💨'},
-  'volt+ignis':                      {name:'Plasma Burst',     rarity:'epic',      slot:'weapon',    effect:'Chain hit also applies burn — chain target takes 3 fire dmg/turn',                        stats:{power_bonus:3,atk_bonus:4},icon:'⚡🔥'},
-  'volt+umbra':                      {name:'Dark Current',     rarity:'legendary', slot:'weapon',    effect:'Chain hit is invisible — enemy cannot dodge the arc',                                      stats:{power_bonus:4,atk_bonus:4,speed_bonus:2},icon:'⚡🌑'},
-  'volt+volt+aero':                  {name:'Stormcaller',      rarity:'legendary', slot:'weapon',    effect:'Every attack chains. First chain is free. Third chain stuns.',                             stats:{atk_bonus:5,speed_bonus:4,power_bonus:2},icon:'⚡⚡💨'},
-  // ── Cross-new-element combinations ───────────────────────────────────────────────────
-  'ferro+volt':                      {name:'Magnetar',         rarity:'epic',      slot:'weapon',    effect:'Metal conducts — strike pulls enemy closer, next hit guaranteed',                          stats:{atk_bonus:4,guard_bonus:2,speed_bonus:1},icon:'⚙️⚡'},
-  'flora+venin+venin':               {name:'Poison Garden',    rarity:'legendary', slot:'weapon',    effect:'Poison strength doubles every 2 turns. Regen prevents self-damage.',                       stats:{power_bonus:4,atk_bonus:3,luck_bonus:3},icon:'🌿☠️☠️'},
-  'ferro+ferro+volt+volt':           {name:'Arc Cannon',       rarity:'mythic',    slot:'weapon',    effect:'Every hit chains twice. Chains bypass armor. Iron frame amplifies each arc.',              stats:{atk_bonus:7,speed_bonus:4,guard_bonus:2,power_bonus:3},icon:'⚙️⚡'},
-  'aqua+flora+venin+lux':            {name:'Alchemist\'s Will', rarity:'mythic',   slot:'weapon',    effect:'Poison heals you. Regen damages enemy. Light reveals hidden paths.',                       stats:{power_bonus:5,control_bonus:4,luck_bonus:4,insight_bonus:3},icon:'🌿☠️💧✨'},
-  // Armor
-  'terra+terra':                     {name:'Stone Skin',       rarity:'rare',      slot:'armor',     effect:'Heavy reduction — 30% less damage from all sources',                                       stats:{guard_bonus:5,def_bonus:3},icon:'🪨🪨'},
-  'aqua+terra+terra':                {name:'Deep Root',        rarity:'epic',      slot:'armor',     effect:'Prevent all critical failures',                                                            stats:{guard_bonus:4,def_bonus:3,control_bonus:2},icon:'🪨🪨💧'},
-  'aqua+lux+terra':                  {name:'Eternal Guard',    rarity:'legendary', slot:'armor',     effect:'Strong protection — resist all damage types',                                              stats:{guard_bonus:6,def_bonus:4,insight_bonus:2},icon:'✨🪨💧'},
-  'ignis+lux':                       {name:'Phoenix Guard',    rarity:'legendary', slot:'armor',     effect:'Revive once per chapter at 30 HP',                                                         stats:{guard_bonus:2,def_bonus:2,power_bonus:1},icon:'✨🔥'},
-  'lux+lux+umbra':                   {name:'Fallen Angel',     rarity:'legendary', slot:'armor',     effect:'High power defensive armor — attack while hit',                                            stats:{guard_bonus:4,power_bonus:3,def_bonus:3},icon:'🌑✨✨'},
-  'ignis+ignis':                     {name:'Flame Guard',      rarity:'uncommon',  slot:'armor',     effect:'Burn attackers — 2 fire damage when you are hit',                                          stats:{guard_bonus:1,def_bonus:2},icon:'🔥🔥'},
-  'aero+aero':                       {name:'Ghost Cloak',      rarity:'rare',      slot:'armor',     effect:'40% dodge chance on each incoming attack',                                                 stats:{guard_bonus:1,speed_bonus:4,def_bonus:1},icon:'💨💨'},
-  'aqua+aqua':                       {name:'Flow Armor',       rarity:'rare',      slot:'armor',     effect:'Retry defense — reduce damage on second check',                                            stats:{guard_bonus:2,control_bonus:2,def_bonus:2},icon:'💧💧'},
-  'aqua+lux+terra+terra':            {name:'World Core',       rarity:'legendary', slot:'armor',     effect:'Massive defense — reduce all incoming by 50%',                                             stats:{guard_bonus:8,def_bonus:6,control_bonus:2},icon:'🌍'},
-  'aero+aqua+lux+lux+terra':         {name:'Celestial Aegis',  rarity:'mythic',    slot:'armor',     effect:'Perfect balance — immune to all negative effects',                                         stats:{guard_bonus:6,def_bonus:6,insight_bonus:4,luck_bonus:4},icon:'🌟'},
-  // Accessories & Universal
-  'ignis+umbra+acc':                 {name:'Hell Ring',        rarity:'epic',      slot:'accessory', effect:'Power spike every 3 turns',                                                                stats:{power_bonus:3,atk_bonus:2},icon:'🔥🌑'},
-  'lux+umbra+acc':                   {name:'Twilight Loop',    rarity:'rare',      slot:'accessory', effect:'Nullify one extreme consequence per chapter',                                               stats:{insight_bonus:2,power_bonus:1,guard_bonus:1},icon:'✨🌑'},
-  'lux+terra+uni':                   {name:'Harmony',          rarity:'rare',      slot:'any',       effect:'All stats slightly improved',                                                               stats:{power_bonus:1,control_bonus:1,guard_bonus:1,speed_bonus:1},icon:'☯️'},
-  'lux+umbra+uni':                   {name:'Twilight Core',    rarity:'legendary', slot:'any',       effect:'Risk plus stability — high power with safety net',                                         stats:{power_bonus:3,guard_bonus:2,insight_bonus:2},icon:'🌓'},
-  'lux+lux+lux+uni':                 {name:'Pure Divinity',    rarity:'mythic',    slot:'any',       effect:'Remove all negative effects permanently this chapter',                                      stats:{insight_bonus:5,guard_bonus:4,luck_bonus:5},icon:'👼'},
-  'aero+aqua+ignis+lux+terra+umbra+uni':{name:'Genesis',       rarity:'mythic',    slot:'any',       effect:'All abilities unlocked, all paths visible',                                                stats:{power_bonus:5,control_bonus:5,guard_bonus:5,speed_bonus:5,insight_bonus:5,luck_bonus:5},icon:'🌌'},
+
+  // ══════════════════════════════════════════════
+  // ⚔️ WEAPONS — 2-rune
+  // ══════════════════════════════════════════════
+  'ignis+ignis':    {name:'Ember Core',      rarity:'rare',      slot:'weapon',    effect:'Burn on every action — enemy takes 3 fire dmg/turn',                               stats:{power_bonus:2,atk_bonus:2},                              icon:'🔥🔥'},
+  'ignis+terra':    {name:'Molten Strike',   rarity:'rare',      slot:'weapon',    effect:'Guaranteed minimum damage — strike always lands for at least 5',                   stats:{power_bonus:2,atk_bonus:3,guard_bonus:1},                icon:'🔥🪨'},
+  'aero+ignis':     {name:'Blazing Speed',   rarity:'epic',      slot:'weapon',    effect:'Act first every turn. Fire damage gains +2 per consecutive hit.',                  stats:{power_bonus:2,speed_bonus:4},                            icon:'🔥💨'},
+  'aqua+ignis':     {name:'Steam Burst',     rarity:'epic',      slot:'weapon',    effect:'Convert any miss into a 50% partial hit',                                          stats:{power_bonus:2,control_bonus:2,atk_bonus:1},              icon:'🔥💧'},
+  'ignis+lux':      {name:'Holy Flame',      rarity:'epic',      slot:'weapon',    effect:'Damage without downsides — no backlash, no miss penalty',                          stats:{power_bonus:2,insight_bonus:2,atk_bonus:2},              icon:'🔥✨'},
+  'ignis+umbra':    {name:'Hellfire Pact',   rarity:'legendary', slot:'weapon',    effect:'+Massive power. 20% chance of backlash (−15 HP per use)',                          stats:{power_bonus:6,atk_bonus:4},                              icon:'🔥🌑'},
+  'ignis+volt':     {name:'Plasma Burst',    rarity:'epic',      slot:'weapon',    effect:'On hit: chain lightning arc to a second target for 60% dmg + burn',               stats:{power_bonus:3,atk_bonus:4},                              icon:'🔥⚡'},
+  'ignis+venin':    {name:'Toxic Flame',     rarity:'epic',      slot:'weapon',    effect:'Burn and poison simultaneously — 3 fire + 3 poison dmg/turn',                     stats:{power_bonus:3,atk_bonus:3},                              icon:'🔥☠️'},
+  'ferro+ignis':    {name:'Forge Strike',    rarity:'epic',      slot:'weapon',    effect:'Metal heated red — strikes bypass 25% DEF and leave a burn',                       stats:{atk_bonus:4,power_bonus:2,guard_bonus:1},                icon:'🔥⚙️'},
+
+  'aqua+aqua':      {name:'Flow State',      rarity:'rare',      slot:'weapon',    effect:'Retry any failed action once per fight',                                            stats:{control_bonus:3,luck_bonus:2},                           icon:'💧💧'},
+  'aqua+terra':     {name:'Deep Stability',  rarity:'rare',      slot:'weapon',    effect:'Reduce critical failure chance by 40%',                                            stats:{control_bonus:2,guard_bonus:2},                          icon:'💧🪨'},
+  'aero+aqua':      {name:'Current Shift',   rarity:'epic',      slot:'weapon',    effect:'Reorder outcomes — see next enemy action before choosing yours',                   stats:{control_bonus:3,speed_bonus:2},                          icon:'💧💨'},
+  'aqua+lux':       {name:'Sacred Tide',     rarity:'epic',      slot:'weapon',    effect:'Heal 10 HP after every successful hit',                                            stats:{control_bonus:2,insight_bonus:2,luck_bonus:1},           icon:'💧✨'},
+  'aqua+umbra':     {name:'Drowning Curse',  rarity:'legendary', slot:'weapon',    effect:'Seize enemy control for 2 turns — then take 15 backlash',                         stats:{control_bonus:5,power_bonus:2},                          icon:'💧🌑'},
+  'aqua+volt':      {name:'Surge Current',   rarity:'epic',      slot:'weapon',    effect:'Water conducts — chain hit always triggers, arcs ignore evasion',                 stats:{control_bonus:2,atk_bonus:3,speed_bonus:2},              icon:'💧⚡'},
+  'aqua+flora':     {name:'Tide Root',       rarity:'rare',      slot:'weapon',    effect:'Regen 5 HP/turn. Heals stack with other regeneration.',                            stats:{control_bonus:2,luck_bonus:2,insight_bonus:1},           icon:'💧🌿'},
+  'aqua+venin':     {name:'Brine Venom',     rarity:'epic',      slot:'weapon',    effect:'Poison is amplified in water — dmg increases each turn (3→5→8→12)',               stats:{control_bonus:2,atk_bonus:3,luck_bonus:2},               icon:'💧☠️'},
+
+  'aero+aero':      {name:'Wind Fury',       rarity:'rare',      slot:'weapon',    effect:'30% chance to act twice in one turn',                                              stats:{speed_bonus:4,luck_bonus:2},                             icon:'💨💨'},
+  'aero+umbra':     {name:'Phantom Strike',  rarity:'legendary', slot:'weapon',    effect:'Invisible action — enemy cannot counter or dodge for 1 turn',                     stats:{speed_bonus:4,power_bonus:3},                            icon:'💨🌑'},
+  'aero+lux':       {name:'Light Speed',     rarity:'epic',      slot:'weapon',    effect:'Act first. Speed-based actions deal +30% damage.',                                 stats:{speed_bonus:3,insight_bonus:2},                          icon:'💨✨'},
+  'aero+volt':      {name:'Thunder Rush',    rarity:'epic',      slot:'weapon',    effect:'Always act first. Guaranteed chain on first strike.',                              stats:{speed_bonus:5,atk_bonus:3},                              icon:'💨⚡'},
+  'aero+venin':     {name:'Miasma',          rarity:'epic',      slot:'weapon',    effect:'Poison spreads on dodge — if enemy misses you, they get poisoned',                 stats:{speed_bonus:3,atk_bonus:2,luck_bonus:2},                 icon:'💨☠️'},
+  'aero+ferro':     {name:'Razor Wind',      rarity:'rare',      slot:'weapon',    effect:'Cuts through armor — wind-accelerated blade ignores 20% DEF',                     stats:{speed_bonus:3,atk_bonus:3},                              icon:'💨⚙️'},
+  'aero+flora':     {name:'Spore Drift',     rarity:'rare',      slot:'weapon',    effect:'Pollen on each hit — 25% chance to disorient enemy (skip their next action)',     stats:{speed_bonus:2,luck_bonus:3,atk_bonus:1},                 icon:'💨🌿'},
+
+  'umbra+umbra':    {name:'Abyss Core',      rarity:'epic',      slot:'weapon',    effect:'Double power — double penalty on miss (−10 HP)',                                   stats:{power_bonus:5,atk_bonus:3},                              icon:'🌑🌑'},
+  'lux+umbra':      {name:'Twilight Edge',   rarity:'epic',      slot:'weapon',    effect:'Strike in the balance — 50% chance to deal double or half damage',                stats:{power_bonus:3,insight_bonus:2,luck_bonus:2},             icon:'🌑✨'},
+  'ferro+umbra':    {name:'Shadow Alloy',    rarity:'legendary', slot:'weapon',    effect:'+40% crit damage. Blade forged dark reflects nothing back.',                       stats:{power_bonus:4,atk_bonus:4,guard_bonus:1},                icon:'⚙️🌑'},
+  'umbra+venin':    {name:'Deathblight',     rarity:'legendary', slot:'weapon',    effect:'Poison scales with enemy missing HP — damage doubles below 50%',                  stats:{power_bonus:4,atk_bonus:3,luck_bonus:2},                 icon:'🌑☠️'},
+  'flora+umbra':    {name:'Rotwood',         rarity:'epic',      slot:'weapon',    effect:'Regen while you drain — heal 4 HP per turn you poison an enemy',                  stats:{power_bonus:3,atk_bonus:2,luck_bonus:2},                 icon:'🌿🌑'},
+
+  'lux+lux':        {name:'Radiant Edge',    rarity:'rare',      slot:'weapon',    effect:'Remove all negative status after each fight',                                      stats:{insight_bonus:2,luck_bonus:2,guard_bonus:1},             icon:'✨✨'},
+  'lux+terra':      {name:'Sacred Strike',   rarity:'epic',      slot:'weapon',    effect:'Stable guaranteed minimum success — never deals less than base',                   stats:{insight_bonus:2,guard_bonus:2,atk_bonus:2},              icon:'✨🪨'},
+  'ferro+lux':      {name:'Radiant Steel',   rarity:'epic',      slot:'weapon',    effect:'Attacks bypass 30% enemy DEF — strikes ring like a tuning fork',                  stats:{atk_bonus:4,insight_bonus:2,guard_bonus:1},              icon:'⚙️✨'},
+  'flora+lux':      {name:'Sunbloom',        rarity:'epic',      slot:'weapon',    effect:'Heal 5 HP per successful hit. Cleanse poison on victory.',                         stats:{atk_bonus:2,insight_bonus:3,luck_bonus:2},               icon:'🌿✨'},
+  'lux+venin':      {name:'Holy Blight',     rarity:'legendary', slot:'weapon',    effect:'Poison that cannot be resisted — even immune enemies take 2 dmg/turn',            stats:{power_bonus:3,atk_bonus:2,insight_bonus:2,luck_bonus:1}, icon:'✨☠️'},
+  'lux+volt':       {name:'Arc Light',       rarity:'epic',      slot:'weapon',    effect:'Chain lightning guided by insight — arcs hit the lowest HP target',               stats:{insight_bonus:3,atk_bonus:3,speed_bonus:1},              icon:'✨⚡'},
+
+  'volt+volt':      {name:'Storm Core',      rarity:'rare',      slot:'weapon',    effect:'40% chain hit chance — arc to second target for 60% dmg',                         stats:{atk_bonus:4,speed_bonus:2},                              icon:'⚡⚡'},
+  'ferro+volt':     {name:'Magnetar',        rarity:'epic',      slot:'weapon',    effect:'Metal conducts — pull enemy in, guarantee next hit, arc on contact',              stats:{atk_bonus:4,guard_bonus:2,speed_bonus:1},                icon:'⚙️⚡'},
+  'volt+venin':     {name:'Shock Venom',     rarity:'epic',      slot:'weapon',    effect:'Chain hit also injects venom — arced target is poisoned (3 dmg/turn)',            stats:{atk_bonus:3,power_bonus:2,luck_bonus:2},                 icon:'⚡☠️'},
+  'flora+volt':     {name:'Thorn Spark',     rarity:'rare',      slot:'weapon',    effect:'On hit: 30% chance thorn-spark stuns enemy for 1 turn',                           stats:{atk_bonus:2,luck_bonus:3,speed_bonus:1},                 icon:'🌿⚡'},
+
+  'venin+venin':    {name:'Venom Core',      rarity:'rare',      slot:'weapon',    effect:'Every strike poisons — 3 dmg/turn × 3 turns, stacks per hit',                    stats:{power_bonus:2,atk_bonus:2,luck_bonus:1},                 icon:'☠️☠️'},
+  'ferro+venin':    {name:'Serrated Blade',  rarity:'epic',      slot:'weapon',    effect:'Metal serrations hold venom — poison duration +2 turns, cannot be cleansed early',stats:{atk_bonus:3,power_bonus:2,luck_bonus:2},                 icon:'⚙️☠️'},
+  'flora+venin':    {name:'Spore Cloud',     rarity:'legendary', slot:'weapon',    effect:'On hit: 40% chance to poison and disorient — enemy loses next action',            stats:{power_bonus:3,atk_bonus:2,luck_bonus:3},                 icon:'🌿☠️'},
+
+  'ferro+ferro':    {name:'Iron Will',       rarity:'rare',      slot:'weapon',    effect:'Strike heavy — 25% chance to stagger enemy, forcing them to defend',              stats:{atk_bonus:4,guard_bonus:2},                              icon:'⚙️⚙️'},
+  'flora+flora':    {name:'Twinvine',        rarity:'rare',      slot:'weapon',    effect:'Entangle on hit — enemy speed reduced by 4 for 2 turns',                          stats:{atk_bonus:2,luck_bonus:2,control_bonus:2},               icon:'🌿🌿'},
+
+  // ══════════════════════════════════════════════
+  // ⚔️ WEAPONS — 3-rune
+  // ══════════════════════════════════════════════
+  'aero+ignis+ignis':   {name:'Inferno Rush',    rarity:'epic',      slot:'weapon',    effect:'Chain burn — attack twice if first hit connects',                              stats:{power_bonus:3,speed_bonus:2,atk_bonus:2},                icon:'🔥🔥💨'},
+  'ignis+ignis+umbra':  {name:'Doom Flame',      rarity:'legendary', slot:'weapon',    effect:'Massive damage + chaos effect on enemy (random debuff)',                       stats:{power_bonus:5,atk_bonus:5},                              icon:'🔥🔥🌑'},
+  'ignis+terra+umbra':  {name:'Volcanic Doom',   rarity:'legendary', slot:'weapon',    effect:'Power scales with HP lost — stronger when wounded',                            stats:{power_bonus:4,atk_bonus:4,guard_bonus:1},                icon:'🔥🪨🌑'},
+  'aero+ignis+umbra':   {name:'Chaos Engine',    rarity:'mythic',    slot:'weapon',    effect:'Random massive effect each turn — unpredictable and devastating',               stats:{power_bonus:6,speed_bonus:4,atk_bonus:4},                icon:'🔥💨🌑'},
+  'aqua+aqua+lux':      {name:'Ocean Blessing',  rarity:'epic',      slot:'weapon',    effect:'Restore 20 HP and retry after any failure',                                    stats:{control_bonus:3,insight_bonus:2,luck_bonus:2},           icon:'💧💧✨'},
+  'aero+aqua+umbra':    {name:'Phantom Current', rarity:'legendary', slot:'weapon',    effect:'Strike twice, hidden — enemy cannot counter either hit',                       stats:{control_bonus:4,speed_bonus:3,power_bonus:2},            icon:'💧💨🌑'},
+  'aero+aero+ignis':    {name:'Storm Inferno',   rarity:'legendary', slot:'weapon',    effect:'Chain attack + burn — acts three times if all land',                           stats:{speed_bonus:4,power_bonus:3,atk_bonus:3},                icon:'💨💨🔥'},
+  'volt+volt+aero':     {name:'Stormcaller',     rarity:'legendary', slot:'weapon',    effect:'Every attack chains. Third chain stuns.',                                      stats:{atk_bonus:5,speed_bonus:4,power_bonus:2},                icon:'⚡⚡💨'},
+  'aqua+ignis+terra':   {name:'Steam Core',      rarity:'epic',      slot:'weapon',    effect:'Fire damage + water retry + earth stability — balanced offense',               stats:{power_bonus:2,control_bonus:2,guard_bonus:1,atk_bonus:2},icon:'🔥💧🪨'},
+  'aero+terra+umbra':   {name:'Shadow Cyclone',  rarity:'legendary', slot:'weapon',    effect:'AoE — hits all targets, random effect per target',                             stats:{speed_bonus:2,power_bonus:3,atk_bonus:3},                icon:'💨🪨🌑'},
+  'aero+aqua+lux':      {name:'Radiant Flow',    rarity:'epic',      slot:'weapon',    effect:'Heal while acting fast — recover HP each time you act first',                  stats:{speed_bonus:2,control_bonus:2,insight_bonus:2},          icon:'💧💨✨'},
+  'lux+lux+terra':      {name:'Divine Judgment', rarity:'legendary', slot:'weapon',    effect:'Near-guaranteed success every fight',                                          stats:{insight_bonus:4,guard_bonus:3,luck_bonus:3},             icon:'✨✨🪨'},
+  'venin+venin+umbra':  {name:'Plague Harbinger',rarity:'legendary', slot:'weapon',    effect:'Poison cannot be cleansed — doubles in potency after 2 turns',                 stats:{power_bonus:5,atk_bonus:4},                              icon:'☠️☠️🌑'},
+  'flora+venin+venin':  {name:'Poison Garden',   rarity:'legendary', slot:'weapon',    effect:'Poison doubles every 2 turns. Flora regen prevents self-damage.',              stats:{power_bonus:4,atk_bonus:3,luck_bonus:3},                 icon:'🌿☠️☠️'},
+  'ignis+volt+venin':   {name:'Toxin Reactor',   rarity:'legendary', slot:'weapon',    effect:'Three damage types at once: burn, chain, poison — all stack',                  stats:{power_bonus:4,atk_bonus:4,luck_bonus:2},                 icon:'🔥⚡☠️'},
+  'ferro+ferro+volt':   {name:'Arc Forge',       rarity:'legendary', slot:'weapon',    effect:'Iron amplifies arc — every hit chains twice, chains bypass armor',             stats:{atk_bonus:5,speed_bonus:3,guard_bonus:2,power_bonus:2},  icon:'⚙️⚙️⚡'},
+  'aqua+flora+venin':   {name:'Bog Witch',       rarity:'legendary', slot:'weapon',    effect:'Regen while poisoning — heal 4 HP for every turn enemy is poisoned',           stats:{control_bonus:3,power_bonus:3,luck_bonus:3},             icon:'💧🌿☠️'},
+
+  // ══════════════════════════════════════════════
+  // ⚔️ WEAPONS — 4-rune mythic
+  // ══════════════════════════════════════════════
+  'ignis+ignis+umbra+umbra':       {name:'Hell Collapse',    rarity:'mythic', slot:'weapon', effect:'Extreme damage — heavy HP cost each use (−20 HP)',                       stats:{power_bonus:8,atk_bonus:6},                                          icon:'🔥🔥🌑🌑'},
+  'ferro+ferro+volt+volt':         {name:'Arc Cannon',       rarity:'mythic', slot:'weapon', effect:'Every hit chains twice. Chains bypass all armor.',                       stats:{atk_bonus:7,speed_bonus:4,guard_bonus:2,power_bonus:3},              icon:'⚙️⚙️⚡⚡'},
+  'aqua+flora+lux+venin':          {name:"Alchemist's Will", rarity:'mythic', slot:'weapon', effect:'Poison heals you. Regen damages enemy. Light reveals hidden paths.',      stats:{power_bonus:5,control_bonus:4,luck_bonus:4,insight_bonus:3},         icon:'💧🌿✨☠️'},
+  'aero+aqua+ignis+lux+terra+umbra':{name:'Genesis Blade',  rarity:'mythic', slot:'weapon', effect:'All elements united — every stat maximized, all effects active',          stats:{power_bonus:6,control_bonus:6,guard_bonus:6,speed_bonus:6,insight_bonus:6,luck_bonus:6,atk_bonus:8}, icon:'⚡'},
+
+  // ══════════════════════════════════════════════
+  // 🛡️ ARMOR — 2-rune
+  // ══════════════════════════════════════════════
+  'ignis+ignis-armor':  {name:'Flame Guard',     rarity:'uncommon',  slot:'armor', effect:'Burn attackers — 2 fire damage when you are hit',                                 stats:{guard_bonus:1,def_bonus:2},                              icon:'🔥🔥'},
+  'aero+aero-armor':    {name:'Ghost Cloak',     rarity:'rare',      slot:'armor', effect:'40% dodge chance on each incoming attack',                                         stats:{guard_bonus:1,speed_bonus:4,def_bonus:1},                icon:'💨💨'},
+  'aqua+aqua-armor':    {name:'Flow Armor',      rarity:'rare',      slot:'armor', effect:'Retry defense — reduce incoming damage on second check',                           stats:{guard_bonus:2,control_bonus:2,def_bonus:2},              icon:'💧💧'},
+  'terra+terra':        {name:'Stone Skin',      rarity:'rare',      slot:'armor', effect:'Heavy reduction — take 30% less from all sources',                                 stats:{guard_bonus:5,def_bonus:3},                              icon:'🪨🪨'},
+  'ferro+ferro-armor':  {name:'Iron Bastion',    rarity:'rare',      slot:'armor', effect:'Reflect 10% of all incoming damage. Cannot be stunned.',                           stats:{guard_bonus:4,def_bonus:4},                              icon:'⚙️⚙️'},
+  'ferro+terra':        {name:'Tempered Earth',  rarity:'rare',      slot:'armor', effect:'Massive DEF — take minimum 1 damage from any hit',                                 stats:{guard_bonus:3,def_bonus:5},                              icon:'⚙️🪨'},
+  'flora+flora':        {name:'Living Armor',    rarity:'rare',      slot:'armor', effect:'Regenerate 4 HP/turn. Remove 1 debuff per turn.',                                  stats:{guard_bonus:2,def_bonus:2,control_bonus:2},              icon:'🌿🌿'},
+  'flora+terra':        {name:'Thornwall',       rarity:'rare',      slot:'armor', effect:'Attackers take 4 thorn damage. Your DEF scales up each turn.',                    stats:{guard_bonus:4,def_bonus:2},                              icon:'🌿🪨'},
+  'aqua+flora':         {name:'Tide Root',       rarity:'epic',      slot:'armor', effect:'Regen 8 HP/turn. Revive once per fight at 1 HP.',                                  stats:{guard_bonus:3,def_bonus:2,control_bonus:3},              icon:'🌿💧'},
+  'ignis+lux-armor':    {name:'Phoenix Guard',   rarity:'legendary', slot:'armor', effect:'Auto-revive once per chapter at 30 HP',                                            stats:{guard_bonus:2,def_bonus:2,power_bonus:1},                icon:'🔥✨'},
+  'lux+lux+umbra':      {name:'Fallen Angel',    rarity:'legendary', slot:'armor', effect:'High-power defense — counter-strike when hit',                                     stats:{guard_bonus:4,power_bonus:3,def_bonus:3},                icon:'✨✨🌑'},
+  'ferro+volt-armor':   {name:'Faraday Shell',   rarity:'epic',      slot:'armor', effect:'Lightning absorbed — redirect 20% of lightning damage back as counter-arc',        stats:{guard_bonus:3,def_bonus:3,speed_bonus:1},                icon:'⚙️⚡'},
+  'aqua+ferro':         {name:'Rust Ward',       rarity:'rare',      slot:'armor', effect:'Water-cooled iron — reduce fire and lightning damage by 30%',                      stats:{guard_bonus:3,def_bonus:3},                              icon:'💧⚙️'},
+  'flora+lux-armor':    {name:'Sacred Grove',    rarity:'epic',      slot:'armor', effect:'Regen 5 HP/turn + cleanse one poison/debuff per turn',                             stats:{guard_bonus:2,def_bonus:2,insight_bonus:2,control_bonus:1},icon:'🌿✨'},
+  'umbra+venin-armor':  {name:'Plague Shell',    rarity:'epic',      slot:'armor', effect:'Attackers are poisoned on hit (3 dmg/turn × 2 turns)',                             stats:{guard_bonus:3,def_bonus:2,luck_bonus:2},                 icon:'🌑☠️'},
+  'aero+ferro':         {name:'Hollow Plate',    rarity:'rare',      slot:'armor', effect:'Lightweight metal — +3 speed with no def penalty',                                 stats:{guard_bonus:2,def_bonus:2,speed_bonus:3},                icon:'💨⚙️'},
+
+  // ══════════════════════════════════════════════
+  // 🛡️ ARMOR — 3-rune
+  // ══════════════════════════════════════════════
+  'aqua+terra+terra':       {name:'Deep Root',      rarity:'epic',      slot:'armor', effect:'Prevent all critical failures this fight',                                      stats:{guard_bonus:4,def_bonus:3,control_bonus:2},              icon:'💧🪨🪨'},
+  'aqua+lux+terra':         {name:'Eternal Guard',  rarity:'legendary', slot:'armor', effect:'Strong protection — resist all damage types equally',                           stats:{guard_bonus:6,def_bonus:4,insight_bonus:2},              icon:'💧✨🪨'},
+  'aqua+flora+lux':         {name:'Garden of Life', rarity:'legendary', slot:'armor', effect:'Full regen — 10 HP/turn, immune to poison, revive once per fight',              stats:{guard_bonus:4,def_bonus:3,control_bonus:3,insight_bonus:2},icon:'💧🌿✨'},
+  'ferro+ferro+terra':      {name:'Fortress Core',  rarity:'legendary', slot:'armor', effect:'Reduce all damage by 25%. Reflect 15%. Cannot be displaced.',                   stats:{guard_bonus:6,def_bonus:5},                              icon:'⚙️⚙️🪨'},
+  'aero+umbra+venin':       {name:'Toxic Phantom',  rarity:'legendary', slot:'armor', effect:'Dodge poisons attacker — if you evade, they take 5 dmg/turn for 3 turns',      stats:{guard_bonus:3,def_bonus:2,speed_bonus:3,luck_bonus:2},   icon:'💨🌑☠️'},
+  'flora+terra+terra':      {name:'Ancient Bark',   rarity:'legendary', slot:'armor', effect:'Living wood — regen 6 HP/turn, DEF increases each round until hit',             stats:{guard_bonus:5,def_bonus:4,control_bonus:2},              icon:'🌿🪨🪨'},
+  'ferro+volt+terra':       {name:'Grounding Core', rarity:'epic',      slot:'armor', effect:'Earth grounds the circuit — immune to stun, reflect 15% lightning damage',     stats:{guard_bonus:4,def_bonus:3,speed_bonus:1},                icon:'⚙️⚡🪨'},
+
+  // ══════════════════════════════════════════════
+  // 🛡️ ARMOR — 4-5 rune mythic
+  // ══════════════════════════════════════════════
+  'aqua+lux+terra+terra':       {name:'World Core',     rarity:'legendary', slot:'armor', effect:'Massive defense — reduce all incoming damage by 50%',                      stats:{guard_bonus:8,def_bonus:6,control_bonus:2},                    icon:'🌍'},
+  'aero+aqua+lux+lux+terra':   {name:'Celestial Aegis', rarity:'mythic',   slot:'armor', effect:'Perfect protection — immune to all negative effects',                       stats:{guard_bonus:6,def_bonus:6,insight_bonus:4,luck_bonus:4},       icon:'🌟'},
+  'aqua+ferro+flora+lux+terra': {name:'Iron Garden',    rarity:'mythic',    slot:'armor', effect:'Living iron — regen, reflect, resist, revive. All at once.',                stats:{guard_bonus:7,def_bonus:6,control_bonus:3,insight_bonus:2,luck_bonus:2}, icon:'🌿⚙️'},
+
+  // ══════════════════════════════════════════════
+  // 💍 ACCESSORIES
+  // ══════════════════════════════════════════════
+  'ignis+umbra-acc':    {name:'Hell Ring',        rarity:'epic',      slot:'accessory', effect:'Power spike every 3 turns — third action deals double',                       stats:{power_bonus:3,atk_bonus:2},                              icon:'🔥🌑'},
+  'lux+umbra-acc':      {name:'Twilight Loop',    rarity:'rare',      slot:'accessory', effect:'Nullify one extreme consequence per chapter',                                  stats:{insight_bonus:2,power_bonus:1,guard_bonus:1},            icon:'✨🌑'},
+  'volt+ferro-acc':     {name:'Conductor Ring',   rarity:'epic',      slot:'accessory', effect:'+2 chain hit chance per equipped ferro rune. Always crits on chains.',        stats:{atk_bonus:3,speed_bonus:2},                              icon:'⚡⚙️'},
+  'venin+venin-acc':    {name:'Poison Sigil',     rarity:'rare',      slot:'accessory', effect:'Poison you apply lasts +2 turns longer',                                      stats:{luck_bonus:3,power_bonus:1},                             icon:'☠️☠️'},
+  'flora+aqua-acc':     {name:'Bloom Ring',       rarity:'rare',      slot:'accessory', effect:'Regen 3 HP/turn passively — always active',                                   stats:{control_bonus:2,luck_bonus:2},                           icon:'🌿💧'},
+  'lux+lux-acc':        {name:'Halo Band',        rarity:'epic',      slot:'accessory', effect:'+15% crit chance. Crits cleanse one debuff.',                                 stats:{insight_bonus:3,luck_bonus:3},                           icon:'✨✨'},
+  'aero+aero-acc':      {name:'Wind Walker',      rarity:'rare',      slot:'accessory', effect:'+4 SPD permanently. First action each fight is always free.',                 stats:{speed_bonus:4,luck_bonus:1},                             icon:'💨💨'},
+  'umbra+umbra-acc':    {name:'Shadow Brand',     rarity:'epic',      slot:'accessory', effect:'First strike each fight is always a crit. +2 crit damage multiplier.',        stats:{power_bonus:3,atk_bonus:2},                              icon:'🌑🌑'},
+
+  // ══════════════════════════════════════════════
+  // ☯️ UNIVERSAL (any slot)
+  // ══════════════════════════════════════════════
+  'lux+terra':          {name:'Harmony',          rarity:'rare',      slot:'any',       effect:'All stats slightly improved — stable, balanced, reliable',                    stats:{power_bonus:1,control_bonus:1,guard_bonus:1,speed_bonus:1}, icon:'☯️'},
+  'lux+umbra':          {name:'Twilight Core',    rarity:'legendary', slot:'any',       effect:'Risk plus stability — high power with a safety net',                          stats:{power_bonus:3,guard_bonus:2,insight_bonus:2},            icon:'🌓'},
+  'lux+lux+lux':        {name:'Pure Divinity',    rarity:'mythic',    slot:'any',       effect:'Remove all negative effects permanently this chapter',                        stats:{insight_bonus:5,guard_bonus:4,luck_bonus:5},             icon:'👼'},
+  'aero+aqua+ignis+lux+terra+umbra': {name:'Genesis', rarity:'mythic', slot:'any',      effect:'All abilities unlocked, all elemental paths visible',                        stats:{power_bonus:5,control_bonus:5,guard_bonus:5,speed_bonus:5,insight_bonus:5,luck_bonus:5}, icon:'🌌'},
 }
 
-function sortedKey(runes) { return [...runes].sort().join('+') }
-
 function findRuneword(runes, slot) {
-  const k = sortedKey(runes)
-  if (RUNEWORDS[k]) return RUNEWORDS[k]
-  for (const s of ['acc','uni']) {
-    const ks = sortedKey([...runes, s])
-    if (RUNEWORDS[ks]) {
-      const rw = RUNEWORDS[ks]
-      if (rw.slot === 'any' || rw.slot === slot) return rw
-    }
+  // Try slot-specific key first (e.g. 'ignis+ignis-armor')
+  const base = [...runes].sort().join('+')
+  const slotKey = base + '-' + slot
+  if (RUNEWORDS[slotKey]) return RUNEWORDS[slotKey]
+  // Try base key
+  if (RUNEWORDS[base]) {
+    const rw = RUNEWORDS[base]
+    if (rw.slot === 'any' || rw.slot === slot) return rw
+    return null  // exists but wrong slot
   }
+  // Try accessory suffix
+  const accKey = base + '-acc'
+  if (RUNEWORDS[accKey] && slot === 'accessory') return RUNEWORDS[accKey]
+  // Try any-slot universal
+  if (RUNEWORDS[base] && RUNEWORDS[base].slot === 'any') return RUNEWORDS[base]
   return null
 }
 
