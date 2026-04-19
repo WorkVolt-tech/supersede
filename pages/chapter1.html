@@ -1462,6 +1462,7 @@ She's already standing next to you. She made her decision before you did.`,
 
   boss_sentinel_fight_yara: {
     id: 'boss_sentinel_fight_yara', type: 'combat',
+    video: '../assets/video/sentinel_of_the_first_eye.mp4',
     text: `Yara moves the moment you do. No signal. No coordination. She just reads you and responds.
 
 The Sentinel's eye tracks between you — calculating priority, assigning threat levels. For the first time since you've been in this garage, something that was built to observe finds itself being attacked from two directions at once.
@@ -1476,6 +1477,7 @@ The Sentinel's eye tracks between you — calculating priority, assigning threat
 
   boss_sentinel_fight: {
     id: 'boss_sentinel_fight', type: 'combat',
+    video: '../assets/video/sentinel_of_the_first_eye.mp4',
     text: `It moves like a thought — no preamble, no warning. One moment standing still, the next it is simply closer.
 
 Its eye fixes on yours. You feel it indexing you — cataloguing every wound you've taken, every choice you've made, every person you helped or abandoned in this building.
@@ -3982,7 +3984,52 @@ The garage is yours.`
 
 // ── Generic combat (for story encounters) ────────
 function renderCombat(panel, node) {
-  buildCombatUI(panel, node.enemy, node.onWin, node.onLose, node.onEscape, false)
+  if (node.video) {
+    playCombatCinematic(node.video, () => buildCombatUI(panel, node.enemy, node.onWin, node.onLose, node.onEscape, false))
+  } else {
+    buildCombatUI(panel, node.enemy, node.onWin, node.onLose, node.onEscape, false)
+  }
+}
+
+// ── Boss cinematic video overlay ──────────────────
+function playCombatCinematic(src, onDone) {
+  // Remove any existing overlay
+  document.getElementById('cinematic-overlay')?.remove()
+
+  const overlay = document.createElement('div')
+  overlay.id = 'cinematic-overlay'
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:800;background:#000;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .6s;
+  `
+  overlay.innerHTML = `
+    <video id="cinematic-video" 
+      src="${src}" 
+      autoplay playsinline muted
+      style="width:100%;height:100%;object-fit:cover;display:block">
+    </video>
+    <div id="cinematic-skip" style="
+      position:absolute;bottom:1.5rem;right:1.5rem;
+      font-family:'Share Tech Mono',monospace;font-size:.55rem;
+      color:rgba(200,184,128,.5);letter-spacing:.08em;cursor:pointer;
+      padding:4px 10px;border:.5px solid rgba(200,184,128,.15);border-radius:3px;
+    ">skip ›</div>
+  `
+  document.body.appendChild(overlay)
+
+  // Fade in
+  requestAnimationFrame(() => requestAnimationFrame(() => overlay.style.opacity = '1'))
+
+  function endCinematic() {
+    overlay.style.opacity = '0'
+    setTimeout(() => { overlay.remove(); onDone() }, 650)
+  }
+
+  const video = overlay.querySelector('#cinematic-video')
+  video.addEventListener('ended', endCinematic)
+  video.addEventListener('error', endCinematic) // fallback if video missing
+  overlay.querySelector('#cinematic-skip').addEventListener('click', endCinematic)
 }
 
 // ── Boss combat ───────────────────────────────────
