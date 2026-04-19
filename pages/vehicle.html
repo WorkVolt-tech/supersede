@@ -246,12 +246,12 @@ renderSpecialBar()
 
 // Eye types
 const ETYPES=[
-  {name:'Scout',  hp:1,spd:2.2,atk:8, sz:16,col:'#b06eff',score:50, pat:'straight'},
-  {name:'Watcher',hp:2,spd:1.6,atk:14,sz:24,col:'#e05555',score:100,pat:'zigzag'},
-  {name:'Drone',  hp:1,spd:4.0,atk:6, sz:13,col:'#5eaee0',score:75, pat:'dive'},
-  {name:'Cluster',hp:5,spd:1.0,atk:22,sz:32,col:'#c8512a',score:200,pat:'straight',splits:true},
-  {name:'Sniper', hp:2,spd:1.2,atk:18,sz:20,col:'#ffcc00',score:150,pat:'straight',shoots:true},
-  {name:'Swarm',  hp:1,spd:3.5,atk:5, sz:10,col:'#ff88ff',score:30, pat:'swarm'},
+  {name:'Scout',  hp:1,spd:1.6,atk:6, sz:16,col:'#b06eff',score:50, pat:'straight'},
+  {name:'Watcher',hp:2,spd:1.2,atk:10,sz:24,col:'#e05555',score:100,pat:'zigzag'},
+  {name:'Drone',  hp:1,spd:2.8,atk:5, sz:13,col:'#5eaee0',score:75, pat:'dive'},
+  {name:'Cluster',hp:4,spd:0.9,atk:16,sz:32,col:'#c8512a',score:200,pat:'straight',splits:true},
+  {name:'Sniper', hp:2,spd:1.0,atk:14,sz:20,col:'#ffcc00',score:150,pat:'straight',shoots:true},
+  {name:'Swarm',  hp:1,spd:2.5,atk:4, sz:10,col:'#ff88ff',score:30, pat:'swarm'},
 ]
 function spawnEye(forced){
   const rx=ROAD_X(),rw=ROAD_W()
@@ -307,11 +307,14 @@ function waveBanner(txt,dur=1800){const e=document.getElementById('wave-banner')
 
 // Wave system
 function nextWave(){
-  G.wave++;G.waveKills=0;G.waveTarget=10+G.wave*5
-  spawnRate=Math.max(22,80-G.wave*8);G.progress=Math.min(90,G.progress+16)
+  G.wave++;G.waveKills=0
+  G.waveTarget=6+G.wave*3   // wave 2=12, 3=15, 4=18, 5=21 — manageable
+  spawnRate=Math.max(50,110-G.wave*8)  // starts slow, ramps gently
+  G.progress=Math.min(90,G.progress+16)
   waveTransition=false;document.getElementById('hud-wave').textContent='WAVE '+G.wave
   waveBanner('WAVE '+G.wave)
-  if(G.wave%3===0){setTimeout(()=>{spawnEye(ETYPES[3]);spawnEye(ETYPES[4])},1000)}
+  // Boss combo only on final wave 5
+  if(G.wave===5){setTimeout(()=>{spawnEye(ETYPES[3]);spawnEye(ETYPES[4])},1500)}
 }
 
 // Fire
@@ -496,16 +499,46 @@ function loop(ts){
   buildings.forEach(b=>{b.y+=b.spd;if(b.y>canvas.height+b.h)b.y=-b.h-10})
   drawWorld()
 
-  // Move player
+  // Move player — allow going off road (speed penalty instead of hard clamp)
   const rx=ROAD_X(),rw=ROAD_W()
   let mx=0,my=0
   if(keys.left||joyD.x<-.15)mx=-1
   if(keys.right||joyD.x>.15)mx=1
   if(joyD.y<-.2)my=-1;if(joyD.y>.2)my=1
-  const ms=G.speed===VS.speed*2.3?PV.speed*1.8:PV.speed
-  PV.x=Math.max(rx+PV.w/2+4,Math.min(rx+rw-PV.w/2-4,PV.x+mx*ms))
-  PV.y=Math.max(canvas.height*.38,Math.min(canvas.height-PV.h-18,PV.y+my*ms*.45))
+
+  // Off-road detection
+  const onRoad = PV.x > rx+PV.w/2+2 && PV.x < rx+rw-PV.w/2-2
+  const offRoadLeft  = PV.x < rx+PV.w/2+2
+  const offRoadRight = PV.x > rx+rw-PV.w/2-2
+  const offRoad = !onRoad
+
+  // Speed is reduced off-road, normal on road
+  const nitroActive = G.speed === VS.speed*2.3
+  const baseMs = nitroActive ? PV.speed*1.8 : PV.speed
+  const ms = offRoad ? baseMs * 0.35 : baseMs  // 65% speed penalty off road
+
+  // Allow player to go off-road fully (up to screen edges)
+  PV.x = Math.max(PV.w/2+4, Math.min(canvas.width-PV.w/2-4, PV.x+mx*ms))
+  PV.y = Math.max(canvas.height*.38, Math.min(canvas.height-PV.h-18, PV.y+my*ms*.45))
   if(PV.inv>0)PV.inv--
+
+  // Draw off-road warning overlay on the dirt zone
+  if(offRoad){
+    // Dirt spray particles
+    if(Math.random()<.4){
+      const side=offRoadLeft?1:-1
+      particles.push({x:PV.x+side*(PV.w/2),y:PV.y+PV.h/3,vx:(Math.random()-.3)*side*3,vy:Math.random()*2+1,life:.9,decay:.06,sz:3+Math.random()*4,col:'#6b4a20',g:.1})
+    }
+    // Pulse the road edge red
+    const edgeX=offRoadLeft?rx:rx+rw
+    ctx.strokeStyle='rgba(224,85,85,.7)';ctx.lineWidth=4+Math.sin(Date.now()*.01)*2
+    ctx.beginPath();ctx.moveTo(edgeX,0);ctx.lineTo(edgeX,canvas.height);ctx.stroke()
+    // Speed warning in HUD
+    document.getElementById('hud-combo').textContent='⚠ OFF ROAD — SLOWING'
+    document.getElementById('hud-combo').style.color='#e05555'
+  } else {
+    document.getElementById('hud-combo').style.color='#ffcc00'
+  }
 
   // Shoot
   if(keys.shoot&&shootCD<=0){fire();shootCD=VS.fireRate}
@@ -517,40 +550,61 @@ function loop(ts){
   renderSpecialBar()
 
   // Combo decay
-  if(comboTimer>0){comboTimer--;if(comboTimer===0)G.combo=0}
+  if(comboTimer>0){comboTimer--;if(comboTimer===0){G.combo=0}}
 
-  // Bullets
-  bullets=bullets.filter(b=>{b.y-=b.spd;if(b.vx)b.x+=b.vx;if(b.y<-30)return false;drawBullet(b);return true})
+  // Bullets — draw BEFORE eyes so they visually overlap correctly
+  bullets=bullets.filter(b=>{
+    b.y-=b.spd
+    if(b.vx)b.x+=b.vx
+    if(b.y<-30)return false
+    drawBullet(b)
+    return true
+  })
 
-  // Spawn
+  // Spawn — much more forgiving rates
   spawnTimer++
   if(spawnTimer>=spawnRate&&!waveTransition&&G.waveKills<G.waveTarget){
     spawnTimer=0
-    const batch=G.wave>=5?3:G.wave>=3?2:1
+    // Only batch on very late waves, stay at 1 for most of game
+    const batch=G.wave>=7?2:1
     for(let i=0;i<batch;i++)spawnEye()
   }
 
   // Eyes
   eyes.forEach(e=>{
     if(e.dead)return
-    if(e.pat==='zigzag'){e.zt++;if(e.zt>28){e.zd*=-1;e.zt=0}e.x+=e.vx+e.zd*2.8}
-    else if(e.pat==='dive'){const dx=PV.x-e.x,dy=PV.y-e.y,d=Math.sqrt(dx*dx+dy*dy)||1;e.vx+=dx/d*.18;e.vy+=dy/d*.05;e.x+=e.vx}
-    else if(e.pat==='swarm'){e.x+=Math.sin(e.pulse*2)*3;e.x+=e.vx}
+    if(e.pat==='zigzag'){e.zt++;if(e.zt>28){e.zd*=-1;e.zt=0}e.x+=e.vx+e.zd*2.2}
+    else if(e.pat==='dive'){const dx=PV.x-e.x,dy=PV.y-e.y,d=Math.sqrt(dx*dx+dy*dy)||1;e.vx+=dx/d*.12;e.vy+=dy/d*.04;e.x+=e.vx}
+    else if(e.pat==='swarm'){e.x+=Math.sin(e.pulse*2)*2.5;e.x+=e.vx}
     else{e.x+=e.vx}
     e.y+=e.vy;e.pulse+=.1
     if(e.x<rx+e.sz){e.x=rx+e.sz;e.vx=Math.abs(e.vx)}
     if(e.x>rx+rw-e.sz){e.x=rx+rw-e.sz;e.vx=-Math.abs(e.vx)}
-    // Shoot
-    if(e.shoots){e.sTimer--;if(e.sTimer<=0){e.sTimer=55+Math.random()*70;eyeBullets.push({x:e.x,y:e.y+e.sz,vx:(PV.x-e.x)*.01,vy:4})}}
-    // Bullet hit
+
+    // Enemy shooting — less frequent
+    if(e.shoots){e.sTimer--;if(e.sTimer<=0){e.sTimer=80+Math.random()*100;eyeBullets.push({x:e.x,y:e.y+e.sz,vx:(PV.x-e.x)*.008,vy:3.5})}}
+
+    // Bullet hit — GENEROUS hitbox: eye radius + bullet half-width + extra padding
     bullets=bullets.filter(b=>{
       if(e.dead)return true
-      const dx=b.x-e.x,dy=b.y-e.y,hr=e.sz+(b.t==='cannon'?5:b.t==='beam'?3:2)
-      if(Math.abs(dx)<hr&&Math.abs(dy)<hr){const dm=b.t==='cannon'?2:b.t==='beam'?3:1;e.hp-=dm;spark(b.x,b.y,'#ffcc00');if(e.hp<=0){addKill(e);e.dead=true;if(e.splits)splitEye(e)}return false}
+      const dx=b.x-e.x, dy=b.y-e.y
+      // Hitbox = eye size + generous padding so shots feel responsive
+      const hitR=e.sz+(b.t==='cannon'?10:b.t==='beam'?8:6)
+      if(Math.abs(dx)<hitR&&Math.abs(dy)<hitR){
+        const dm=b.t==='cannon'?2:b.t==='beam'?3:1
+        e.hp-=dm
+        spark(b.x,b.y,'#ffcc00')
+        if(e.hp<=0){addKill(e);e.dead=true;if(e.splits)splitEye(e)}
+        return false
+      }
       return true
     })
-    // Reach bottom
-    if(!e.dead&&e.y>canvas.height-55){if(PV.inv===0){G.hp-=e.atk;shake(e.sz/2);flash();G.combo=0};e.dead=true;explode(e.x,e.y,e.col,10)}
+
+    // Eye reaches player zone (only damages if on road — off-road eyes just pass)
+    if(!e.dead&&e.y>canvas.height-55){
+      if(PV.inv===0&&onRoad){G.hp-=e.atk;shake(e.sz/2);flash();G.combo=0}
+      e.dead=true;explode(e.x,e.y,e.col,10)
+    }
     if(!e.dead)drawEye(e)
   })
   eyes=eyes.filter(e=>!e.dead&&e.y<canvas.height+60)
@@ -560,7 +614,11 @@ function loop(ts){
     b.x+=b.vx;b.y+=b.vy
     if(b.y>canvas.height+20)return false
     ctx.save();ctx.shadowColor='#ff4444';ctx.shadowBlur=12;ctx.fillStyle='#ff4444';ctx.globalAlpha=.88;ctx.beginPath();ctx.arc(b.x,b.y,4,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1;ctx.restore()
-    if(PV.inv===0){const dx=b.x-PV.x,dy=b.y-PV.y;if(Math.abs(dx)<PV.w/2&&Math.abs(dy)<PV.h/2){G.hp-=10;shake(6);flash();G.combo=0;return false}}
+    // Eye bullets only hit if player is on road
+    if(PV.inv===0&&onRoad){
+      const dx=b.x-PV.x,dy=b.y-PV.y
+      if(Math.abs(dx)<PV.w/2+4&&Math.abs(dy)<PV.h/2+4){G.hp-=8;shake(5);flash();G.combo=0;return false}
+    }
     return true
   })
 
@@ -569,12 +627,12 @@ function loop(ts){
     l.y+=l.vy;l.life--
     if(l.life<=0||l.collected||l.y>canvas.height+20)return false
     drawLoot(l)
-    if(Math.abs(l.x-PV.x)<PV.w&&Math.abs(l.y-PV.y)<PV.h){collectLoot(l);return false}
+    if(Math.abs(l.x-PV.x)<PV.w+8&&Math.abs(l.y-PV.y)<PV.h+8){collectLoot(l);return false}
     return true
   })
 
   // Repair passive
-  if(HAS_REPAIR&&G.hp<G.maxHp)G.hp=Math.min(G.maxHp,G.hp+.015)
+  if(HAS_REPAIR&&G.hp<G.maxHp)G.hp=Math.min(G.maxHp,G.hp+.02)
 
   // Particles
   particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy+(p.g||0);p.life-=p.decay;ctx.globalAlpha=Math.max(0,p.life);ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,Math.max(.1,p.sz*p.life),0,Math.PI*2);ctx.fill();ctx.globalAlpha=1})
@@ -596,8 +654,8 @@ function loop(ts){
 }
 
 function startGame(){
-  Object.assign(G,{running:true,hp:VS.hp,maxHp:VS.hp,progress:0,wave:1,waveKills:0,waveTarget:10,eyesKilled:0,score:0,combo:0,maxCombo:0,finished:false,shake:0,speed:VS.speed,lootDropped:[]})
-  spawnRate=80;bullets=[];eyeBullets=[];eyes=[];particles=[];lootDrops=[]
+  Object.assign(G,{running:true,hp:VS.hp,maxHp:VS.hp,progress:0,wave:1,waveKills:0,waveTarget:9,eyesKilled:0,score:0,combo:0,maxCombo:0,finished:false,shake:0,speed:VS.speed,lootDropped:[]})
+  spawnRate=110;bullets=[];eyeBullets=[];eyes=[];particles=[];lootDrops=[]
   SPECIALS.forEach(s=>{s.cd=0;s.active=0})
   resetPV();initWorld()
   document.getElementById('wave-banner').classList.remove('show')
