@@ -691,7 +691,7 @@ function showNodeDetail(nd) {
     const prereqsMet = nd.requires.length === 0 || nd.requires.some(r => r==='center' || skillsUnlocked.includes(r))
     const statLine   = nd.stat && nd.val ? `+${nd.val} ${statToCol(nd.stat).replace('_',' ')}` : ''
     const inBattle   = pendingBattleSkills.includes(nd.id)
-    const battleFull = pendingBattleSkills.length >= 4
+    const battleFull = pendingBattleSkills.length >= 6
 
     body = `
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem">
@@ -757,7 +757,7 @@ function markSlotsDirty() {
 }
 
 window.stageAddToBattle = (id) => {
-  if (pendingBattleSkills.length >= 4) { showToast('Battle slots full!', true); return }
+  if (pendingBattleSkills.length >= 6) { showToast('All slots full!', true); return }
   if (pendingBattleSkills.includes(id)) return
   pendingBattleSkills = [...pendingBattleSkills, id]
   closeSkillPicker()
@@ -800,17 +800,16 @@ window.addToBattle    = (id) => window.stageAddToBattle(id)
 window.removeFromBattle = (id) => window.stageRemoveFromBattle(id)
 
 // ── Skill picker modal (for + button) ─────────────────
-window.openSkillPicker = (slotIndex) => {
+window.openSkillPicker = (slotIndex, isPassiveSlot) => {
   closeSkillPicker()
-  // Eligible: unlocked, not passive/start/small/keystone, not already in pending
-  const eligible = NODES.filter(nd =>
-    isUnlocked(nd) &&
-    nd.type !== 'small' &&
-    nd.type !== 'start' &&
-    nd.type !== 'keystone' &&
-    nd.type !== 'elemental' &&
-    !pendingBattleSkills.includes(nd.id)
-  )
+  const eligible = NODES.filter(nd => {
+    if (!isUnlocked(nd)) return false
+    if (nd.type === 'small' || nd.type === 'start' || nd.type === 'elemental') return false
+    if (pendingBattleSkills.includes(nd.id)) return false
+    // For passive slots, show only keystones and notables
+    // (all notables/keystones can be passive — the distinction is how chapter1 uses them)
+    return true
+  })
 
   const picker = document.createElement('div')
   picker.id = 'skill-picker-modal'
@@ -818,9 +817,10 @@ window.openSkillPicker = (slotIndex) => {
   picker.innerHTML = `
     <div style="background:#1a1208;border:1px solid rgba(200,184,128,.3);border-radius:6px;padding:1rem;min-width:260px;max-width:320px;max-height:70vh;display:flex;flex-direction:column">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
-        <p style="font-family:'Cinzel',serif;font-size:.88rem;color:#c8b96e;margin:0">Add to Slot ${slotIndex+1}</p>
+        <p style="font-family:'Cinzel',serif;font-size:.88rem;color:#c8b96e;margin:0">${isPassiveSlot?'Passive Slot':'Active Slot'} ${slotIndex+1}</p>
         <button onclick="closeSkillPicker()" style="background:none;border:none;color:#a08858;font-size:1rem;cursor:pointer">✕</button>
       </div>
+      ${isPassiveSlot ? '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.48rem;color:#7a6435;margin-bottom:.5rem;letter-spacing:.06em">Passive skills activate automatically each fight</p>' : ''}
       <div style="overflow-y:auto;flex:1">
         ${eligible.length ? eligible.map(nd => {
           const col = nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e'
@@ -834,7 +834,7 @@ window.openSkillPicker = (slotIndex) => {
             </div>
             <span style="font-family:'Share Tech Mono',monospace;font-size:.65rem;color:#c8b96e">+</span>
           </div>`
-        }).join('') : `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#a08858;padding:.5rem 0">No eligible skills available. Unlock notable or active skills from the tree.</p>`}
+        }).join('') : `<p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:#a08858;padding:.5rem 0">No eligible skills available.</p>`}
       </div>
     </div>
   `
@@ -849,21 +849,37 @@ window.closeSkillPicker = () => {
 function renderSlotsBar() {
   const list = document.getElementById('slots-list')
   if (!list) return
-  let html = ''
-  for (let i = 0; i < 4; i++) {
-    const id  = pendingBattleSkills[i] || null
-    const nd  = id ? NODES.find(n => n.id === id) : null
+  // 4 active slots (indices 0-3) + 2 passive slots (indices 4-5)
+  const ACTIVE_SLOTS = 4, PASSIVE_SLOTS = 2
+  let html = `<p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#9a8050;letter-spacing:.08em;margin-bottom:4px">⚔ ACTIVE (use in combat)</p>`
+  for (let i = 0; i < ACTIVE_SLOTS; i++) {
+    const id = pendingBattleSkills[i] || null
+    const nd = id ? NODES.find(n => n.id === id) : null
     const col = nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
     html += `<div class="slot-item${nd?' filled':''}">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a08858;min-width:16px">S${i+1}</span>
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a08858;min-width:16px">A${i+1}</span>
       ${nd
         ? `<span style="font-family:'Cinzel',serif;font-size:.72rem;color:${col};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nd.label}</span>
            <button onclick="stageRemoveFromBattle('${id}')" title="Remove" style="background:rgba(192,64,64,.15);border:.5px solid rgba(192,64,64,.4);color:#e05555;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>`
         : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.7rem;color:#7a6435;flex:1">Empty</span>
-           <button onclick="openSkillPicker(${i})" title="Add skill" style="background:rgba(94,174,224,.15);border:.5px solid rgba(94,174,224,.4);color:#5eaee0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>`}
+           <button onclick="openSkillPicker(${i},false)" title="Add active skill" style="background:rgba(94,174,224,.15);border:.5px solid rgba(94,174,224,.4);color:#5eaee0;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>`}
     </div>`
   }
-  // Save / Cancel bar
+  html += `<p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#9a8050;letter-spacing:.08em;margin:.5rem 0 4px">⚡ PASSIVE (auto per fight)</p>`
+  for (let i = 0; i < PASSIVE_SLOTS; i++) {
+    const idx = ACTIVE_SLOTS + i
+    const id  = pendingBattleSkills[idx] || null
+    const nd  = id ? NODES.find(n => n.id === id) : null
+    const col = nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
+    html += `<div class="slot-item${nd?' filled':''}">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a08858;min-width:16px">P${i+1}</span>
+      ${nd
+        ? `<span style="font-family:'Cinzel',serif;font-size:.72rem;color:${col};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nd.label}</span>
+           <button onclick="stageRemoveFromBattle('${id}')" title="Remove" style="background:rgba(192,64,64,.15);border:.5px solid rgba(192,64,64,.4);color:#e05555;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">−</button>`
+        : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.7rem;color:#7a6435;flex:1">Empty</span>
+           <button onclick="openSkillPicker(${i},true)" title="Add passive skill" style="background:rgba(176,110,255,.15);border:.5px solid rgba(176,110,255,.4);color:#b06eff;border-radius:3px;width:22px;height:22px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1">+</button>`}
+    </div>`
+  }
   html += `<div style="margin-top:.6rem;display:flex;gap:5px">
     <button onclick="confirmSaveSlots()" style="flex:1;font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:${slotsDirty?'rgba(200,184,128,.6)':'rgba(200,184,128,.25)'};border:1px solid ${slotsDirty?'rgba(139,106,32,.8)':'rgba(139,106,32,.3)'};border-radius:3px;padding:.4rem;cursor:pointer;transition:all .2s">
       ${slotsDirty ? '💾 Save Changes' : '✓ Saved'}
@@ -876,24 +892,42 @@ function renderSlotsBar() {
 function renderBattleSlotsPage() {
   const c = document.getElementById('battle-slots-page')
   if (!c) return
-  let html = ''
-  for (let i = 0; i < 4; i++) {
+  const ACTIVE_SLOTS = 4, PASSIVE_SLOTS = 2
+  let html = `<p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#9a8050;letter-spacing:.08em;margin-bottom:5px">⚔ ACTIVE SLOTS — used each turn in combat</p>`
+  for (let i = 0; i < ACTIVE_SLOTS; i++) {
     const id  = pendingBattleSkills[i] || null
     const nd  = id ? NODES.find(n => n.id === id) : null
     const col = nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(139,106,32,.25)'
-    html += `<div style="border:.5px solid ${nd?col+'55':'rgba(139,106,32,.22)'};border-radius:4px;padding:.45rem .6rem;display:flex;align-items:center;gap:.5rem;min-height:44px;background:${nd?'rgba(0,0,0,.05)':''}">
-      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a08858;min-width:16px">S${i+1}</span>
+    html += `<div style="border:.5px solid ${nd?col+'55':'rgba(139,106,32,.22)'};border-radius:4px;padding:.45rem .6rem;display:flex;align-items:center;gap:.5rem;min-height:44px;background:${nd?'rgba(0,0,0,.05)':''};margin-bottom:4px">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#a08858;min-width:16px">A${i+1}</span>
       ${nd
         ? `<div style="flex:1;min-width:0">
              <p style="font-family:'Cinzel',serif;font-size:.78rem;color:${col};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nd.label}</p>
              <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#a08858;margin:0">${nd.branch.toUpperCase()} · ${nd.type.toUpperCase()}</p>
            </div>
-           <button onclick="stageRemoveFromBattle('${id}')" title="Remove" style="background:rgba(192,64,64,.15);border:.5px solid rgba(192,64,64,.4);color:#e05555;border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>`
+           <button onclick="stageRemoveFromBattle('${id}')" style="background:rgba(192,64,64,.15);border:.5px solid rgba(192,64,64,.4);color:#e05555;border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>`
         : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;flex:1">Empty</span>
-           <button onclick="openSkillPicker(${i})" title="Add skill" style="background:rgba(94,174,224,.15);border:.5px solid rgba(94,174,224,.4);color:#5eaee0;border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>`}
+           <button onclick="openSkillPicker(${i},false)" style="background:rgba(94,174,224,.15);border:.5px solid rgba(94,174,224,.4);color:#5eaee0;border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>`}
     </div>`
   }
-  // Save / Cancel
+  html += `<p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#9a8050;letter-spacing:.08em;margin:.6rem 0 5px">⚡ PASSIVE SLOTS — auto-active every fight</p>`
+  for (let i = 0; i < PASSIVE_SLOTS; i++) {
+    const idx = ACTIVE_SLOTS + i
+    const id  = pendingBattleSkills[idx] || null
+    const nd  = id ? NODES.find(n => n.id === id) : null
+    const col = nd ? (nd.color || BRANCH_COLOR[nd.branch] || '#c8b96e') : 'rgba(176,110,255,.25)'
+    html += `<div style="border:.5px solid ${nd?col+'55':'rgba(176,110,255,.18)'};border-radius:4px;padding:.45rem .6rem;display:flex;align-items:center;gap:.5rem;min-height:44px;background:${nd?'rgba(176,110,255,.04)':''};margin-bottom:4px">
+      <span style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#b06eff;min-width:16px">P${i+1}</span>
+      ${nd
+        ? `<div style="flex:1;min-width:0">
+             <p style="font-family:'Cinzel',serif;font-size:.78rem;color:${col};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${nd.label}</p>
+             <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#a08858;margin:0">${nd.branch.toUpperCase()} · ${nd.type.toUpperCase()} · auto-passive</p>
+           </div>
+           <button onclick="stageRemoveFromBattle('${id}')" style="background:rgba(192,64,64,.15);border:.5px solid rgba(192,64,64,.4);color:#e05555;border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">−</button>`
+        : `<span style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#7a6435;flex:1">Empty</span>
+           <button onclick="openSkillPicker(${i},true)" style="background:rgba(176,110,255,.15);border:.5px solid rgba(176,110,255,.4);color:#b06eff;border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;flex-shrink:0">+</button>`}
+    </div>`
+  }
   html += `<div style="display:flex;gap:6px;margin-top:.5rem">
     <button onclick="confirmSaveSlots()" style="flex:1;font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;background:${slotsDirty?'rgba(200,184,128,.6)':'rgba(200,184,128,.25)'};border:1px solid ${slotsDirty?'rgba(139,106,32,.8)':'rgba(139,106,32,.3)'};border-radius:3px;padding:.45rem;cursor:pointer;transition:all .2s">
       ${slotsDirty ? '💾 Save Changes' : '✓ Saved'}
