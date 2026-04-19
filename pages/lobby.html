@@ -580,9 +580,22 @@ window.pvpPick = (action) => {
   if (!s || s.myPick || s.ended) return
   s.myPick = action
   s.myPickAt = Date.now()
+  // Clear any waiting timeout
+  if (s._pickTimer) { clearTimeout(s._pickTimer); s._pickTimer = null }
   renderPvpCombat()
   if (pvpChannel) pvpChannel.send({ type:'broadcast', event:'pvp_pick', payload:{ action, pickedAt: s.myPickAt, fromName: player.username } })
-  if (s.opPick) resolveRound()
+  if (s.opPick) {
+    resolveRound()
+  } else {
+    // If opponent doesn't pick in 15s, auto-pick defend for them
+    s._pickTimer = setTimeout(() => {
+      if (pvpState && pvpState.myPick && !pvpState.opPick && !pvpState.ended) {
+        pvpState.opPick = 'defend'
+        pvpState.opPickAt = Date.now()
+        resolveRound()
+      }
+    }, 15000)
+  }
 }
 
 function receiveOpponentPick(payload) {
@@ -590,8 +603,20 @@ function receiveOpponentPick(payload) {
   if (!s || s.ended) return
   s.opPick = payload.action
   s.opPickAt = payload.pickedAt
+  // Clear auto-defend timeout since opponent picked
+  if (s._pickTimer) { clearTimeout(s._pickTimer); s._pickTimer = null }
   renderPvpCombat()
   if (s.myPick) resolveRound()
+  else {
+    // Start timeout for us to pick
+    s._pickTimer = setTimeout(() => {
+      if (pvpState && pvpState.opPick && !pvpState.myPick && !pvpState.ended) {
+        pvpState.myPick = 'defend'
+        pvpState.myPickAt = Date.now()
+        resolveRound()
+      }
+    }, 15000)
+  }
 }
 
 function resolveRound() {
@@ -666,7 +691,17 @@ async function endPvpCombat(won, fromRemote) {
       result: won ? 'pvp_victory' : 'pvp_defeat',
       resolved_at: new Date().toISOString(),
     }).eq('id', s.encounterId)
-    if (won) await supabase.from('players').update({ pvp_kills: (player.pvp_kills||0)+1 }).eq('id', player.id)
+    if (won) {
+      const newKills = (player.pvp_kills||0) + 1
+      player.pvp_kills = newKills
+      const m = player.moral_score||0, hg = player.helps_given||0, pk = newKills
+      let newBadge = 'neutral'
+      if (m >= 60 && hg >= 5)                    newBadge = 'elite'
+      else if (m >= 20 && hg > pk)               newBadge = 'green'
+      else if (m <= -20 || (pk >= 3 && pk > hg*2)) newBadge = 'red'
+      player.badge = newBadge
+      await supabase.from('players').update({ pvp_kills: newKills, badge: newBadge, reputation: newBadge }).eq('id', player.id)
+    }
   } catch(e) { console.error('pvp save error', e) }
 
   // Remove any existing result screen
