@@ -90,10 +90,11 @@
             ? (() => {
                 const isReplay  = unlocked.includes(ch.number + 1) // beaten already
                 const isCh1     = ch.number === 1
-                const href = isReplay || isCh1
+                const alreadyIn = (player.current_node || '').startsWith(`ch${ch.number}_`)
+                const href = isReplay || isCh1 || alreadyIn
                   ? `chapter${ch.number}.html`
                   : `garage.html?dest=${ch.number}`
-                const label = isCurrent ? 'Continue ›' : isReplay ? 'Replay ›' : 'Drive ›'
+                const label = isCurrent ? 'Continue ›' : isReplay ? 'Replay ›' : alreadyIn ? 'Continue ›' : 'Drive ›'
                 return `<a href="${href}" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);padding:.3rem .8rem;text-decoration:none;border-radius:2px;white-space:nowrap">${label}</a>`
               })()
             : `<span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208">Sealed</span>`
