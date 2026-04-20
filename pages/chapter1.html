@@ -735,7 +735,7 @@ The air vibrates at a frequency just below hearing. The frozen people around the
 It looks at you.
 
 It already knows everything.`,
-    enemy: { name:'The Watcher', icon:'👁', hp:200, atk:22, xp:300, loot:[{itemKey:'core_fragment',qty:1},{itemKey:'rune_lux',qty:1}] },
+    enemy: { name:'The Watcher', icon:'👁', hp:200, atk:22, xp:300, loot:[{itemKey:'core_fragment',qty:1},{itemKey:'rune_ignis',qty:1}] },
   },
 
   // ═══════════════════════════════════════
@@ -752,27 +752,85 @@ Three zones pulse with System entity activity — each with different threats an
         id: 'loc_garage', name: 'Parking Garage', icon: '🅿️', level: 'Easy', color: '#5ec45e',
         desc: 'Weak spawns. Good for early runes and consumables.',
         enemies: [
-          { name:'Glitch Rat',     icon:'🐀', hp:20,  atk:3,  agility:3, xp:25,  loot:[{itemKey:'rune_ignis',   chance:.2},{itemKey:'rune_ferro',   chance:.1},{itemKey:'energy_drink', chance:.4},{itemKey:'scrap_metal',chance:.6},{itemKey:'scrap_helm',chance:.08},{itemKey:'scrap_shield',chance:.06}] },
-          { name:'Static Crawler', icon:'🦎', hp:30,  atk:4,  agility:4, xp:35,  loot:[{itemKey:'rune_aqua',    chance:.2},{itemKey:'rune_flora',   chance:.1},{itemKey:'scrap_blade',  chance:.3},{itemKey:'scrap_metal',chance:.5},{itemKey:'scrap_helm',chance:.07},{itemKey:'scrap_shield',chance:.05}] },
-          { name:'Pixel Shard',    icon:'💠', hp:15,  atk:2,  agility:5, xp:20,  loot:[{itemKey:'rune_terra',   chance:.2},{itemKey:'rune_volt',    chance:.1},{itemKey:'energy_drink', chance:.5},{itemKey:'flashlight', chance:.2},{itemKey:'scrap_shield',chance:.08}] },
+          { name:'Glitch Rat',     icon:'🐀', hp:20,  atk:3,  agility:3, xp:25,  loot:[
+            {itemKey:'scrap_metal',  chance:.30},
+            {itemKey:'energy_drink', chance:.30},
+            {itemKey:'scrap_helm',   chance:.19},
+            {itemKey:'scrap_shield', chance:.19},
+            {itemKey:'rune_ignis',   chance:.02},
+          ]},
+          { name:'Static Crawler', icon:'🦎', hp:30,  atk:4,  agility:4, xp:35,  loot:[
+            {itemKey:'scrap_metal',  chance:.20},
+            {itemKey:'scrap_blade',  chance:.20},
+            {itemKey:'scrap_helm',   chance:.20},
+            {itemKey:'scrap_shield', chance:.20},
+            {itemKey:'rune_aqua',    chance:.10},
+            {itemKey:'rune_flora',   chance:.10},
+          ]},
+          { name:'Pixel Shard',    icon:'💠', hp:15,  atk:2,  agility:5, xp:20,  loot:[
+            {itemKey:'energy_drink', chance:.20},
+            {itemKey:'flashlight',   chance:.20},
+            {itemKey:'scrap_shield', chance:.20},
+            {itemKey:'rune_terra',   chance:.20},
+            {itemKey:'rune_aero',    chance:.20},
+          ]},
         ],
       },
       {
         id: 'loc_market', name: 'Frozen Market', icon: '🏪', level: 'Medium', color: '#c8b96e',
         desc: 'Mid-tier entities. Better gear and rare rune drops.',
         enemies: [
-          { name:'Flicker Hound',  icon:'🐕', hp:55,  atk:6,  agility:6, xp:60,  loot:[{itemKey:'rune_aero',    chance:.25},{itemKey:'rune_flora',   chance:.2}, {itemKey:'jacket',        chance:.2},{itemKey:'knife',      chance:.15},{itemKey:'iron_helm',chance:.1},{itemKey:'iron_shield',chance:.08}] },
-          { name:'Pixel Drone',    icon:'🤖', hp:45,  atk:7,  agility:5, xp:65,  loot:[{itemKey:'rune_ignis',   chance:.3}, {itemKey:'rune_volt',    chance:.2}, {itemKey:'scrap_metal',   chance:.5}, {itemKey:'medkit',     chance:.15},{itemKey:'iron_helm',chance:.12}] },
-          { name:'Fracture Wolf',  icon:'🐺', hp:70,  atk:7,  agility:7, xp:75,  loot:[{itemKey:'rune_umbra',   chance:.2}, {itemKey:'rune_venin',   chance:.2}, {itemKey:'leather_gloves',chance:.2}, {itemKey:'worn_boots', chance:.2},{itemKey:'iron_shield',chance:.1}] },
+          { name:'Flicker Hound',  icon:'🐕', hp:55,  atk:6,  agility:6, xp:60,  loot:[
+            {itemKey:'jacket',       chance:.20},
+            {itemKey:'knife',        chance:.20},
+            {itemKey:'iron_helm',    chance:.20},
+            {itemKey:'iron_shield',  chance:.20},
+            {itemKey:'rune_aero',    chance:.10},
+            {itemKey:'rune_ignis',   chance:.10},
+          ]},
+          { name:'Pixel Drone',    icon:'🤖', hp:45,  atk:7,  agility:5, xp:65,  loot:[
+            {itemKey:'scrap_metal',  chance:.25},
+            {itemKey:'flashlight',   chance:.15},
+            {itemKey:'iron_helm',    chance:.20},
+            {itemKey:'rune_ignis',   chance:.20},
+            {itemKey:'rune_aqua',    chance:.20},
+          ]},
+          { name:'Fracture Wolf',  icon:'🐺', hp:70,  atk:7,  agility:7, xp:75,  loot:[
+            {itemKey:'leather_gloves',chance:.20},
+            {itemKey:'worn_boots',   chance:.20},
+            {itemKey:'iron_shield',  chance:.30},
+            {itemKey:'rune_aero',    chance:.15},
+            {itemKey:'rune_terra',   chance:.15},
+          ]},
         ],
       },
       {
         id: 'loc_tower', name: 'Glass Tower', icon: '🏢', level: 'Hard', color: '#e05555',
         desc: 'Elite entities. Rare and epic loot, high XP.',
         enemies: [
-          { name:'Corrupted Sentry',icon:'👾', hp:90,  atk:10, agility:6, xp:100, loot:[{itemKey:'rune_lux',     chance:.25},{itemKey:'rune_volt',    chance:.2}, {itemKey:'iron_sword',    chance:.15},{itemKey:'riot_vest',  chance:.1},{itemKey:'tactical_helm',chance:.08},{itemKey:'tactical_sword',chance:.06}] },
-          { name:'Void Sentinel',  icon:'⚫', hp:110, atk:12, agility:7, xp:120, loot:[{itemKey:'rune_umbra',   chance:.3}, {itemKey:'rune_ferro',   chance:.2}, {itemKey:'iron_helm',     chance:.15},{itemKey:'medkit',     chance:.25},{itemKey:'tactical_helm',chance:.1}] },
-          { name:'System Enforcer',icon:'🔴', hp:130, atk:14, agility:8, xp:150, loot:[{itemKey:'rune_venin',   chance:.25},{itemKey:'rune_flora',   chance:.2}, {itemKey:'iron_shield',   chance:.1}, {itemKey:'iron_ring',  chance:.1},{itemKey:'tactical_shield',chance:.08},{itemKey:'tactical_sword',chance:.05}] },
+          { name:'Corrupted Sentry',icon:'👾', hp:90,  atk:10, agility:6, xp:100, loot:[
+            {itemKey:'iron_sword',     chance:.20},
+            {itemKey:'riot_vest',      chance:.20},
+            {itemKey:'tactical_helm',  chance:.35},
+            {itemKey:'rune_aqua',      chance:.10},
+            {itemKey:'rune_flora',     chance:.10},
+            {itemKey:'tactical_sword', chance:.05},
+          ]},
+          { name:'Void Sentinel',  icon:'⚫', hp:110, atk:12, agility:7, xp:120, loot:[
+            {itemKey:'medkit',         chance:.20},
+            {itemKey:'iron_helm',      chance:.20},
+            {itemKey:'tactical_helm',  chance:.40},
+            {itemKey:'rune_terra',     chance:.10},
+            {itemKey:'rune_ignis',     chance:.10},
+          ]},
+          { name:'System Enforcer',icon:'🔴', hp:130, atk:14, agility:8, xp:150, loot:[
+            {itemKey:'iron_shield',    chance:.20},
+            {itemKey:'iron_ring',      chance:.20},
+            {itemKey:'tactical_shield',chance:.30},
+            {itemKey:'rune_ignis',     chance:.13},
+            {itemKey:'rune_flora',     chance:.12},
+            {itemKey:'tactical_sword', chance:.05},
+          ]},
         ],
       },
     ],
@@ -861,7 +919,7 @@ You turn and face it.`,
 It is not The Watcher. But it is a piece of The Watcher.
 
 And it is watching you fight.`,
-    enemy: { name:"Watcher's Eye", icon:'👁', hp:60, atk:12, xp:80, loot:[{itemKey:'rune_lux',qty:1}] },
+    enemy: { name:"Watcher's Eye", icon:'👁', hp:60, atk:12, xp:80, loot:[{itemKey:'rune_aqua',qty:1}] },
     onWin: 'eye_defeated',
     onLose: 'eye_survived',
     onEscape: 'eye_survived',
@@ -943,7 +1001,7 @@ Fighting the swarm is not like fighting an enemy. It is like fighting a thought 
 Your interface is struggling to lock on. Too many targets. Too many eyes.
 
 All of them watching.`,
-    enemy: { name:"Watcher's Eye Swarm", icon:'👁', hp:140, atk:14, xp:180, loot:[{itemKey:'rune_lux',qty:1},{itemKey:'rune_umbra',qty:1}] },
+    enemy: { name:"Watcher's Eye Swarm", icon:'👁', hp:140, atk:14, xp:180, loot:[{itemKey:'rune_aqua',qty:1},{itemKey:'rune_terra',qty:1}] },
     onWin: 'swarm_defeated',
     onLose: 'swarm_survived',
     onEscape: 'swarm_survived',
@@ -1396,7 +1454,7 @@ It has been watching every fight in this building. Through the Pixel Drones. Thr
 It knows how you move.
 
 So change how you move.`,
-    enemy: { name:'Void Sentinel', icon:'⚫', hp:110, atk:12, agility:7, xp:150, loot:[{itemKey:'rune_umbra',qty:1},{itemKey:'tactical_helm',qty:1}] },
+    enemy: { name:'Void Sentinel', icon:'⚫', hp:110, atk:12, agility:7, xp:150, loot:[{itemKey:'rune_terra',qty:1},{itemKey:'tactical_helm',qty:1}] },
     onWin: 'garage_b4_clear',
     onLose: 'garage_b4_clear',
     onEscape: 'garage_b4_clear',
@@ -1469,7 +1527,7 @@ She's already standing next to you. She made her decision before you did.`,
 The Sentinel's eye tracks between you — calculating priority, assigning threat levels. For the first time since you've been in this garage, something that was built to observe finds itself being attacked from two directions at once.
 
 "It doesn't like that," Yara says. She sounds almost satisfied.`,
-    enemy: { name:'Sentinel of the First Eye', icon:'👁', hp:160, atk:26, agility:6, xp:200, loot:[{itemKey:'rune_lux',qty:1},{itemKey:'medkit',qty:1}] },
+    enemy: { name:'Sentinel of the First Eye', icon:'👁', hp:160, atk:26, agility:6, xp:200, loot:[{itemKey:'rune_ignis',qty:1},{itemKey:'medkit',qty:1}] },
     onWin:   'boss_sentinel_win',
     onLose:  'farming_hub',
     onEscape:'farming_hub',
@@ -1486,7 +1544,7 @@ Its eye fixes on yours. You feel it indexing you — cataloguing every wound you
 You raise your weapon.
 
 So does it.`,
-    enemy: { name:'Sentinel of the First Eye', icon:'👁', hp:180, atk:26, agility:6, xp:200, loot:[{itemKey:'rune_lux',qty:1},{itemKey:'medkit',qty:1}] },
+    enemy: { name:'Sentinel of the First Eye', icon:'👁', hp:180, atk:26, agility:6, xp:200, loot:[{itemKey:'rune_ignis',qty:1},{itemKey:'medkit',qty:1}] },
     onWin:   'boss_sentinel_win',
     onLose:  'farming_hub',
     onEscape:'farming_hub',
@@ -2119,7 +2177,7 @@ You don't argue. Three Sentries. Two people.`,
 It's the most organized System entity behavior you've seen. Someone — or something — has been teaching them.
 
 Kai calls flanks. You drive center. It works.`,
-    enemy: { name:'Lobby Corrupted Sentries', icon:'👾', hp:95, atk:10, xp:110, loot:[{itemKey:'rune_lux',qty:1}] },
+    enemy: { name:'Lobby Corrupted Sentries', icon:'👾', hp:95, atk:10, xp:110, loot:[{itemKey:'rune_terra',qty:1}] },
     onWin: 'tower_b2_ascent',
     onLose: 'tower_b2_ascent',
     onEscape: 'tower_b2_ascent',
@@ -2412,7 +2470,7 @@ The Unseen exists at the edge of everything — a shimmer, a distortion. But it 
 That's the window.
 
 "NOW," Yara says — and you don't know how she knows, but she knows.`,
-    enemy: { name:'The Unseen', icon:'👤', hp:210, atk:34, agility:10, xp:320, loot:[{itemKey:'rune_umbra',qty:1},{itemKey:'tactical_helm',qty:1}] },
+    enemy: { name:'The Unseen', icon:'👤', hp:210, atk:34, agility:10, xp:320, loot:[{itemKey:'rune_aero',qty:1},{itemKey:'tactical_helm',qty:1}] },
     onWin:   'boss_unseen_win',
     onLose:  'farming_hub',
     onEscape:'farming_hub',
@@ -2431,7 +2489,7 @@ You fight what might be there.
 And what might be there fights back.
 
 The moment it consolidates — hit it. Everything you have.`,
-    enemy: { name:'The Unseen', icon:'👤', hp:240, atk:34, agility:10, xp:320, loot:[{itemKey:'rune_umbra',qty:1},{itemKey:'tactical_helm',qty:1}] },
+    enemy: { name:'The Unseen', icon:'👤', hp:240, atk:34, agility:10, xp:320, loot:[{itemKey:'rune_aero',qty:1},{itemKey:'tactical_helm',qty:1}] },
     onWin:   'boss_unseen_win',
     onLose:  'farming_hub',
     onEscape:'farming_hub',
@@ -2810,22 +2868,21 @@ window.declineDrop = async function(itemName, btn) {
 }
 
 const SOCKET_RULES = {
-  // Chapter 1 cap: max 3 sockets. 3 sockets are very rare.
-  // 4-6 sockets unlock in later chapters.
-  common:   {chance:0.15, max:1},
-  uncommon: {chance:0.25, max:2},
-  rare:     {chance:0.35, max:3},
-  epic:     {chance:0.40, max:3},
-  legendary:{chance:0.50, max:3},
-  mythic:   {chance:0.60, max:3},
+  // Chapter 1-2 cap: max 2 sockets. 3+ unlock in later chapters.
+  common:   {chance:0.10, max:1},
+  uncommon: {chance:0.20, max:1},
+  rare:     {chance:0.30, max:2},
+  epic:     {chance:0.35, max:2},
+  legendary:{chance:0.40, max:2},
+  mythic:   {chance:0.50, max:2},
 }
 function rollSockets(rarity, itemType) {
   if (!['weapon','armor'].includes(itemType)) return 0
-  const rule = SOCKET_RULES[rarity] || {chance:0.15, max:1}
+  const rule = SOCKET_RULES[rarity] || {chance:0.10, max:1}
   if (Math.random() > rule.chance) return 0
+  // Max 2: second socket is rare even when eligible
   const roll = Math.floor(Math.random() * rule.max) + 1
-  // 3 sockets: only kept 30% of the time it rolls max
-  if (roll === rule.max && rule.max === 3 && Math.random() > 0.30) return 2
+  if (roll === 2 && Math.random() > 0.35) return 1  // only 35% chance of actually getting 2
   return roll
 }
 
@@ -4396,6 +4453,15 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
           await dropWatcherSet()
         } else {
           showToast('Victory! +' + (enemy.xp||50) + ' XP gained!')
+          // ── Zone guardian Watcher piece drops ──
+          const curBossKey = NODES[nodeId]?.bossKey
+          if (curBossKey === 'sentinel') {
+            if (Math.random() < 0.05) await dropSingleWatcherPiece('watcher_crown')
+          } else if (curBossKey === 'surveyor') {
+            if (Math.random() < 0.05) await dropSingleWatcherPiece('watcher_eye_ring')
+          } else if (curBossKey === 'unseen') {
+            if (Math.random() < 0.05) await dropSingleWatcherPiece('watcher_cloak')
+          }
         }
         // Gold drop for story fights (boss drops more)
         const sGoldDrop = isBoss ? (Math.floor(Math.random() * 80) + 60) : (Math.floor(Math.random() * 40) + 5)
@@ -5523,103 +5589,71 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
   // ── Watcher Item Set Drop ─────────────────────────────────
   // Guaranteed 1 piece on first kill. Each additional piece: 40% chance.
   // Stats roll 1-6 randomly per stat slot.
-  async function dropWatcherSet() {
-    const WATCHER_PIECES = [
-      {
-        item_key: 'watcher_eye_ring', name: "Watcher's Multi-Eye Ring", rarity: 'rare',
-        item_type: 'accessory', icon: '💍',
-        img: '../assets/sets/watcher_eye_ring.png',
-        stats: ['insight_bonus','luck_bonus','atk_bonus'],
-        special_effect: "Observer's Sight: First attack on an unseen enemy deals +25% damage. Reveals hidden enemies nearby.",
-      },
-      {
-        item_key: 'watcher_band', name: "Watcher's Band", rarity: 'rare',
-        item_type: 'accessory', icon: '💍',
-        img: '../assets/sets/watcher_band.png',
-        stats: ['control_bonus','speed_bonus','atk_bonus'],
-        special_effect: "Pattern Recognition: Consecutive hits on the same enemy stack +2% damage (max 20%).",
-      },
-      {
-        item_key: 'watcher_cloak', name: "Watcher's Cloak", rarity: 'rare',
-        item_type: 'armor', icon: '🧥',
-        img: '../assets/sets/watcher_cloak.png',
-        stats: ['speed_bonus','insight_bonus','def_bonus','luck_bonus'],
-        special_effect: "Phantom Step: After dodging, your next attack cannot be dodged. 15% chance to phase (50% dmg reduction).",
-      },
-      {
-        item_key: 'watcher_crown', name: "Watcher's Crown", rarity: 'rare',
-        item_type: 'armor', icon: '👑',
-        img: '../assets/sets/watcher_crown.png',
-        stats: ['insight_bonus','guard_bonus','def_bonus'],
-        special_effect: "Observed: Enemies you hit take -10% ATK and +10% damage from you.",
-      },
-    ]
-    const SET_BONUSES = {
-      2: { label: '2-Piece: You begin to see.',          effect: 'Observer Stacks on hit (max 5): +2% Crit Chance & +2% Accuracy per stack.' },
-      3: { label: '3-Piece: Nothing escapes your notice.', effect: 'Dodging or critting auto-applies Observed. Observed enemies take +10% damage.' },
-      4: { label: '4-Piece: THE WATCHER SEES ALL.',      effect: 'After 5 hits: Total Observation — enemy Marked (+30% dmg), Slowed, cannot dodge.' },
+  async function dropSingleWatcherPiece(itemKey) {
+    const piece = WATCHER_PIECES.find(p => p.item_key === itemKey)
+    if (!piece) return
+    const statRolls = {}
+    for (const stat of piece.stats) statRolls[stat] = Math.floor(Math.random() * 6) + 1
+    const row = {
+      player_id: player.id, item_key: piece.item_key, name: piece.name,
+      item_type: piece.item_type, rarity: piece.rarity, icon: piece.icon,
+      quantity: 1, equipped_slot: null,
+      ...statRolls,
+      special_effect: piece.special_effect,
+      sockets_total: 2, sockets_used: 0, socketed_runes: [],
     }
-
-    // Shuffle pieces so the guaranteed drop is random
-    const shuffled = [...WATCHER_PIECES].sort(() => Math.random() - 0.5)
-    let dropped = []
-    for (let i = 0; i < shuffled.length; i++) {
-      const piece = shuffled[i]
-      // First piece always drops. Others: 40% each.
-      if (i > 0 && Math.random() > 0.40) continue
-
-      // Roll stats 1-5 each
-      const statRolls = {}
-      for (const stat of piece.stats) {
-        statRolls[stat] = Math.floor(Math.random() * 6) + 1  // 1-6
-      }
-
-      const row = {
-        player_id:      player.id,
-        item_key:       piece.item_key,
-        name:           piece.name,
-        rarity:         piece.rarity,
-        item_type:      piece.item_type,
-        subtype:        piece.item_type,
-        icon:           piece.icon,
-        quantity:       1,
-        equipped_slot:  null,
-        element:        'none',
-        two_handed:     false,
-        atk_bonus:      statRolls['atk_bonus']      || 0,
-        def_bonus:      statRolls['def_bonus']       || 0,
-        power_bonus:    statRolls['power_bonus']     || 0,
-        guard_bonus:    statRolls['guard_bonus']     || 0,
-        speed_bonus:    statRolls['speed_bonus']     || 0,
-        insight_bonus:  statRolls['insight_bonus']   || 0,
-        luck_bonus:     statRolls['luck_bonus']      || 0,
-        control_bonus:  statRolls['control_bonus']   || 0,
-        special_effect: piece.special_effect,
-        hp_restore:     0,
-        sockets_total:  2,
-        sockets_used:   0,
-        socketed_runes: [],
-      }
-      const { error } = await supabase.from('inventory').insert(row)
-      if (!error) {
-        dropped.push(piece)
-        const statSummary = Object.entries(statRolls).map(([k,v])=>'+'+v+' '+k.replace('_bonus','')).join(' · ')
-        queueLoot(piece.name + ' [' + statSummary + ']', 1, piece.img)
-      }
-    }
-
-    // Always show set bonus info for dropped pieces
-    if (dropped.length >= 1) {
-      const bonus = SET_BONUSES[Math.min(dropped.length, 4)]
-      const baseMsg = '👁 Watcher Set (' + dropped.length + '/4 pieces)'
-      if (bonus) {
-        setTimeout(() => showToast(baseMsg + ' — ' + bonus.label), 2000)
-        setTimeout(() => showToast('Set bonus: ' + bonus.effect), 4500)
-      } else {
-        showToast(baseMsg + ' dropped!')
-      }
+    const { error } = await supabase.from('inventory').insert(row)
+    if (!error) {
+      showToast(`★ ${piece.name} dropped!`)
+      queueLoot(piece.name, 1, piece.img)
     }
   }
+
+  async function dropWatcherSet() {
+    const WATCHER_KEYS = {
+      watcher_cloak:    { chance: 0.05 },
+      watcher_eye_ring: { chance: 0.05 },
+      watcher_crown:    { chance: 0.05 },
+      watcher_band:     { chance: 0.10 },
+    }
+    for (const piece of WATCHER_PIECES) {
+      const rule = WATCHER_KEYS[piece.item_key]
+      if (!rule) continue
+      if (Math.random() > rule.chance) continue
+      await dropSingleWatcherPiece(piece.item_key)
+    }
+  }
+
+  const WATCHER_PIECES = [
+    {
+      item_key: 'watcher_eye_ring', name: "Watcher's Multi-Eye Ring", rarity: 'rare',
+      item_type: 'accessory', icon: '💍',
+      img: '../assets/sets/watcher_eye_ring.png',
+      stats: ['insight_bonus','luck_bonus','atk_bonus'],
+      special_effect: "Observer's Sight: First attack on an unseen enemy deals +25% damage. Reveals hidden enemies nearby.",
+    },
+    {
+      item_key: 'watcher_band', name: "Watcher's Band", rarity: 'rare',
+      item_type: 'accessory', icon: '💍',
+      img: '../assets/sets/watcher_band.png',
+      stats: ['control_bonus','speed_bonus','atk_bonus'],
+      special_effect: "Pattern Recognition: Consecutive hits on the same enemy stack +2% damage (max 20%).",
+    },
+    {
+      item_key: 'watcher_cloak', name: "Watcher's Cloak", rarity: 'rare',
+      item_type: 'armor', icon: '🧥',
+      img: '../assets/sets/watcher_cloak.png',
+      stats: ['speed_bonus','insight_bonus','def_bonus','luck_bonus'],
+      special_effect: "Phantom Step: After dodging, your next attack cannot be dodged. 15% chance to phase (50% dmg reduction).",
+    },
+    {
+      item_key: 'watcher_crown', name: "Watcher's Crown", rarity: 'rare',
+      item_type: 'armor', icon: '👑',
+      img: '../assets/sets/watcher_crown.png',
+      stats: ['insight_bonus','guard_bonus','def_bonus'],
+      special_effect: "Observed: Enemies you hit take -10% ATK and +10% damage from you.",
+    },
+  ]
 
   renderSkillSlots()
   syncBars()
