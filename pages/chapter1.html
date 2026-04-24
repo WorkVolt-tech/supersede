@@ -5,6 +5,644 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SuperSede — Chapter 1</title>
   <link rel="stylesheet" href="../styles/main.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    /* ══════════════════════════════════════════════
+       WATCHER THEME — Ice / Blue accent
+       Inventory layout: spine, tilt, corner light.
+    ══════════════════════════════════════════════ */
+    :root {
+      --bg-0:      #05080c;
+      --bg-1:      #0a1018;
+      --panel:     #0d131c;
+      --page-l:    #0b1018;
+      --page-r:    #0d1520;
+      --ink:       #dfe7f2;
+      --ink-dim:   #6f7b8d;
+      --ink-faint: #3a4354;
+      --ice:       #8fd8f0;
+      --ice-hot:   #c8eeff;
+      --gold:      #c8a84a;
+      --gold-hot:  #f0d080;
+      --gold-dim:  #7a6430;
+      --amber:     #ffb347;
+      --amber-hot: #ffd68a;
+      --warn:      #e05a44;
+      --line:      #1a2230;
+      --green:     #5ec45e;
+      --purple:    #b06eff;
+      --spine-col: #0d1018;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+
+    /* ── Nav ── */
+    #nav { position: relative; z-index: 200; }
+    #nav, #nav * { background: transparent !important; box-shadow: none !important; border-radius: 0 !important; }
+    #nav a, #nav button {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 10px !important; letter-spacing: .28em !important;
+      text-transform: uppercase !important; color: var(--ink-dim) !important;
+      text-decoration: none !important; border: none !important; padding: 0 !important;
+      transition: color .2s !important;
+    }
+    #nav a:hover, #nav button:hover { color: var(--gold) !important; }
+    #nav > *, #nav nav, #nav div {
+      border-bottom: 1px solid var(--line) !important;
+      padding: 14px 32px !important; display: flex !important;
+      align-items: center !important; gap: 28px !important; flex-wrap: wrap !important;
+    }
+
+    /* ── Global reset ── */
+    html, body {
+      background: radial-gradient(ellipse at 50% 0%, #0e1a28 0%, #05080c 55%, #020406 100%) !important;
+      color: var(--ink) !important;
+      font-family: 'Cormorant Garamond', Georgia, serif !important;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* scanlines — gold tint matching inventory */
+    body::after {
+      content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 9998;
+      background-image: repeating-linear-gradient(180deg,
+        rgba(143,216,240,.012) 0px, rgba(143,216,240,.012) 1px,
+        transparent 1px, transparent 4px);
+    }
+
+    /* ── Book wrap ── */
+    .book-wrap {
+      background: transparent !important;
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 24px 24px 60px;
+    }
+
+    /* ── Book — perspective tilt matching inventory ── */
+    .book {
+      display: grid !important;
+      grid-template-columns: 1fr 22px 1fr !important;
+      align-items: stretch !important;
+      gap: 0 !important;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+      border-radius: 0 !important;
+      filter: drop-shadow(0 20px 50px rgba(0,0,0,.8)) !important;
+      transform: perspective(1600px) rotateX(2.5deg) !important;
+      transform-origin: 50% 0 !important;
+      margin-top: 10px !important;
+    }
+    @media(max-width: 860px) {
+      .book { grid-template-columns: 1fr !important; transform: none !important; max-height: none !important; }
+      .spine { display: none !important; }
+    }
+
+    /* ── Pages ── */
+    .parchment, .page-left, .page-right {
+      background: var(--panel) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      color: var(--ink) !important;
+      position: relative;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    /* No border on the spine-facing edges */
+    .page-left  { border-right: none !important; background: var(--page-l) !important; }
+    .page-right { border-left:  none !important; background: var(--page-r) !important; }
+
+    /* Gradient spine-glow lighting — matches inventory */
+    .page-left::before  {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(90deg, rgba(143,216,240,.014) 0%, transparent 55%);
+    }
+    .page-right::before {
+      content: ""; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(270deg, rgba(143,216,240,.010) 0%, transparent 55%);
+    }
+    /* Gold corner brackets — left page: top-left / right page: bottom-right */
+    .page-left::after {
+      content: ""; position: absolute; top: -1px; left: -1px;
+      width: 16px; height: 16px;
+      border-top: 1px solid var(--ice); border-left: 1px solid var(--ice);
+      pointer-events: none; z-index: 1;
+    }
+    .page-right::after {
+      content: ""; position: absolute; bottom: -1px; right: -1px;
+      width: 16px; height: 16px;
+      border-bottom: 1px solid var(--ice); border-right: 1px solid var(--ice);
+      pointer-events: none; z-index: 1;
+    }
+    /* Fallback for bare .parchment (not left/right) — keep the original two-corner look in gold */
+    .parchment:not(.page-left):not(.page-right)::before {
+      content: ""; position: absolute; top: -1px; left: -1px;
+      width: 16px; height: 16px;
+      border-top: 1px solid var(--ice); border-left: 1px solid var(--ice);
+      pointer-events: none; z-index: 1;
+    }
+    .parchment:not(.page-left):not(.page-right)::after {
+      content: ""; position: absolute; bottom: -1px; right: -1px;
+      width: 16px; height: 16px;
+      border-bottom: 1px solid var(--ice); border-right: 1px solid var(--ice);
+      pointer-events: none; z-index: 1;
+    }
+    .page-inner { padding: 24px 26px !important; }
+
+    /* ── Spine — open book gutter / inner binding ── */
+    /* Simulates the crease and shadow of pages meeting at the centre of an open book */
+    .spine {
+      /* Deep crease shadow: dark at centre, fading out to page colour on each edge */
+      background: linear-gradient(90deg,
+        rgba(0,0,0,.0)  0%,
+        rgba(0,0,0,.32) 28%,
+        rgba(0,0,0,.55) 46%,
+        rgba(0,0,0,.62) 50%,
+        rgba(0,0,0,.55) 54%,
+        rgba(0,0,0,.32) 72%,
+        rgba(0,0,0,.0)  100%
+      ) !important;
+      border-left:  none !important;
+      border-right: none !important;
+      position: relative; z-index: 5;
+      width: 22px !important;
+      min-width: 22px !important;
+      margin: 0 !important;
+      overflow: visible;
+      box-shadow: none !important;
+    }
+
+    /* Hairline crease at the very centre */
+    .spine::before {
+      content: "";
+      position: absolute;
+      top: 0; bottom: 0;
+      left: 50%;
+      width: 1px;
+      transform: translateX(-50%);
+      background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(0,8,18,.9) 8%,
+        rgba(0,8,18,.9) 92%,
+        transparent 100%);
+      z-index: 2;
+    }
+
+    /* Stacked-page edge: left side (right-hand page stack visible on left edge) */
+    .spine::after {
+      content: "";
+      position: absolute;
+      top: 2px; bottom: 2px;
+      left: -3px;
+      width: 3px;
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(143,216,240,.06) 0px,
+        rgba(143,216,240,.02) 1px,
+        rgba(0,0,0,.15)       1px,
+        rgba(0,0,0,.05)       2px
+      );
+      border-left: 1px solid rgba(143,216,240,.10);
+      z-index: 1;
+    }
+
+    /* Page curl shadow cast onto left page from the binding */
+    .page-left::after {
+      content: "" !important;
+      position: absolute !important;
+      top: 0 !important; bottom: 0 !important; right: 0 !important;
+      width: 32px !important; height: auto !important;
+      border: none !important;
+      background: linear-gradient(270deg,
+        rgba(0,0,0,.28) 0%,
+        rgba(0,0,0,.10) 50%,
+        transparent 100%) !important;
+      pointer-events: none !important;
+      z-index: 2 !important;
+    }
+
+    /* Page curl shadow cast onto right page from the binding */
+    .page-right::after {
+      content: "" !important;
+      position: absolute !important;
+      top: 0 !important; bottom: 0 !important; left: 0 !important;
+      width: 32px !important; height: auto !important;
+      border: none !important;
+      background: linear-gradient(90deg,
+        rgba(0,0,0,.28) 0%,
+        rgba(0,0,0,.10) 50%,
+        transparent 100%) !important;
+      pointer-events: none !important;
+      z-index: 2 !important;
+    }
+
+    .spine-inner, .spine-highlight, .spine-shadow,
+    .spine-title, .spine-rule, .spine-diamond, .spine-chapter { display: none !important; }
+
+    /* ── Chapter label / subtitle ── */
+    .chapter-label {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 9.5px !important;
+      letter-spacing: .42em !important;
+      text-transform: uppercase !important;
+      color: var(--ice) !important;
+      margin-bottom: 5px !important;
+    }
+    .chapter-sub {
+      font-size: 17px !important;
+      font-style: italic !important;
+      color: var(--ink-dim) !important;
+      margin-bottom: 0 !important;
+    }
+
+    /* ── Divider ── */
+    .ink-divider, hr.ink-divider {
+      border: none !important;
+      border-top: 1px solid var(--line) !important;
+      margin: 12px 0 !important;
+      opacity: 1 !important;
+    }
+
+    /* ── Body text colour remaps (inline styles use parchment browns) ── */
+    p, li, span { color: var(--ink) !important; }
+    [style*="color:#1a1208"] { color: var(--ink) !important; }
+    [style*="color:#3a2008"] { color: var(--ink-dim) !important; }
+    [style*="color:#7a6435"] { color: var(--ink-dim) !important; }
+    [style*="color:#9a8050"] { color: var(--ink-dim) !important; }
+    [style*="color:#c8b96e"] { color: var(--gold) !important; }
+    [style*="background:rgba(200,184,128"] { background: rgba(143,216,240,.06) !important; }
+    [style*="border-color:rgba(139,106,32"] { border-color: rgba(143,216,240,.25) !important; }
+
+    /* ── Story text ── */
+    .story-text {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-size: 17px !important;
+      line-height: 1.65 !important;
+      color: var(--ink) !important;
+      white-space: pre-line !important;
+    }
+    .story-text.drop-cap::first-letter {
+      font-size: 3.8em !important;
+      float: left !important;
+      line-height: .78 !important;
+      margin: .05em .12em 0 0 !important;
+      color: var(--ice) !important;
+      font-weight: 600 !important;
+    }
+
+    /* ── Notice / outcome box ── */
+    .notice-box {
+      border: 1px solid var(--ice) !important;
+      background: rgba(143,216,240,.06) !important;
+      color: var(--ice-hot) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 11px !important;
+      letter-spacing: .06em !important;
+      padding: 10px 14px !important;
+      border-radius: 0 !important;
+      margin-top: 14px !important;
+    }
+
+    /* ── HUD ── */
+    #hud { color: var(--ink) !important; }
+    #hud p, #hud span, #hud div { color: var(--ink) !important; }
+    #hud .hud-badge-row .hud-seal-label { color: var(--gold) !important; }
+    #hud .hud-chapter { color: var(--ink-dim) !important; }
+    #hud .stat-key { color: var(--ink-dim) !important; font-family: 'JetBrains Mono',monospace !important; font-size: .6rem !important; letter-spacing: .08em !important; }
+    #hud .stat-val { color: var(--ink) !important; }
+    #hud .stat-bar-wrap { background: rgba(255,255,255,.06) !important; border-radius: 0 !important; }
+    #hud .stat-box { background: rgba(255,255,255,.03) !important; border: 1px solid var(--line) !important; border-radius: 0 !important; }
+    #hud .stat-box-key { color: var(--ink-dim) !important; font-family: 'JetBrains Mono',monospace !important; }
+    #hud .stat-box-val { color: var(--amber) !important; }
+    #hud button {
+      background: rgba(143,216,240,.06) !important;
+      border-color: var(--line) !important;
+      color: var(--ink) !important;
+      border-radius: 0 !important;
+      font-family: 'JetBrains Mono',monospace !important;
+      transition: border-color .2s, color .2s !important;
+    }
+    #hud button:hover { border-color: var(--ice) !important; color: var(--gold) !important; }
+    #hud div[onclick] {
+      background: rgba(176,110,255,.15) !important;
+      border-color: rgba(176,110,255,.35) !important;
+      color: var(--ink) !important;
+      border-radius: 0 !important;
+    }
+
+    /* ── Buttons / choices — gold theme matching inventory ── */
+    button, .choice, .combat-btn {
+      background: transparent !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      color: var(--ink) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 10px !important; letter-spacing: .08em !important;
+      cursor: pointer !important;
+      transition: border-color .2s, color .2s, background .2s !important;
+    }
+    button:hover, .choice:hover, .combat-btn:hover:not(:disabled) {
+      border-color: var(--ice) !important;
+      color: var(--ice) !important;
+      background: rgba(143,216,240,.04) !important;
+    }
+
+    /* ── Choices panel ── */
+    .choices-label {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 10px !important;
+      letter-spacing: .38em !important;
+      text-transform: uppercase !important;
+      color: var(--ink-dim) !important;
+      margin-bottom: 12px !important;
+    }
+    .choices { display: flex; flex-direction: column; gap: 8px; }
+
+    button.choice, .choice {
+      background: transparent !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      color: var(--ink) !important;
+      padding: 12px 14px !important;
+      text-align: left !important;
+      cursor: pointer !important;
+      transition: border-color .2s, background .2s !important;
+      display: flex !important;
+      align-items: flex-start !important;
+      gap: 10px !important;
+      width: 100% !important;
+      font-family: 'Cormorant Garamond', serif !important;
+    }
+    button.choice:hover, .choice:hover {
+      border-color: var(--ice) !important;
+      background: rgba(143,216,240,.04) !important;
+    }
+    button.choice.danger, .choice.danger {
+      border-color: rgba(224,90,68,.35) !important;
+    }
+    button.choice.danger:hover, .choice.danger:hover {
+      border-color: var(--warn) !important;
+      background: rgba(224,90,68,.06) !important;
+    }
+    button.choice.locked, .choice.locked {
+      opacity: .45 !important;
+      cursor: default !important;
+      border-color: var(--ink-faint) !important;
+    }
+    .choice-arrow {
+      color: var(--ice) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 13px !important;
+      flex-shrink: 0 !important;
+      margin-top: 1px !important;
+    }
+    button.choice.danger .choice-arrow, .choice.danger .choice-arrow { color: var(--warn) !important; }
+    .choice-body {
+      font-size: 17px !important;
+      color: var(--ink) !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+    .choice-sub {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 9.5px !important;
+      letter-spacing: .06em !important;
+      color: var(--ink-dim) !important;
+      margin-top: 3px !important;
+    }
+
+    /* ── Stat bars ── */
+    .stat-bar-wrap { background: rgba(255,255,255,.06) !important; border-radius: 0 !important; }
+    .stat-key { color: var(--ink-dim) !important; font-family: 'JetBrains Mono',monospace !important; font-size: .58rem !important; letter-spacing: .08em !important; }
+    .stat-val { color: var(--ink) !important; }
+
+    /* ── Combat panel ── */
+    .combat-panel {
+      background: var(--bg-1) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      padding: 16px !important;
+      position: relative;
+    }
+    .combat-panel::before {
+      content: ""; position: absolute; top: -1px; left: -1px;
+      width: 12px; height: 12px;
+      border-top: 1px solid var(--ice); border-left: 1px solid var(--ice);
+    }
+    .combat-enemy-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .combat-enemy-icon { font-size: 2.5rem; }
+    .combat-enemy-name {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-size: 20px !important; font-weight: 600 !important;
+      letter-spacing: .04em !important; color: var(--ink) !important;
+    }
+    .combat-log {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-style: italic !important;
+      font-size: 15px !important;
+      line-height: 1.55 !important;
+      color: var(--ink-dim) !important;
+      background: rgba(0,0,0,.25) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      padding: 10px 12px !important;
+      min-height: 3rem !important;
+      margin-bottom: 10px !important;
+    }
+    .combat-log em     { color: var(--gold) !important; font-style: italic; }
+    .combat-log strong { color: var(--warn) !important; font-style: normal; }
+    .stat-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .stat-bar-wrap {
+      flex: 1; height: 5px !important;
+      background: rgba(255,255,255,.06) !important;
+      border-radius: 0 !important; overflow: hidden;
+    }
+    .stat-bar { height: 100%; transition: width .4s, background .4s; }
+    .stat-key {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: .58rem !important; letter-spacing: .08em !important;
+      color: var(--ink-dim) !important; min-width: 44px;
+    }
+    .stat-val {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: .6rem !important; color: var(--ink) !important;
+      min-width: 50px; text-align: right;
+    }
+
+    /* combat action buttons */
+    .combat-btn {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: .6rem !important; letter-spacing: .06em !important;
+      color: var(--ink) !important;
+      background: rgba(255,255,255,.03) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      padding: .45rem .5rem !important;
+      cursor: pointer !important;
+      transition: border-color .2s, background .2s, color .2s !important;
+      display: flex !important; align-items: center !important; justify-content: center !important;
+    }
+    .combat-btn:hover:not(:disabled) {
+      border-color: var(--ice) !important;
+      color: var(--ice) !important;
+      background: rgba(143,216,240,.06) !important;
+    }
+    .combat-btn:disabled { opacity: .35 !important; cursor: not-allowed !important; }
+
+    /* stat-grid inside HUD */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 4px; margin-top: 6px;
+    }
+
+    /* ── End screen ── */
+    .end-box {
+      background: var(--bg-1) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      padding: 20px !important;
+      position: relative;
+    }
+    .end-box::before { content:""; position:absolute; top:-1px; left:-1px; width:14px; height:14px; border-top:1px solid var(--gold); border-left:1px solid var(--gold); }
+    .end-box::after  { content:""; position:absolute; bottom:-1px; right:-1px; width:14px; height:14px; border-bottom:1px solid var(--gold); border-right:1px solid var(--gold); }
+    .end-title {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-size: 22px !important; font-weight: 600 !important;
+      letter-spacing: .06em !important;
+      color: var(--ice) !important;
+      margin-bottom: 10px !important;
+    }
+    .end-sub {
+      font-style: italic !important;
+      font-size: 16px !important;
+      color: var(--ink-dim) !important;
+      line-height: 1.55 !important;
+      margin-bottom: 14px !important;
+    }
+    .end-btn {
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: .75rem !important;
+      letter-spacing: .14em !important;
+      text-transform: uppercase !important;
+      color: var(--ink) !important;
+      background: transparent !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      padding: .55rem 1.2rem !important;
+      cursor: pointer !important;
+      transition: border-color .2s, color .2s, background .2s !important;
+      text-decoration: none !important;
+      display: inline-block !important;
+    }
+    .end-btn:hover {
+      border-color: var(--ice) !important;
+      color: var(--ice) !important;
+      background: rgba(143,216,240,.04) !important;
+    }
+
+    /* ── Items panel ── */
+    #items-panel, [id$="-items-panel"] {
+      background: var(--bg-1) !important;
+      border: 1px solid rgba(143,216,240,.25) !important;
+      border-radius: 0 !important;
+    }
+    [id$="-items-panel"] p,
+    [id$="-items-panel"] span { color: var(--ink) !important; }
+
+    /* ── animate-in ── */
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .animate-in { animation: fadeIn .4s ease forwards; }
+    @keyframes animateShake {
+      0%,100%{transform:translateX(0)}
+      20%,60%{transform:translateX(-4px)}
+      40%,80%{transform:translateX(4px)}
+    }
+    .animate-shake { animation: animateShake .35s ease; }
+
+    /* ── System overlay messages ── */
+    .sys-overlay, [id="sys-overlay"] {
+      background: rgba(5,8,12,.92) !important;
+      border: 1px solid var(--ice) !important;
+      color: var(--ice-hot) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      font-size: 10.5px !important;
+      letter-spacing: .08em !important;
+      border-radius: 0 !important;
+    }
+
+    /* ── Toast ── */
+    .toast, [class*="toast"] {
+      background: rgba(5,8,12,.94) !important;
+      border: 1px solid var(--ice) !important;
+      color: var(--ice-hot) !important;
+      font-family: 'JetBrains Mono', monospace !important;
+      border-radius: 0 !important;
+    }
+
+    /* ── Loot window ── */
+    #loot-window {
+      background: var(--bg-1) !important;
+      border-color: rgba(143,216,240,.4) !important;
+      border-radius: 0 !important;
+      color: var(--ink) !important;
+    }
+    #loot-window p, #loot-window span { color: var(--ink) !important; }
+
+    /* ── Stat window modal ── */
+    #stat-window > div {
+      background: var(--bg-1) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+    }
+    #stat-window * { color: var(--ink) !important; }
+    #stat-window [style*="background:rgba(200"] {
+      background: rgba(143,216,240,.06) !important;
+    }
+
+    /* ── Farm zones + location hub ── */
+    #right-panel div[onclick] { border-radius: 0 !important; }
+
+    /* ── Watcher image ── */
+    #watcher-img {
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      filter: drop-shadow(0 0 20px rgba(143,216,240,.15)) !important;
+    }
+
+    /* ── Eye encounter overlay ── */
+    #eye-encounter-overlay {
+      background: rgba(3,5,8,.97) !important;
+    }
+
+    /* ── combat-over ── */
+    [id$="-combat-over"] { color: var(--ink) !important; }
+    [id$="-combat-over"] button {
+      font-family: 'JetBrains Mono', monospace !important;
+      color: var(--ink) !important;
+      background: rgba(143,216,240,.06) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+      cursor: pointer !important;
+      transition: border-color .15s, color .15s !important;
+    }
+    [id$="-combat-over"] button:hover { border-color: var(--ice) !important; color: var(--gold) !important; }
+
+    /* ── Modals ── */
+    [id$="-window"] > div, .end-box {
+      background: var(--panel) !important;
+      border: 1px solid var(--line) !important;
+      border-radius: 0 !important;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-0); }
+    ::-webkit-scrollbar-thumb { background: var(--line); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--gold-dim); }
+  </style>
 </head>
 <body>
 <div class="book-wrap">
@@ -19,7 +657,19 @@
         <div class="notice-box animate-in" id="outcome-box" style="display:none"></div>
       </div>
     </div>
-    <div class="spine"></div>
+    <div class="spine">
+      <div class="spine-highlight"></div>
+      <div class="spine-shadow"></div>
+      <div class="spine-inner">
+        <span class="spine-chapter">Ch · I</span>
+        <div class="spine-rule"></div>
+        <div class="spine-diamond"></div>
+        <span class="spine-title">SuperSede</span>
+        <div class="spine-diamond"></div>
+        <div class="spine-rule"></div>
+        <span class="spine-chapter">System</span>
+      </div>
+    </div>
     <div class="page-right parchment">
       <div class="page-inner">
         <div class="hud" id="hud"></div>
@@ -1437,11 +2087,17 @@ NEUTRAL.
 
 He closes his eyes. "The Void Sentinel's weak point is the moment after it adapts — there's a half-second where its geometry reconfigures. Hit it then."
 
+He reaches into his jacket. Pulls out a folded cloth — inside, a blade. Not scrap. Actual alloy, pre-freeze, maintained. He'd been keeping it for himself.
+
+He holds it out without opening his eyes.
+
+"You earned it," he says.
+
 Then he's unconscious. Or close enough.
 
 You turn to face the Void Sentinel alone.`,
-    xp: 60,
-    rewards: [{ itemKey:'iron_ring',qty:1 }, { itemKey:'medkit',qty:1 }],
+    xp: 100,
+    rewards: [{ itemKey:'iron_ring',qty:1 }, { itemKey:'medkit',qty:2 }, { itemKey:'iron_sword',qty:1 }, { itemKey:'energy_drink',qty:1 }],
     choices: [{ label: 'Face the Void Sentinel', next: 'garage_b4_sentinel_fight', variant: 'danger' }],
   },
 
@@ -1458,6 +2114,11 @@ So change how you move.`,
     onWin: 'garage_b4_clear',
     onLose: 'garage_b4_clear',
     onEscape: 'garage_b4_clear',
+    // Dorian lurks from the shadows — backstabs player every 2 turns.
+    // If player already beat Dorian (came via garage_b4_dorian_won), no lurking.
+    // This flag is read by buildCombatUI and the sentinelAoe every 4 turns hits both.
+    dorianLurking: true,
+    sentinelAoe: true,
   },
 
   garage_b4_clear: {
@@ -1468,20 +2129,77 @@ Your interface blinks back on fully. Health. Radar. Levels.
 
 You stand in the silence of level four and breathe.
 
-Marcus — if he's with you — puts a hand on the wall. Just steadying himself.
+Then something hits you from behind.
 
-"There's one more level," he says.
+Not hard enough to put you down — but hard enough to be deliberate. You spin.
+
+Dorian. He stepped back toward the ramp but he never left. He was waiting for the Sentinel to finish you. When it didn't, he decided to try himself.
+
+He's already pulling back — not pressing the advantage. He looks at you with that same flat expression. Then at his hand. Like he's not entirely sure why he did it.
+
+"Force of habit," he says.
+
+His badge pulses. RED.
+
+You have a choice.`,
+    hpLoss: 12,
+    xp: 50,
+    rewards: [{ itemKey:'medkit',qty:1 }],
+    choices: [
+      { label: 'Attack him — finish this now', sub: 'He hit first. Fair game.', next: 'garage_b4_dorian_final_fight', variant: 'danger', moral: -5 },
+      { label: 'Let it go — tell him to leave', sub: 'You have bigger things ahead.', next: 'garage_b4_dorian_let_go', moral: +8 },
+    ],
+  },
+
+  garage_b4_dorian_final_fight: {
+    id: 'garage_b4_dorian_final_fight', type: 'combat',
+    text: `He doesn't run. Just sets his stance. He knew you might come at him.
+
+"At least you're consistent," he says.`,
+    enemy: { name:'Dorian (Betreyal)', icon:'🔴', hp:80, atk:10, xp:100, loot:[{itemKey:'knife',qty:1},{itemKey:'energy_drink',qty:1}] },
+    onWin: 'garage_b4_after_dorian',
+    onLose: 'garage_b4_after_dorian',
+    onEscape: 'garage_b4_after_dorian',
+  },
+
+  garage_b4_after_dorian: {
+    id: 'garage_b4_after_dorian', type: 'story',
+    text: `He's down. Or gone. Either way the floor is quiet now.
+
+Marcus — if he's with you — says nothing. Just looks at the ramp.
+
+"There's one more level," he says finally.
 
 "I know," you say.
-
-"It's different up there. The interference doesn't feel like the System anymore. It feels like something that's been here longer than the game."
 
 The ramp to level five. The top floor. Open to the sky above — except the sky doesn't look right from here.
 
 Something waits. And it has been waiting since before any of this started.`,
-    xp: 50,
-    rewards: [{ itemKey:'medkit',qty:1 }],
-    choices: [{ label: 'Climb to the top floor — face whatever is there', next: 'garage_b5_summit', variant: 'danger' }],
+    xp: 20,
+    choices: [{ label: 'Climb to the top floor', next: 'garage_b5_summit', variant: 'danger' }],
+  },
+
+  garage_b4_dorian_let_go: {
+    id: 'garage_b4_dorian_let_go', type: 'story',
+    text: `"Get out," you say.
+
+He looks at you for a long moment. Then he nods — one short, deliberate motion — and walks to the ramp.
+
+At the edge he stops.
+
+"Level five," he says. "Whatever's up there — it's been watching this whole building. Not through the creatures. Directly." A pause. "It saw you fight the Sentinel. It already knows what you are."
+
+Then he's gone.
+
+Marcus — if he's with you — exhales slowly. "Why did you let him go?"
+
+You don't answer. You're not entirely sure yourself.
+
+The ramp to level five. The top floor. Open to the sky above — except the sky doesn't look right from here.
+
+Something waits. And it has been waiting since before any of this started.`,
+    xp: 40,
+    choices: [{ label: 'Climb to the top floor', next: 'garage_b5_summit', variant: 'danger' }],
   },
 
   // BEAT 5 — The summit, Yara, and the Sentinel
@@ -3048,8 +3766,8 @@ const EYE_EXEMPT_NODES = new Set([
 function triggerForcedEyeEncounter(encounterType, resumeNextId) {
   const isSwarm   = encounterType === 'watcher_eye_swarm'
   const enemyData = isSwarm
-    ? { name:"Watcher's Eye Swarm", icon:'👁', hp:140, atk:14, xp:180, loot:[{itemKey:'rune_lux',qty:1},{itemKey:'rune_umbra',qty:1}], img:'../assets/boss/watcher_eye_swarm.png' }
-    : { name:"Watcher's Eye",       icon:'👁', hp:60,  atk:12, xp:80,  loot:[{itemKey:'rune_lux',qty:1}],                               img:'../assets/boss/watcher_eye.png' }
+    ? { name:"Watcher's Eye Swarm", icon:'👁', hp:140, atk:14, xp:180, loot:[{itemKey:'rune_aero',qty:1},{itemKey:'rune_terra',qty:1}], img:'../assets/boss/watcher_eye_swarm.png' }
+    : { name:"Watcher's Eye",       icon:'👁', hp:60,  atk:12, xp:80,  loot:[{itemKey:'rune_aqua',qty:1}],                               img:'../assets/boss/watcher_eye.png' }
 
   const alertLines = isSwarm ? [
     "The sky fractures in seven places at once.",
@@ -3120,7 +3838,7 @@ function triggerForcedEyeEncounter(encounterType, resumeNextId) {
         min-height: 2.5rem;
       }
       #eye-encounter-overlay .combat-log em {
-        color: #5eaee0 !important;
+        color: #8fd8f0 !important;
       }
       #eye-encounter-overlay .combat-log strong {
         color: #e05555 !important;
@@ -3433,6 +4151,17 @@ window.goTo = async function goTo(nextId, choice = {}) {
     window._eyeReturnNode = null
   }
   if (!NODES[nextId]) return
+
+  // Track whether player defeated Dorian before the Sentinel fight
+  // (suppresses dorianLurking in garage_b4_sentinel_fight)
+  if (nodeId === 'garage_b4_dorian_won' && nextId === 'garage_b4_sentinel_fight') {
+    window._dorianDefeated = true
+  }
+  // Reset when leaving the garage arc entirely
+  if (nextId === 'garage_b4_clear' || nextId === 'garage_b5_summit') {
+    window._dorianDefeated = false
+  }
+
   const cur = NODES[nodeId]
   const oldXp  = player.xp || 0
   const oldLvl = player.level || 1
@@ -3805,7 +4534,8 @@ function renderChoices(panel, node) {
         <button class="choice ${c.variant||''}"
           data-next="${c.next}"
           data-outcome="${c.outcome||''}"
-          data-bossmode="${c.bossMode||''}">
+          data-bossmode="${c.bossMode||''}"
+          data-moral="${c.moral||0}">
           <span class="choice-arrow">→</span>
           <span class="choice-body">
             ${c.label}
@@ -3827,7 +4557,8 @@ function renderChoices(panel, node) {
   `
   panel.querySelectorAll('.choice').forEach(btn => {
     btn.addEventListener('click', () => {
-      goTo(btn.dataset.next, { outcome: btn.dataset.outcome||null, bossMode: btn.dataset.bossmode||null })
+      const moralVal = parseFloat(btn.dataset.moral) || 0
+      goTo(btn.dataset.next, { outcome: btn.dataset.outcome||null, bossMode: btn.dataset.bossmode||null, moral: moralVal || null })
     })
   })
 }
@@ -4039,10 +4770,16 @@ The garage is yours.`
 
 // ── Generic combat (for story encounters) ────────
 function renderCombat(panel, node) {
+  // dorianLurking: true means Dorian backstabs player every 2 turns from the shadows.
+  // Suppressed if player already defeated Dorian (window._dorianDefeated set on that path).
+  const opts = {
+    dorianLurking: node.dorianLurking && !window._dorianDefeated,
+    sentinelAoe:   node.sentinelAoe   && !window._dorianDefeated,
+  }
   if (node.video) {
-    playCombatCinematic(node.video, () => buildCombatUI(panel, node.enemy, node.onWin, node.onLose, node.onEscape, false))
+    playCombatCinematic(node.video, () => buildCombatUI(panel, node.enemy, node.onWin, node.onLose, node.onEscape, false, null, null, null, opts))
   } else {
-    buildCombatUI(panel, node.enemy, node.onWin, node.onLose, node.onEscape, false)
+    buildCombatUI(panel, node.enemy, node.onWin, node.onLose, node.onEscape, false, null, null, null, opts)
   }
 }
 
@@ -4052,20 +4789,22 @@ function playCombatCinematic(src, onDone) {
 
   const overlay = document.createElement('div')
   overlay.id = 'cinematic-overlay'
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000;opacity:0;transition:opacity .6s;'
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .6s;'
   overlay.innerHTML = `
-    <video id="cinematic-video"
-      src="${src}"
-      autoplay playsinline muted
-      style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
-    </video>
-    <div id="cinematic-skip" style="
-      position:absolute;bottom:1.5rem;right:1.5rem;z-index:1;
-      font-family:'Share Tech Mono',monospace;font-size:.55rem;
-      color:rgba(200,184,128,.55);letter-spacing:.08em;cursor:pointer;
-      padding:4px 10px;border:.5px solid rgba(200,184,128,.2);border-radius:3px;
-      background:rgba(0,0,0,.4);
-    ">skip ›</div>
+    <div style="position:relative;width:min(860px,92vw);max-height:80vh;aspect-ratio:16/9;background:#000">
+      <video id="cinematic-video"
+        src="${src}"
+        autoplay playsinline muted
+        style="width:100%;height:100%;object-fit:contain;display:block;">
+      </video>
+      <div id="cinematic-skip" style="
+        position:absolute;bottom:1rem;right:1rem;z-index:1;
+        font-family:'JetBrains Mono',monospace;font-size:.55rem;
+        color:rgba(200,184,128,.7);letter-spacing:.08em;cursor:pointer;
+        padding:4px 10px;border:.5px solid rgba(200,184,128,.3);
+        background:rgba(0,0,0,.5);
+      ">skip ›</div>
+    </div>
   `
   document.body.appendChild(overlay)
 
@@ -4112,10 +4851,16 @@ function renderBoss(panel, node) {
 }
 
 // ── Shared combat UI builder ──────────────────────
-function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = null) {
+function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = null, farmLoc = null, farmIdx = null, opts = {}) {
   // Unique namespace so multiple combat instances never share DOM IDs
   const cid = 'cb' + Math.random().toString(36).slice(2, 7)
   const $ = id => panel.querySelector('#' + cid + '-' + id)
+
+  // ── Dorian lurk + Sentinel AoE options ───────────────────
+  const dorianLurking  = opts.dorianLurking || false   // Dorian backstabs every 2 turns
+  const sentinelAoe    = opts.sentinelAoe   || false   // Void Sentinel hits both every 4 turns
+  let   dorianLurkHp   = 40   // Dorian's shadow HP — Sentinel AoE chips him down too
+  let   dorianLurkTurn = 0    // tracks turns for backstab cadence
 
   let enemyHp      = enemy.hp
   const maxEnemyHp  = enemy.hp
@@ -4183,13 +4928,21 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         <span id="${cid}-c-player-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#1a1208;min-width:50px;text-align:right">${currentHp}/${maxPlayerHp}</span>
       </div>
       ${yara ? `
-      <div class="stat-row" style="margin-bottom:1rem">
+      <div class="stat-row" style="margin-bottom:${dorianLurking ? '.3rem' : '1rem'}">
         <span class="stat-key" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#5ec45e">YARA</span>
         <div class="stat-bar-wrap">
           <div class="stat-bar" id="${cid}-c-yara-bar" style="background:#5eaee0;width:100%;transition:width .4s,background .4s"></div>
         </div>
         <span id="${cid}-c-yara-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#5eaee0;min-width:50px;text-align:right">${yara.hp}/${yara.maxHp}</span>
-      </div>` : '<div style="margin-bottom:1rem"></div>'}
+      </div>` : (dorianLurking ? '' : '<div style="margin-bottom:1rem"></div>')}
+      ${dorianLurking ? `
+      <div class="stat-row" style="margin-bottom:1rem">
+        <span class="stat-key" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#e05555">DORIAN</span>
+        <div class="stat-bar-wrap">
+          <div class="stat-bar" id="${cid}-c-dorian-bar" style="background:#e05555;width:100%;transition:width .4s,background .4s"></div>
+        </div>
+        <span id="${cid}-c-dorian-hp" style="font-family:'Share Tech Mono',monospace;font-size:.62rem;color:#e05555;min-width:50px;text-align:right">?? / 40</span>
+      </div>` : ''}
       <div id="${cid}-combat-actions">
         <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#1a1208;letter-spacing:.09em;margin-bottom:5px">— CHOOSE YOUR ACTION —</p>
 
@@ -4254,6 +5007,13 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
       const yHpEl = $('c-yara-hp')
       if (yBar)  { yBar.style.width = yPct+'%'; yBar.style.background = yPct>50?'#5eaee0':'#c8b96e' }
       if (yHpEl) yHpEl.textContent = yara.hp+'/'+yara.maxHp
+    }
+    if (dorianLurking) {
+      const dPct  = Math.max(0, Math.round(dorianLurkHp / 40 * 100))
+      const dBar  = $('c-dorian-bar')
+      const dHpEl = $('c-dorian-hp')
+      if (dBar)  { dBar.style.width = dPct+'%'; dBar.style.background = dPct > 30 ? '#e05555' : '#7a3030' }
+      if (dHpEl) dHpEl.textContent = dorianLurkHp > 0 ? '?? / 40' : 'DOWN'
     }
   }
 
@@ -4398,7 +5158,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
 
     if (result === 'win') {
       const RUNE_POOL_COMMON = ['rune_ignis','rune_aqua','rune_terra','rune_aero']
-      const RUNE_POOL_RARE   = ['rune_ignis','rune_aqua','rune_terra','rune_aero','rune_umbra','rune_lux']
+      const RUNE_POOL_RARE   = ['rune_ignis','rune_aqua','rune_terra','rune_aero']
       const isHardEnemy      = (enemy.hp||0) > 60
       const runeChance       = isBoss ? 1.0 : isHardEnemy ? 0.35 : 0.20
       const runePool         = (isBoss || isHardEnemy) ? RUNE_POOL_RARE : RUNE_POOL_COMMON
@@ -4470,7 +5230,7 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         if (updates.xp) player.xp = updates.xp
         await save(updates)
         if (sGoldDrop > 0) queueLoot('◈ ' + sGoldDrop + ' Gold', 1, null)
-        // Award loot — for boss, fall back to rune_lux if core_fragment missing
+        // Award guaranteed loot from boss node definition
         if (enemy.loot) {
           for (const l of enemy.loot) {
             const result = await addItem(l.itemKey, l.qty)
@@ -5446,6 +6206,43 @@ function buildCombatUI(panel, enemy, onWin, onLose, onEscape, isBoss, yara = nul
         else               { messages.push('Yara strikes for ' + yaraDmg + ' (takes ' + yaraHit + ' retaliation, ' + yara.hp + ' HP left).') }
       } else {
         messages.push('Yara strikes for ' + yaraDmg + '.')
+      }
+    }
+
+    // ── Dorian lurks — backstabs every 2 turns ──────────────────
+    if (dorianLurking && enemyHp > 0 && currentHp > 0) {
+      dorianLurkTurn++
+      if (dorianLurkTurn % 2 === 0) {
+        // Even turn: backstab — ignores all DEF
+        const dorianDmg = Math.max(2, 11 + Math.floor(Math.random() * 6))
+        currentHp = Math.max(0, currentHp - dorianDmg)
+        messages.push('🔴 <strong>DORIAN BACKSTABS from the shadows — ' + dorianDmg + ' damage!</strong> He was never going to hold the deal.')
+      } else {
+        // Odd turn: repositioning taunt
+        const taunts = [
+          '🔴 Dorian shifts in the dark. <em>"Force of habit,"</em> he mutters.',
+          '🔴 You hear movement behind you. Dorian is repositioning.',
+          '🔴 <em>"Every person I betrayed, I told myself it was the game."</em> Dorian watches from the shadows.',
+          '🔴 A shadow peels away from the wall. Dorian is circling.',
+        ]
+        messages.push(taunts[Math.floor(Math.random() * taunts.length)])
+      }
+    }
+
+    // ── Void Sentinel AoE — hits BOTH player AND Dorian every 4 turns ──
+    // Only triggers in the garage_b4_sentinel_fight when Dorian is lurking.
+    if (sentinelAoe && dorianLurking && enemyHp > 0 && dorianLurkHp > 0) {
+      const turnNum = dorianLurkTurn  // reuse the same counter
+      if (turnNum > 0 && turnNum % 4 === 0) {
+        // AoE pulse — hits player for moderate dmg (partially mitigated), Dorian for more
+        const aoePlyDmg = Math.max(1, Math.round(enemy.atk * 0.55) - Math.floor((calcDEF() + (statusEffects.playerDEFBonus||0)) * 0.4))
+        const aoeDorDmg = Math.max(3, Math.round(enemy.atk * 0.8))
+        currentHp    = Math.max(0, currentHp    - aoePlyDmg)
+        dorianLurkHp = Math.max(0, dorianLurkHp - aoeDorDmg)
+        const dorianStatus = dorianLurkHp <= 0
+          ? '🔴 Dorian is caught in the blast — he collapses in the shadows. <em>He won\'t backstab again.</em>'
+          : '🔴 Dorian takes ' + aoeDorDmg + ' from the pulse too. (' + dorianLurkHp + ' HP left in the dark.)'
+        messages.push('⚫ <strong>VOID SENTINEL GEOMETRY PULSE</strong> — reality warps in all directions. You take <strong>' + aoePlyDmg + '</strong>. ' + dorianStatus)
       }
     }
 

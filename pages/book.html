@@ -4,46 +4,440 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SuperSede — Chapters</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="../styles/main.css">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-0:      #05080c;
+      --bg-1:      #0a1018;
+      --panel:     #0d131c;
+      --page-l:   #0b1208;
+      --page-r:   #0d1408;
+      --ink:       #dfe7f2;
+      --ink-dim:   #7a7055;
+      --ink-faint: #3a4354;
+      --ice:       #8fd8f0;
+      --ice-hot:   #c8eeff;
+      --amber:     #ffb347;
+      --warn:      #e05a44;
+      --line:      #1e1c0e;
+      --green:     #5ec45e;
+      --gold:      #c8a84a;
+      --gold-hot:  #f0d080;
+      --gold-dim:  #7a6430;
+      --spine-w:   28px;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html, body {
+      min-height:100vh;
+      background: radial-gradient(ellipse at 50% 10%, #0e1408 0%, #05080c 55%, #020401 100%);
+      color:var(--ink);
+      font-family:'Cormorant Garamond',serif;
+      overflow-x:hidden;
+    }
+
+    /* scanlines */
+    body::after {
+      content:""; position:fixed; inset:0; pointer-events:none; z-index:9998;
+      background-image: repeating-linear-gradient(180deg,
+        rgba(200,168,74,.010) 0px, rgba(200,168,74,.010) 1px,
+        transparent 1px, transparent 4px);
+    }
+
+    /* ── NAV ── */
+    #nav { position:relative; z-index:200; }
+    #nav, #nav * {
+      background:transparent !important;
+      box-shadow:none !important;
+      border-radius:0 !important;
+    }
+    #nav a, #nav button {
+      font-family:'JetBrains Mono',monospace !important;
+      font-size:10px !important;
+      letter-spacing:.28em !important;
+      text-transform:uppercase !important;
+      color:var(--ink-dim) !important;
+      text-decoration:none !important;
+      border:none !important;
+      padding:0 !important;
+      transition:color .2s !important;
+    }
+    #nav a:hover, #nav button:hover { color:var(--gold) !important; }
+    #nav > *, #nav nav, #nav div {
+      border-bottom:1px solid var(--line) !important;
+      padding:14px 32px !important; display:flex !important;
+      align-items:center !important; gap:28px !important; flex-wrap:wrap !important;
+    }
+
+    /* ── OUTER WRAPPER ── */
+    .scene {
+      max-width:1060px;
+      margin:0 auto;
+      padding:28px 24px 60px;
+    }
+
+    /* zone header */
+    .zone {
+      display:flex; align-items:baseline; justify-content:space-between;
+      padding:20px 0 22px; gap:24px;
+    }
+    .z-kicker { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.42em; color:var(--gold); text-transform:uppercase; }
+    .z-title  { font-size:22px; font-weight:500; letter-spacing:.04em; color:var(--ink); margin-top:4px; }
+    .z-sub    { font-size:14px; color:var(--ink-dim); font-style:italic; text-align:right; line-height:1.5; max-width:340px; }
+
+    /* ══════════════════════════════
+       BOOK SHELL — 3D perspective
+    ══════════════════════════════ */
+    .book-shell {
+      perspective: 1800px;
+      perspective-origin: 50% 42%;
+    }
+
+    .book-body {
+      display: flex;
+      align-items: stretch;
+      min-height: 560px;
+      position: relative;
+      transform: rotateX(3deg);
+      transform-style: preserve-3d;
+      filter: drop-shadow(0 28px 60px rgba(0,0,0,.85));
+    }
+
+    /* cover boards removed */
+    .book-body::before, .book-body::after { display:none; }
+
+    /* ── LEFT PAGE ── */
+    .page-left {
+      flex: 1;
+      background: var(--page-l);
+      border: 1px solid var(--line);
+      border-right: none;
+      padding: 32px 28px 32px 32px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* subtle inner gradient — lit from spine */
+    .page-left::before {
+      content:"";
+      position:absolute; inset:0;
+      background: linear-gradient(90deg, rgba(200,168,74,.018) 0%, transparent 60%);
+      pointer-events:none;
+    }
+    /* page-curl shadow cast inward from the binding — left page */
+    .page-left::after {
+      content:"";
+      position:absolute; top:0; bottom:0; right:0;
+      width:36px; height:auto;
+      border:none;
+      background: linear-gradient(270deg,
+        rgba(0,0,0,.30) 0%,
+        rgba(0,0,0,.10) 55%,
+        transparent 100%);
+      pointer-events:none;
+      z-index:2;
+    }
+    .page-left .corner-br {
+      position:absolute; bottom:-1px; left:-1px;
+      width:18px; height:18px;
+      border-bottom:1px solid var(--gold); border-left:1px solid var(--gold);
+    }
+
+    /* ── SPINE — open book gutter / inner binding ── */
+    .spine {
+      width: 22px;
+      flex-shrink: 0;
+      background: linear-gradient(90deg,
+        rgba(0,0,0,.0)  0%,
+        rgba(0,0,0,.32) 28%,
+        rgba(0,0,0,.55) 46%,
+        rgba(0,0,0,.62) 50%,
+        rgba(0,0,0,.55) 54%,
+        rgba(0,0,0,.32) 72%,
+        rgba(0,0,0,.0)  100%
+      );
+      border-left:  none;
+      border-right: none;
+      position: relative;
+      z-index: 5;
+      box-shadow: none;
+    }
+    /* hairline crease at centre */
+    .spine::before {
+      content:"";
+      position:absolute;
+      top:0; bottom:0;
+      left:50%;
+      width:1px;
+      transform:translateX(-50%);
+      background: linear-gradient(180deg,
+        transparent 0%,
+        rgba(0,8,18,.9) 6%,
+        rgba(0,8,18,.9) 94%,
+        transparent 100%);
+    }
+    /* stacked page edge on left side */
+    .spine::after {
+      content:"";
+      position:absolute;
+      top:2px; bottom:2px; left:-3px;
+      width:3px;
+      background: repeating-linear-gradient(
+        180deg,
+        rgba(200,168,74,.05) 0px,
+        rgba(200,168,74,.02) 1px,
+        rgba(0,0,0,.15)      1px,
+        rgba(0,0,0,.05)      2px
+      );
+      border-left:1px solid rgba(200,168,74,.08);
+    }
+
+    /* ── RIGHT PAGE ── */
+    .page-right {
+      flex: 1;
+      background: var(--page-r);
+      border: 1px solid var(--line);
+      border-left: none;
+      padding: 32px 32px 32px 28px;
+      position: relative;
+      overflow: hidden;
+    }
+    .page-right::before {
+      content:"";
+      position:absolute; inset:0;
+      background: linear-gradient(270deg, rgba(200,168,74,.014) 0%, transparent 60%);
+      pointer-events:none;
+    }
+    /* page-curl shadow cast inward from the binding — right page */
+    .page-right::after {
+      content:"";
+      position:absolute; top:0; bottom:0; left:0;
+      width:36px; height:auto;
+      border:none;
+      background: linear-gradient(90deg,
+        rgba(0,0,0,.30) 0%,
+        rgba(0,0,0,.10) 55%,
+        transparent 100%);
+      pointer-events:none;
+      z-index:2;
+    }
+    .page-right .corner-tr {
+      position:absolute; top:-1px; right:-1px;
+      width:18px; height:18px;
+      border-top:1px solid var(--gold); border-right:1px solid var(--gold);
+    }
+    .page-right .corner-br {
+      position:absolute; bottom:-1px; right:-1px;
+      width:18px; height:18px;
+      border-bottom:1px solid var(--gold); border-right:1px solid var(--gold);
+    }
+
+    /* ── LEFT PAGE CONTENT ── */
+    .page-label {
+      font-family:'JetBrains Mono',monospace;
+      font-size:9.5px; letter-spacing:.42em; text-transform:uppercase;
+      color:var(--gold); margin-bottom:6px;
+    }
+    .page-title {
+      font-size:22px; font-weight:500; letter-spacing:.04em;
+      color:var(--ink); margin-bottom:18px;
+    }
+    .ink-rule {
+      border:none;
+      border-top:1px solid var(--line);
+      margin:16px 0;
+    }
+
+    /* chapter entries */
+    .chapter-entry {
+      display:flex; align-items:center; gap:16px;
+      padding:16px 0; border-bottom:1px solid var(--line);
+      cursor:default;
+    }
+    .chapter-entry:last-child { border-bottom:none; }
+    .chapter-entry.locked { opacity:.38; }
+
+    /* Watcher thumbnail */
+    .ch-thumb {
+      width:68px; height:68px; flex-shrink:0;
+      border:1px solid var(--line);
+      background: radial-gradient(ellipse at 50% 38%, #0e2030 0%, #04080e 60%, #020305 100%);
+      overflow:hidden; position:relative;
+      transition:border-color .25s;
+    }
+    .chapter-entry:not(.locked):hover .ch-thumb { border-color:var(--gold); }
+    .ch-thumb svg { width:100%; height:100%; display:block; }
+
+    .ch-info { flex:1; min-width:0; }
+    .ch-title { font-size:18px; font-weight:500; color:var(--ink); letter-spacing:.03em; line-height:1.2; }
+    .ch-sub   { font-style:italic; font-size:13.5px; color:var(--ink-dim); margin-top:3px; }
+    .ch-sealed{
+      font-family:'JetBrains Mono',monospace; font-size:9px;
+      letter-spacing:.28em; color:var(--ink-faint); text-transform:uppercase;
+    }
+    .ch-btn {
+      font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.26em;
+      text-transform:uppercase; color:var(--ink); background:transparent;
+      border:1px solid var(--line); padding:6px 12px; text-decoration:none;
+      transition:border-color .2s, color .2s, background .2s;
+      white-space:nowrap; flex-shrink:0;
+    }
+    .ch-btn:hover, .ch-btn.active {
+      border-color:var(--gold); color:var(--gold);
+      background:rgba(200,168,74,.05);
+    }
+
+    /* boot terminal */
+    .boot {
+      border:1px solid rgba(200,168,74,.3);
+      background:rgba(8,16,26,.75);
+      padding:12px 14px;
+      font-family:'JetBrains Mono',monospace;
+      font-size:10px; letter-spacing:.06em;
+      color:var(--ice-hot); line-height:1.7;
+      margin-top:18px;
+    }
+    .bline { opacity:0; animation:bpop .3s ease forwards; }
+    @keyframes bpop { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:none} }
+    .bline:nth-child(1){animation-delay:.3s}
+    .bline:nth-child(2){animation-delay:.9s}
+    .bline:nth-child(3){animation-delay:1.5s}
+    .bline:nth-child(4){animation-delay:2.1s}
+    .bline:nth-child(5){animation-delay:2.7s;color:var(--amber);font-weight:700;letter-spacing:.12em}
+    .bline:nth-child(6){animation-delay:3.3s;color:var(--ink-dim)}
+    .bcursor{display:inline-block;width:7px;height:11px;background:var(--ice-hot);vertical-align:middle;animation:blink 1s steps(2) infinite;margin-left:2px}
+    @keyframes blink{50%{opacity:0}}
+
+    /* ── RIGHT PAGE CONTENT ── */
+    .rec-label {
+      font-family:'JetBrains Mono',monospace;
+      font-size:9.5px; letter-spacing:.42em; text-transform:uppercase;
+      color:var(--gold); margin-bottom:6px;
+    }
+    .rec-name {
+      font-size:24px; font-weight:500; letter-spacing:.05em;
+      color:var(--ink); margin-bottom:18px;
+    }
+
+    .stat-grid {
+      display:grid; grid-template-columns:1fr 1fr;
+      gap:14px 8px; margin-bottom:20px;
+    }
+    .stat-cell { display:flex; flex-direction:column; }
+    .stat-k {
+      font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.3em;
+      color:var(--ink-dim); text-transform:uppercase; margin-bottom:2px;
+    }
+    .stat-v { font-size:19px; font-weight:500; color:var(--ink); letter-spacing:.04em; }
+    .stat-v.ice   { color:var(--gold); }
+    .stat-v.amber { color:var(--amber); }
+    .stat-v.green { color:var(--green); }
+
+    .action-row { display:flex; flex-direction:column; gap:7px; }
+    .action-btn {
+      font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.26em;
+      text-transform:uppercase; color:var(--ink-dim); background:transparent;
+      border:1px solid var(--line); padding:8px 12px; text-decoration:none;
+      transition:all .18s; cursor:pointer; text-align:left;
+    }
+    .action-btn:hover {
+      border-color:var(--gold); color:var(--gold);
+      background:rgba(200,168,74,.04);
+    }
+
+    .ink-quote {
+      margin-top:20px;
+      padding:12px 14px;
+      border-left:2px solid var(--gold);
+      background:rgba(200,168,74,.04);
+      font-style:italic; font-size:15px; line-height:1.5; color:#b0bfcf;
+    }
+    .ink-quote .attr {
+      display:block; margin-top:8px; font-style:normal;
+      font-family:'JetBrains Mono',monospace;
+      font-size:8.5px; letter-spacing:.3em; color:var(--ink-dim); text-transform:uppercase;
+    }
+
+    /* ── WATCHER THUMB ANIMATIONS ── */
+    @keyframes wt-float  { 0%,100%{transform:translateY(0) scale(1)} 50%{transform:translateY(-5px) scale(1.01)} }
+    @keyframes wt-srot   { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    @keyframes wt-pMain  { 0%,100%{filter:drop-shadow(0 0 4px #ffd68a) drop-shadow(0 0 10px #ffb347)} 50%{filter:drop-shadow(0 0 9px #ffd68a) drop-shadow(0 0 22px #ffb347)} }
+    @keyframes wt-pSmall { 0%,100%{filter:drop-shadow(0 0 2px #c8eeff) drop-shadow(0 0 6px #8fd8f0)} 50%{filter:drop-shadow(0 0 5px #c8eeff) drop-shadow(0 0 13px #8fd8f0)} }
+    @keyframes wt-beam   { 0%,100%{transform:rotate(-8deg);opacity:.5} 50%{transform:rotate(8deg);opacity:.9} }
+    .ch-thumb .wt-float    { animation:wt-float 6s ease-in-out infinite; transform-origin:50% 50%; }
+    .ch-thumb .wt-srot     { animation:wt-srot 30s linear infinite; transform-origin:400px 370px; }
+    .ch-thumb .wt-eye-main { animation:wt-pMain  3.6s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
+    .ch-thumb .wt-eye-small{ animation:wt-pSmall 2.4s ease-in-out infinite; transform-origin:center; transform-box:fill-box; }
+    .ch-thumb .wt-beam     { transform-origin:400px 420px; animation:wt-beam 5s ease-in-out infinite; }
+
+    /* scrollbar */
+    ::-webkit-scrollbar{width:5px}
+    ::-webkit-scrollbar-track{background:var(--bg-0)}
+    ::-webkit-scrollbar-thumb{background:var(--line)}
+  </style>
 </head>
 <body>
-<div class="book-wrap">
-  <div id="nav"></div>
 
-  <div class="book" style="margin-top:.75rem">
-    <!-- Left page: chapter list -->
-    <div class="page-left parchment">
-      <div class="page-inner">
-        <p class="chapter-label">SuperSede</p>
-        <h1 class="page-title">Table of Contents</h1>
-        <hr class="ink-divider">
-        <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.88rem;color:#1a1208;line-height:1.7;margin-bottom:1.5rem">
-          Choose a chapter. Restarting a chapter does not erase your progress or inventory.
-        </p>
+<div class="scene">
+<div id="nav"></div>
+
+  <div class="zone">
+    <div>
+      <div class="z-kicker">SuperSede · Archive</div>
+      <div class="z-title">Table of Contents</div>
+    </div>
+    <div class="z-sub">Select a chapter.<br>Progress &amp; inventory are preserved.</div>
+  </div>
+
+  <!-- ══ THE BOOK ══ -->
+  <div class="book-shell">
+    <div class="book-body">
+
+      <!-- LEFT PAGE — chapter list -->
+      <div class="page-left">
+        <div class="corner-br"></div>
+
+        <p class="page-label">SuperSede · Chapters</p>
+        <p class="page-title">Select a Chapter</p>
+        <hr class="ink-rule">
+
         <div id="chapter-list"></div>
       </div>
-    </div>
 
-    <div class="spine"></div>
+      <!-- SPINE -->
+      <div class="spine"></div>
 
-    <!-- Right page: player record -->
-    <div class="page-right parchment">
-      <div class="page-inner">
-        <p class="chapter-label">Player Record</p>
-        <h2 class="page-title" id="rec-username">—</h2>
-        <hr class="ink-divider">
-        <div id="rec-stats" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem .25rem;margin-bottom:1rem"></div>
-        <hr class="ink-divider">
-        <div style="display:flex;flex-wrap:wrap;gap:.5rem">
-          <a href="inventory.html" class="end-btn">🎒 Inventory</a>
-          <a href="trader.html"    class="end-btn">🛒 Trader</a>
-          <a href="lobby.html"     class="end-btn">⚔ Lobby</a>
-          <a href="badges.html"    class="end-btn">🏅 Badges</a>
+      <!-- RIGHT PAGE — player record -->
+      <div class="page-right">
+        <div class="corner-tr"></div>
+        <div class="corner-br"></div>
+
+        <p class="rec-label">Player Record</p>
+        <p class="rec-name" id="rec-username">—</p>
+        <hr class="ink-rule">
+
+        <div class="stat-grid" id="rec-stats"></div>
+
+        <hr class="ink-rule">
+
+        <div class="action-row">
+          <a href="inventory.html" class="action-btn">🎒 Inventory</a>
+          <a href="trader.html"    class="action-btn">🛒 Trader</a>
+          <a href="lobby.html"     class="action-btn">⚔ Lobby</a>
+          <a href="badges.html"    class="action-btn">🏅 Badges</a>
+        </div>
+
+        <div class="ink-quote">
+          "Every path you walked. Every player you helped — or abandoned."
+          <span class="attr">— The Watcher · Chapter 1 Finale</span>
         </div>
       </div>
-    </div>
-  </div>
-</div>
+
+    </div><!-- /book-body -->
+  </div><!-- /book-shell -->
+
+</div><!-- /scene -->
 
 <script type="module">
   import { renderNav } from '../components/nav.js'
@@ -53,9 +447,126 @@
     { number: 2, title: 'The Element Awakens',   sub: 'Choose your path. Choose your power.' },
   ]
 
+  // ── Direct navigation ──────────────────────────────
+  function goTo(href) { window.location.href = href }
+
+  // ── Watcher SVG thumbnail ────────────────────────────────
+  const WATCHER_SVG = `<svg viewBox="100 200 600 560" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <radialGradient id="wt-core" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"  stop-color="#ffe9b8"/>
+        <stop offset="30%" stop-color="#ffb347"/>
+        <stop offset="100%" stop-color="#3a1f08"/>
+      </radialGradient>
+      <radialGradient id="wt-sat" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"  stop-color="#f0fbff"/>
+        <stop offset="40%" stop-color="#8fd8f0"/>
+        <stop offset="100%" stop-color="#102530"/>
+      </radialGradient>
+      <radialGradient id="wt-aura" cx="50%" cy="50%" r="50%">
+        <stop offset="0%"  stop-color="#8fd8f0" stop-opacity="0.3"/>
+        <stop offset="60%" stop-color="#4a8fa8" stop-opacity="0.1"/>
+        <stop offset="100%" stop-color="#8fd8f0" stop-opacity="0"/>
+      </radialGradient>
+      <linearGradient id="wt-wisp" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%"  stop-color="#8fd8f0" stop-opacity="0.8"/>
+        <stop offset="70%" stop-color="#2a5a70" stop-opacity="0.4"/>
+        <stop offset="100%" stop-color="#2a5a70" stop-opacity="0"/>
+      </linearGradient>
+      <filter id="wt-blur" x="-50%" y="-50%" width="200%" height="200%">
+        <feGaussianBlur stdDeviation="3"/>
+      </filter>
+    </defs>
+    <ellipse cx="400" cy="400" rx="300" ry="340" fill="url(#wt-aura)"/>
+    <g class="wt-beam" opacity="0.4">
+      <polygon points="395,420 410,420 470,900 380,900" fill="url(#wt-core)" opacity="0.35"/>
+    </g>
+    <g class="wt-float">
+      <g opacity="0.92">
+        <path d="M 400 180 C 280 200,220 290,240 420 C 225 500,235 600,260 700 C 275 780,300 830,340 860 L 360 870 L 370 830 L 390 870 L 400 820 L 410 870 L 420 830 L 440 870 L 460 860 C 500 830,525 780,540 700 C 565 600,575 500,560 420 C 580 290,520 200,400 180 Z"
+          fill="url(#wt-wisp)" stroke="#1a3a48" stroke-opacity="0.4" stroke-width="1"/>
+        <g stroke="#c8eeff" stroke-opacity="0.3" stroke-width="1.2" fill="none">
+          <path d="M 350 260 C 345 400,345 570,365 820"/>
+          <path d="M 400 250 C 400 400,398 580,400 820"/>
+          <path d="M 450 260 C 455 400,455 570,435 820"/>
+        </g>
+        <g fill="#c8eeff" opacity="0.8">
+          <circle cx="320" cy="380" r="1.6"/><circle cx="440" cy="460" r="1.2"/>
+          <circle cx="360" cy="540" r="1.4"/><circle cx="480" cy="600" r="1.2"/>
+          <circle cx="340" cy="660" r="1.6"/>
+        </g>
+      </g>
+      <g class="wt-srot">
+        <g class="wt-eye-main">
+          <ellipse cx="400" cy="370" rx="78" ry="54" fill="#0a0f16" stroke="#c07030" stroke-width="2"/>
+          <ellipse cx="400" cy="370" rx="68" ry="44" fill="url(#wt-core)"/>
+          <circle cx="400" cy="370" r="16" fill="#ffe9b8"/>
+          <circle cx="400" cy="370" r="6"  fill="#fff6dc"/>
+          <path d="M 322 370 L 310 360 M 322 370 L 310 380" stroke="#c07030" stroke-width="2"/>
+          <path d="M 478 370 L 490 360 M 478 370 L 490 380" stroke="#c07030" stroke-width="2"/>
+        </g>
+        <g class="wt-eye-small">
+          <g transform="translate(370 250)">
+            <circle cx="0" cy="0" r="14" fill="#0a1018" stroke="#8fd8f0" stroke-width="1.5"/>
+            <circle cx="0" cy="0" r="8"  fill="url(#wt-sat)"/>
+            <circle cx="0" cy="0" r="3"  fill="#f0fbff"/>
+          </g>
+          <g transform="translate(450 275)">
+            <circle cx="0" cy="0" r="12" fill="#0a1018" stroke="#8fd8f0" stroke-width="1.5"/>
+            <circle cx="0" cy="0" r="7"  fill="url(#wt-sat)"/>
+            <circle cx="0" cy="0" r="2.5" fill="#f0fbff"/>
+          </g>
+          <g transform="translate(290 330)">
+            <circle cx="0" cy="0" r="13" fill="#0a1018" stroke="#8fd8f0" stroke-width="1.5"/>
+            <circle cx="0" cy="0" r="7.5" fill="url(#wt-sat)"/>
+            <circle cx="0" cy="0" r="2.8" fill="#f0fbff"/>
+            <path d="M -14 0 L -46 2" stroke="#c8eeff" stroke-width="2" opacity="0.85"/>
+            <circle cx="-46" cy="2" r="3" fill="#c8eeff" opacity="0.9" filter="url(#wt-blur)"/>
+          </g>
+          <g transform="translate(510 330)">
+            <circle cx="0" cy="0" r="13" fill="#0a1018" stroke="#8fd8f0" stroke-width="1.5"/>
+            <circle cx="0" cy="0" r="7.5" fill="url(#wt-sat)"/>
+            <circle cx="0" cy="0" r="2.8" fill="#f0fbff"/>
+            <path d="M 14 0 L 46 2"   stroke="#c8eeff" stroke-width="2"   opacity="0.85"/>
+            <circle cx="46"  cy="2"  r="3"   fill="#c8eeff" opacity="0.9" filter="url(#wt-blur)"/>
+          </g>
+          <g transform="translate(310 410)">
+            <circle cx="0" cy="0" r="11" fill="#0a1018" stroke="#8fd8f0" stroke-width="1.5"/>
+            <circle cx="0" cy="0" r="6"  fill="url(#wt-sat)"/>
+            <circle cx="0" cy="0" r="2.2" fill="#f0fbff"/>
+            <path d="M -11 3 L -50 12" stroke="#c8eeff" stroke-width="1.8" opacity="0.8"/>
+          </g>
+          <g transform="translate(490 410)">
+            <circle cx="0" cy="0" r="11" fill="#0a1018" stroke="#8fd8f0" stroke-width="1.5"/>
+            <circle cx="0" cy="0" r="6"  fill="url(#wt-sat)"/>
+            <circle cx="0" cy="0" r="2.2" fill="#f0fbff"/>
+            <path d="M 11 3 L 50 12" stroke="#c8eeff" stroke-width="1.8" opacity="0.8"/>
+          </g>
+          <g transform="translate(400 460)">
+            <circle cx="0" cy="0" r="10" fill="#0a1018" stroke="#8fd8f0" stroke-width="1.5"/>
+            <circle cx="0" cy="0" r="5.5" fill="url(#wt-sat)"/>
+            <circle cx="0" cy="0" r="2"  fill="#f0fbff"/>
+          </g>
+        </g>
+        <ellipse cx="400" cy="370" rx="200" ry="28" fill="none"
+          stroke="#8fd8f0" stroke-opacity="0.2" stroke-width="0.6" stroke-dasharray="1 6"/>
+      </g>
+    </g>
+    <g opacity="0.28" stroke="#ffb347" stroke-width="0.6" fill="none">
+      <circle cx="400" cy="370" r="110" stroke-dasharray="2 6"/>
+      <circle cx="400" cy="370" r="150" stroke-dasharray="1 10"/>
+      <line x1="260" y1="370" x2="290" y2="370"/>
+      <line x1="510" y1="370" x2="540" y2="370"/>
+      <line x1="400" y1="220" x2="400" y2="250"/>
+      <line x1="400" y1="490" x2="400" y2="520"/>
+    </g>
+  </svg>`
+
+  const CH_COVERS = { 1: WATCHER_SVG }
+
   ;(async () => {
     const player = await renderNav('nav')
-    if (!player) return  // nav.js already redirected — just stop
+    if (!player) return
 
     const unlocked = player.chapters_unlocked || [1]
 
@@ -67,41 +578,91 @@
       ['Gold',    `◈ ${player.gold}`],
       ['Rep',     player.reputation || 'neutral'],
       ['Element', player.element || '—'],
-    ].map(([k, v]) => `
-      <div>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.58rem;color:#1a1208;letter-spacing:.08em;display:block">${k}</span>
-        <span style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">${v}</span>
-      </div>
-    `).join('')
+    ].map(([k, v]) => {
+      const c = { HP:'ice', Gold:'amber', Element:'ice', Rep:'green' }
+      return `<div class="stat-cell">
+        <span class="stat-k">${k}</span>
+        <span class="stat-v ${c[k]||''}">${v}</span>
+      </div>`
+    }).join('')
+
+    // Chapter preview pages map (add entries as chapters get preview pages)
+    const CH_PREVIEW = { 1: 'The_Watcher.html' }
 
     document.getElementById('chapter-list').innerHTML = CHAPTERS.map(ch => {
       const isUnlocked = unlocked.includes(ch.number)
-      const isCurrent  = player.current_chapter === ch.number
-      return `
-        <div style="display:flex;align-items:center;gap:.75rem;padding:.9rem 0;border-bottom:1px solid rgba(139,106,32,.18);opacity:${isUnlocked ? 1 : .45}">
-          <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;min-width:70px">
-            ${isUnlocked ? '' : '🔒 '}Chapter ${ch.number}
-          </span>
-          <div style="flex:1">
-            <p style="font-family:'Cinzel',serif;font-size:.88rem;color:#1a1208;margin:0 0 1px">${ch.title}</p>
-            <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.75rem;color:#1a1208;margin:0">${ch.sub}</p>
+      const previewHref = CH_PREVIEW[ch.number]
+      const chNumLabel = `<span style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.22em;color:var(--gold);display:block;margin-bottom:3px;text-transform:uppercase">Ch.${String(ch.number).padStart(2,'0')}</span>`
+
+      const thumbInner = CH_COVERS[ch.number]
+        ? CH_COVERS[ch.number]
+        : `<div style="display:flex;align-items:center;justify-content:center;height:100%"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;color:#3a4354">Ch.${String(ch.number).padStart(2,'0')}</span></div>`
+
+      const thumbHtml = previewHref && isUnlocked
+        ? `<a href="${previewHref}" class="ch-thumb" title="View Chapter ${ch.number} preview" style="display:block;cursor:pointer;text-decoration:none" onclick="event.preventDefault();goTo('${previewHref}')">${thumbInner}</a>`
+        : `<div class="ch-thumb">${thumbInner}</div>`
+
+      if (!isUnlocked) {
+        return `<div class="chapter-entry locked">
+          ${thumbHtml}
+          <div class="ch-info">
+            ${chNumLabel}
+            <div class="ch-title">${ch.title}</div>
+            <div class="ch-sub">${ch.sub}</div>
           </div>
-          ${isUnlocked
-            ? (() => {
-                const isReplay  = unlocked.includes(ch.number + 1) // beaten already
-                const isCh1     = ch.number === 1
-                const alreadyIn = (player.current_node || '').startsWith(`ch${ch.number}_`)
-                const href = isReplay || isCh1 || alreadyIn
-                  ? `chapter${ch.number}.html`
-                  : `garage.html?dest=${ch.number}`
-                const label = isCurrent ? 'Continue ›' : isReplay ? 'Replay ›' : alreadyIn ? 'Continue ›' : 'Drive ›'
-                return `<a href="${href}" style="font-family:'Cinzel',serif;font-size:.72rem;color:#1a1208;background:rgba(200,184,128,.3);border:1px solid rgba(139,106,32,.4);padding:.3rem .8rem;text-decoration:none;border-radius:2px;white-space:nowrap">${label}</a>`
-              })()
-            : `<span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208">Sealed</span>`
+          <span class="ch-sealed">Sealed</span>
+        </div>`
+      }
+
+      const isCh1       = ch.number === 1
+      const alreadyIn   = (player.current_node || '').startsWith(`ch${ch.number}_`)
+      const chUnlocked  = unlocked.includes(ch.number)
+      const isReplay    = unlocked.includes(ch.number + 1)
+
+      // Ch1 — single button only
+      if (isCh1) {
+        const href  = alreadyIn || player.current_chapter === 1 ? 'chapter1.html' : 'chapter1.html'
+        const label = player.current_chapter === 1 || alreadyIn ? 'Continue ›' : isReplay ? 'Replay ›' : 'Enter ›'
+        return `<div class="chapter-entry">
+          ${thumbHtml}
+          <div class="ch-info">
+            ${chNumLabel}
+            <div class="ch-title">${ch.title}</div>
+            <div class="ch-sub">${ch.sub}</div>
+          </div>
+          <a href="${href}" class="ch-btn ${player.current_chapter===1?'active':''}"
+             onclick="event.preventDefault();goTo('${href}')">${label}</a>
+        </div>`
+      }
+
+      // Ch2+ — always show Drive button + Chapter button (chapter locked until drive done)
+      const driveLabel = 'Drive ›'
+      const chLabel    = alreadyIn || player.current_chapter === ch.number ? 'Continue ›'
+                       : isReplay ? 'Replay ›' : 'Enter ›'
+      const chHref     = `chapter${ch.number}.html`
+      const chDisabled = !chUnlocked
+
+      return `<div class="chapter-entry">
+        ${thumbHtml}
+        <div class="ch-info">
+          ${chNumLabel}
+          <div class="ch-title">${ch.title}</div>
+          <div class="ch-sub">${ch.sub}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">
+          <a href="garage.html?dest=${ch.number}" class="ch-btn"
+             onclick="event.preventDefault();goTo('garage.html?dest=${ch.number}')">${driveLabel}</a>
+          ${chDisabled
+            ? `<span class="ch-btn" style="opacity:.35;cursor:not-allowed;pointer-events:none" title="Complete the drive to unlock">🔒 Chapter</span>`
+            : `<a href="${chHref}" class="ch-btn ${player.current_chapter===ch.number?'active':''}"
+                 onclick="event.preventDefault();goTo('${chHref}')">${chLabel}</a>`
           }
         </div>
-      `
+      </div>`
     }).join('')
+
+    // expose for inline onclick
+    window.goTo = goTo
   })()
 </script>
 </body>
