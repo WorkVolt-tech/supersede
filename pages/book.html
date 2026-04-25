@@ -714,13 +714,18 @@
       const previewHref = CH_PREVIEW[ch.number]
       const chNumLabel = `<span style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:.22em;color:var(--gold);display:block;margin-bottom:3px;text-transform:uppercase">Ch.${String(ch.number).padStart(2,'0')}</span>`
 
+      const thumbBg = ch.number === 2
+        ? 'radial-gradient(ellipse at 50% 38%, #1a1620 0%, #0b0a10 60%, #050409 100%)'
+        : 'radial-gradient(ellipse at 50% 38%, #0e2030 0%, #04080e 60%, #020305 100%)'
+
       const thumbInner = CH_COVERS[ch.number]
         ? CH_COVERS[ch.number]
         : `<div style="display:flex;align-items:center;justify-content:center;height:100%"><span style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.1em;color:#3a4354">Ch.${String(ch.number).padStart(2,'0')}</span></div>`
 
-      const thumbHtml = previewHref && isUnlocked
-        ? `<a href="${previewHref}" class="ch-thumb" title="View Chapter ${ch.number} preview" style="display:block;cursor:pointer;text-decoration:none" onclick="event.preventDefault();goTo('${previewHref}')">${thumbInner}</a>`
-        : `<div class="ch-thumb">${thumbInner}</div>`
+      // Preview is always clickable if it exists — regardless of chapter lock
+      const thumbHtml = previewHref
+        ? `<a href="${previewHref}" class="ch-thumb" title="View Chapter ${ch.number} preview" style="display:block;cursor:pointer;text-decoration:none;background:${thumbBg}" onclick="event.preventDefault();goTo('${previewHref}')">${thumbInner}</a>`
+        : `<div class="ch-thumb" style="background:${thumbBg}">${thumbInner}</div>`
 
       if (!isUnlocked) {
         return `<div class="chapter-entry locked">
