@@ -177,10 +177,10 @@
 
     /* ── Body text colour remaps ── */
     p, li, span { color: var(--ink) !important; }
-    [style*="color:#1a1208"] { color: var(--ink) !important; }
-    [style*="color:#3a2008"] { color: var(--ink-dim) !important; }
-    [style*="color:#7a6435"] { color: var(--ink-dim) !important; }
-    [style*="color:#9a8050"] { color: var(--ink-dim) !important; }
+    [style*="color:var(--ink)"] { color: var(--ink) !important; }
+    [style*="color:var(--ink-dim)"] { color: var(--ink-dim) !important; }
+    [style*="color:var(--ink-dim)"] { color: var(--ink-dim) !important; }
+    [style*="color:var(--ink-dim)"] { color: var(--ink-dim) !important; }
     [style*="color:#c8b96e"] { color: var(--gold) !important; }
     [style*="background:rgba(200,184,128"] { background: rgba(143,216,240,.06) !important; }
     [style*="border-color:rgba(139,106,32"] { border-color: rgba(143,216,240,.25) !important; }
@@ -941,7 +941,7 @@ Your interface updates: ALLIANCE LOG — Builders: Active. Cooperation credit re
 
 "I'll be straight with you," they say. Which is probably what they say to everyone, you think. But they continue: "The Builders are going to open that third cache. Eleven players, moral scores high, organized — they'll do it. The question is what happens in the four minutes after it opens before they've distributed everything."
 
-Voss pulls up their interface. "The System is watching cooperation and betrayal in this district. Both. It's not punishing either one — it's measuring. The Judges at the end aren't punishment. They're evaluation. Judge Kaelith evaluates what you built and with whom. Judge Morren evaluates what you took and how."
+Voss pulls up their interface. "The System is watching cooperation and betrayal in this district. Both. It's not punishing either one — it's measuring. The Judges at the end aren't punishment. They're evaluation. Judge Mercy evaluates what you built and with whom. Judge Wrath evaluates what you took and how."
 
 They look at you. "Most players will face one of them. The ones who split their choices — both cooperation and betrayal in the record — they face both at once." They pause. "I've heard it's the hardest fight. I've also heard the rewards are different. The System gives you what matches what you are, not what you want."
 
@@ -956,7 +956,7 @@ They lean against a broken shelf. "I'm not recruiting you to betray the Builders
 
   hunters_voss_goal: {
     id: 'hunters_voss_goal', type: 'story',
-    text: `"What do I want?" Voss looks almost amused. "I want to face Judge Morren. Specifically. I want to see what the System thinks I'm worth after everything I've done in this city."
+    text: `"What do I want?" Voss looks almost amused. "I want to face Judge Wrath. Specifically. I want to see what the System thinks I'm worth after everything I've done in this city."
 
 A pause.
 
@@ -1006,7 +1006,7 @@ They pause. "You can only activate one element at a time. The System calls it re
 
 A silence.
 
-"The Judges respond to elemental resonance. Judge Kaelith — the cooperation Judge — responds to Water, Plant, Earth, Wind, Arcane. Protective elements. Patient ones. Judge Morren — the dominance Judge — responds to Fire, Lightning, Shadow, Metal. Aggressive elements. Precise ones."
+"The Judges respond to elemental resonance. Judge Mercy — the cooperation Judge — responds to Water, Plant, Earth, Wind, Arcane. Protective elements. Patient ones. Judge Wrath — the dominance Judge — responds to Fire, Lightning, Shadow, Metal. Aggressive elements. Precise ones."
 
 Rue looks at the map in your hands. "I don't think either Judge is worse than the other. I think they're the same difficulty, tuned for different kinds of players." A long pause. "I think the System is fair, actually. I just haven't figured out what that means yet."`,
     choices: [
@@ -1109,11 +1109,11 @@ A quiet moment.
     id: 'trader_judges', type: 'story',
     text: `Pell's expression changes slightly. More careful.
 
-"The Judges. Right." They come around the counter and sit on a stool. "I saw Kaelith once, at the end of someone else's run. Briefly. It looked like — the most patient thing I've ever seen. Like it had been waiting a very long time and wasn't surprised by anything."
+"The Judges. Right." They come around the counter and sit on a stool. "I saw Mercy once, at the end of someone else's run. Briefly. It looked like — the most patient thing I've ever seen. Like it had been waiting a very long time and wasn't surprised by anything."
 
 A long pause.
 
-"Morren I've only heard about. Players who faced Morren describe it as... precise. Like it already knew what you'd done and was just confirming the math. No judgment in the face. Just accounting."
+"Wrath I've only heard about. Players who faced Wrath describe it as... precise. Like it already knew what you'd done and was just confirming the math. No judgment in the face. Just accounting."
 
 Pell looks at you directly.
 
@@ -1142,7 +1142,7 @@ They keep walking.
 
 They stop walking.
 
-"I'm telling you because the System knows about this opportunity whether you take it or not. The Judges know. Kaelith will know you didn't betray your allies. Morren will know you chose not to when you could." Voss almost smiles. "Either way, it becomes part of your record. Deliberate choice is what matters — not which choice."
+"I'm telling you because the System knows about this opportunity whether you take it or not. The Judges know. Mercy will know you didn't betray your allies. Wrath will know you chose not to when you could." Voss almost smiles. "Either way, it becomes part of your record. Deliberate choice is what matters — not which choice."
 
 They start walking again. "I'm going to the Shadow zone now. It's been open for me since the first day."`,
     choices: [
@@ -1183,11 +1183,11 @@ Sera hands you your share: a medical pack, a material bundle, and a small weapon
 
 The bandaged kid — you learn their name is Tam — gives you a fistbump. Unselfconscious. Like it was the obvious thing to do.
 
-Your interface: ALLIANCE LOG UPDATED. Cache cooperation recorded. Kaelith weight +3.
+Your interface: ALLIANCE LOG UPDATED. Cache cooperation recorded. Mercy weight +3.
 
 You don't feel heroic. You feel like someone who made a decision and then stuck with it. The System doesn't seem to have an opinion about that distinction.
 
-Sera catches your eye. "The Judges will see this. What you could have done and didn't. I think that matters to Kaelith." She pauses. "I think it matters to Morren too, differently."`,
+Sera catches your eye. "The Judges will see this. What you could have done and didn't. I think that matters to Mercy." She pauses. "I think it matters to Wrath too, differently."`,
     xp: 100,
     rewards: [{ itemKey: 'medical_pack', qty: 1 }, { itemKey: 'scrap_metal', qty: 3 }],
     choices: [
@@ -1205,7 +1205,7 @@ You don't stop.
 
 Outside, the container opens: two item upgrades, a rare material. Worth something.
 
-Your interface: BETRAYAL RECORDED. Alliance: Builders — BROKEN. Moral −40. Backstab counter: +1. Morren weight +5.
+Your interface: BETRAYAL RECORDED. Alliance: Builders — BROKEN. Moral −40. Backstab counter: +1. Wrath weight +5.
 
 The container is in your pack. The items are real. The record is real.
 
@@ -1234,7 +1234,7 @@ Later, Sera finds you near the map station. "Voss told me what they offered you.
 
 She adds something to your share of the cache distribution — a small extra, unmarked. The bandaged kid, Tam, gives you a more formal nod this time. Like something's been decided about you.
 
-Your interface: MORAL RECORD — Refusal logged. Kaelith weight +5. Morren weight −2.
+Your interface: MORAL RECORD — Refusal logged. Mercy weight +5. Wrath weight −2.
 
 It doesn't feel like a big moment. It probably shouldn't.`,
     xp: 120,
@@ -1260,7 +1260,7 @@ Then Voss nods — small, real — and leaves without a word.
 
 Sera's team completes the opening cleanly. Your share is full, plus a bonus Sera calls "trustworthy conduct." Tam high-fives you. You let them.
 
-Interface: TRUST EVENT RECORDED. Alliance: Builders — Reinforced. Kaelith weight +8. Moral +20. Permanent flag: "Can be trusted under pressure."`,
+Interface: TRUST EVENT RECORDED. Alliance: Builders — Reinforced. Mercy weight +8. Moral +20. Permanent flag: "Can be trusted under pressure."`,
     xp: 150,
     rewards: [{ itemKey: 'medical_pack', qty: 2 }, { itemKey: 'scrap_metal', qty: 5 }],
     choices: [
@@ -1332,19 +1332,19 @@ A final line, in a smaller font than everything else, as if the system is saying
 
   judge_lore_builders: {
     id: 'judge_lore_builders', type: 'story',
-    text: `"Kaelith and Morren," Sera says. "We've been piecing together what we know."
+    text: `"Mercy and Wrath," Sera says. "We've been piecing together what we know."
 
 She sits down. This is a longer conversation.
 
-"Kaelith appeared at the end of Chapter 1 for two players on our network who we know had high cooperation scores. Both described the same thing: an entity that was calm, precise, and — strange word for a System entity — kind. Not soft. Just fair. It evaluated what they built, who they helped, what they gave up. It didn't ask them to justify their choices. It just — confirmed them. And then it fought them."
+"Mercy appeared at the end of Chapter 1 for two players on our network who we know had high cooperation scores. Both described the same thing: an entity that was calm, precise, and — strange word for a System entity — kind. Not soft. Just fair. It evaluated what they built, who they helped, what they gave up. It didn't ask them to justify their choices. It just — confirmed them. And then it fought them."
 
 "It's still a boss fight?"
 
-"It's still a boss fight." She almost smiles. "The System evaluates you and then tests you. That's what it does. Kaelith is hard. But the players who faced it said it felt like the System respecting them enough to take them seriously." 
+"It's still a boss fight." She almost smiles. "The System evaluates you and then tests you. That's what it does. Mercy is hard. But the players who faced it said it felt like the System respecting them enough to take them seriously." 
 
 She pauses.
 
-"Morren. The two people I know of who faced Morren were quieter about it afterward. Not damaged — just quieter. One of them said: 'It knew exactly what I'd done and it didn't blink. It just wanted to see if I was as good at fighting as I was at taking.'" She looks at you. "Both players survived. Both players changed differently."`,
+"Wrath. The two people I know of who faced Wrath were quieter about it afterward. Not damaged — just quieter. One of them said: 'It knew exactly what I'd done and it didn't blink. It just wanted to see if I was as good at fighting as I was at taking.'" She looks at you. "Both players survived. Both players changed differently."`,
     choices: [
       { label: 'Head to the elemental zones', next: 'district_hub' },
     ],
@@ -1397,16 +1397,16 @@ Below it, quieter, as if the system didn't mean for you to read it:
   // ═══════════════════════════════
   boss_judges: {
     id: 'boss_judges', type: 'boss',
-    text: `Kaelith arrives like weather — not a dramatic entrance but a presence that was suddenly relevant. Tall. Still. An interface halo twice the complexity of any System display you've seen. Eyes that are cataloguing, not judging — or judging in the sense that a scale judges: accurately, without preference.
+    text: `Mercy arrives like weather — not a dramatic entrance but a presence that was suddenly relevant. Tall. Still. An interface halo twice the complexity of any System display you've seen. Eyes that are cataloguing, not judging — or judging in the sense that a scale judges: accurately, without preference.
 
-Morren is already beside you somehow. No approach. Just — adjacent. Smaller than Kaelith. More compressed. The feeling off Morren is like holding something very sharp — not threatening unless you make a mistake.
+Wrath is already beside you somehow. No approach. Just — adjacent. Smaller than Mercy. More compressed. The feeling off Wrath is like holding something very sharp — not threatening unless you make a mistake.
 
 Neither of them speaks.
 
 Their interfaces open simultaneously. Your record scrolls between them — every choice, every alliance, every betrayal, every cooperation, every elemental zone entered. All of it, in precise System notation.
 
-Kaelith's display highlights the cooperative entries. They glow warm.
-Morren's display highlights the decisive entries. They glow cold.
+Mercy's display highlights the cooperative entries. They glow warm.
+Wrath's display highlights the decisive entries. They glow cold.
 A third column, narrower than the others: ELEMENTAL RESONANCE. Every zone you entered. One entry, or more.
 
 Both Judges look at the third column. Then at each other. Then at you.
@@ -1448,31 +1448,56 @@ function markBossDefeated(key) { const d=[...getDefeatedBosses()]; if(!d.include
 
 async function addItem(itemKey, qty) {
   const { data:ex } = await supabase.from('inventory').select('id,quantity').eq('player_id',player.id).eq('item_key',itemKey).maybeSingle()
-  if (ex) return supabase.from('inventory').update({ quantity: ex.quantity + qty }).eq('id', ex.id)
+  if (ex) { await supabase.from('inventory').update({ quantity: ex.quantity + qty }).eq('id', ex.id); return }
   const ITEM_DEF = {
-    builders_cache_key: { name:"Builder's Cache Key", item_type:'key',     rarity:'uncommon', icon:'🗝️' },
-    district_map:       { name:'District Map',         item_type:'material', rarity:'common',   icon:'🗺️' },
-    ignis_seed:         { name:'Ignis Seed',            item_type:'material', rarity:'uncommon', icon:'🔥' },
-    aqua_cord:          { name:'Aqua Cord',             item_type:'material', rarity:'uncommon', icon:'💧' },
-    stabilizer_pack:    { name:'Stabilizer Pack',       item_type:'consumable',rarity:'common',  icon:'💊', hp_restore:40 },
-    medical_pack:       { name:'Medical Pack',          item_type:'consumable',rarity:'common',  icon:'🩹', hp_restore:30 },
-    scrap_metal:        { name:'Scrap Metal',           item_type:'material', rarity:'common',   icon:'⚙️' },
-    rare_component:     { name:'Rare Component',        item_type:'material', rarity:'rare',     icon:'🔮' },
-    judges_seal:        { name:"Judges' Seal",          item_type:'accessory',rarity:'legendary',icon:'⚖️' },
-    rune_ignis:         { name:'Ignis Rune',            item_type:'material', rarity:'uncommon', icon:'🔥' },
-    rune_aqua:          { name:'Aqua Rune',             item_type:'material', rarity:'uncommon', icon:'💧' },
-    rune_volt:          { name:'Volt Rune',             item_type:'material', rarity:'uncommon', icon:'⚡' },
-    rune_lux:           { name:'Lux Rune',              item_type:'material', rarity:'uncommon', icon:'✨' },
-    rune_umbra:         { name:'Umbra Rune',            item_type:'material', rarity:'uncommon', icon:'🌑' },
-    rune_terra:         { name:'Terra Rune',            item_type:'material', rarity:'uncommon', icon:'🪨' },
-    rune_aero:          { name:'Aero Rune',             item_type:'material', rarity:'uncommon', icon:'💨' },
-    rune_flora:         { name:'Flora Rune',            item_type:'material', rarity:'uncommon', icon:'🌿' },
-    rune_ferro:         { name:'Ferro Rune',            item_type:'material', rarity:'uncommon', icon:'⚙️' },
-    rune_venom:         { name:'Venom Rune',            item_type:'material', rarity:'uncommon', icon:'☠️' },
-    venom_compound:     { name:'Unstable Compound',     item_type:'consumable',rarity:'rare',    icon:'☠️', desc:'Apply in boss fight: poisons both Judges 5%/turn × 3 turns. Cost: 25% own HP.' },
+    builders_cache_key: { name:"Builder's Cache Key", item_type:'key',      rarity:'uncommon',  icon:'🗝️' },
+    district_map:       { name:'District Map',         item_type:'material', rarity:'common',    icon:'🗺️' },
+    ignis_seed:         { name:'Ignis Seed',           item_type:'material', rarity:'uncommon',  icon:'🔥' },
+    aqua_cord:          { name:'Aqua Cord',            item_type:'material', rarity:'uncommon',  icon:'💧' },
+    stabilizer_pack:    { name:'Stabilizer Pack',      item_type:'consumable',rarity:'common',   icon:'💊', hp_restore:40 },
+    medical_pack:       { name:'Medical Pack',         item_type:'consumable',rarity:'common',   icon:'🩹', hp_restore:30 },
+    scrap_metal:        { name:'Scrap Metal',          item_type:'material', rarity:'common',    icon:'⚙️' },
+    rare_component:     { name:'Rare Component',       item_type:'material', rarity:'rare',      icon:'🔮' },
+    judges_seal:        { name:"Judges' Seal",         item_type:'accessory',rarity:'legendary', icon:'⚖️' },
+    rune_ignis:         { name:'Ignis Rune',           item_type:'material', rarity:'uncommon',  icon:'🔥' },
+    rune_aqua:          { name:'Aqua Rune',            item_type:'material', rarity:'uncommon',  icon:'💧' },
+    rune_volt:          { name:'Volt Rune',            item_type:'material', rarity:'uncommon',  icon:'⚡' },
+    rune_lux:           { name:'Lux Rune',             item_type:'material', rarity:'uncommon',  icon:'✨' },
+    rune_umbra:         { name:'Umbra Rune',           item_type:'material', rarity:'uncommon',  icon:'🌑' },
+    rune_terra:         { name:'Terra Rune',           item_type:'material', rarity:'uncommon',  icon:'🪨' },
+    rune_aero:          { name:'Aero Rune',            item_type:'material', rarity:'uncommon',  icon:'💨' },
+    rune_flora:         { name:'Flora Rune',           item_type:'material', rarity:'uncommon',  icon:'🌿' },
+    rune_ferro:         { name:'Ferro Rune',           item_type:'material', rarity:'uncommon',  icon:'⚙️' },
+    rune_venin:         { name:'Venin Rune',           item_type:'material', rarity:'uncommon',  icon:'☠️' },
+    venom_compound:     { name:'Unstable Compound',    item_type:'consumable',rarity:'rare',     icon:'☠️', hp_restore:0 },
   }
   const def = ITEM_DEF[itemKey] || { name:itemKey, item_type:'material', rarity:'common', icon:'📦' }
-  await supabase.from('inventory').insert({ player_id:player.id, item_key:itemKey, quantity:qty, ...def })
+  const { error } = await supabase.from('inventory').insert({
+    player_id:     player.id,
+    item_key:      itemKey,
+    quantity:      qty,
+    name:          def.name,
+    item_type:     def.item_type      || 'material',
+    rarity:        def.rarity         || 'common',
+    icon:          def.icon           || '📦',
+    element:       def.element        || 'none',
+    hp_restore:    def.hp_restore     || 0,
+    atk_bonus:     def.atk_bonus      || 0,
+    def_bonus:     def.def_bonus      || 0,
+    power_bonus:   def.power_bonus    || 0,
+    guard_bonus:   def.guard_bonus    || 0,
+    speed_bonus:   def.speed_bonus    || 0,
+    control_bonus: def.control_bonus  || 0,
+    insight_bonus: def.insight_bonus  || 0,
+    luck_bonus:    def.luck_bonus     || 0,
+    agility_bonus: def.agility_bonus  || 0,
+    max_hp_bonus:  def.max_hp_bonus   || 0,
+    two_handed:    def.two_handed     || false,
+    sockets_total: 0,
+    sockets_used:  0,
+    socketed_runes:[],
+  })
+  if (error) console.error('[ch2 addItem]', itemKey, error.message)
 }
 
 async function save(updates) {
@@ -1491,7 +1516,84 @@ function calcBadge(moral, pvpKills, helpsGiven) {
   return 'neutral'
 }
 
+// ── Chapter Resonance ─────────────────────────────────────────────────────────
+// Resonance is set when the player defeats their first zone boss.
+// It persists for the chapter run. Restarting the chapter resets it.
+const ELEMENT_NAMES = {
+  fire:'Ignis', water:'Aqua', lightning:'Volt', arcane:'Arcane',
+  shadow:'Umbra', earth:'Terra', wind:'Aero', plant:'Flora',
+  metal:'Ferro', poison:'Venom'
+}
+const RESONANCE_PREFIX = 'element_resonance_'
+
+function getChapterResonance() {
+  const d = player.defeated_bosses || []
+  const entry = d.find(k => k.startsWith(RESONANCE_PREFIX))
+  return entry ? entry.replace(RESONANCE_PREFIX, '') : null
+}
+
+async function setChapterResonance(elementKey) {
+  const flag = RESONANCE_PREFIX + elementKey
+  if ((player.defeated_bosses||[]).includes(flag)) return // already set
+  const d = markBossDefeated(flag)
+  await save({ defeated_bosses: d })
+  const elName = ELEMENT_NAMES[elementKey] || elementKey
+  showSysOverlay(
+    `Resonance established: ${elName}.\nFor this chapter, the System recognizes you as this.\nThe Judges will evaluate accordingly.`,
+    'info'
+  )
+}
+
+function isDeviating(zoneElement) {
+  const resonance = getChapterResonance()
+  if (!resonance) return false
+  return resonance !== zoneElement
+}
+
+// Zone element map — which element each zone entry node represents
+const ZONE_ELEMENT_MAP = {
+  zone_fire:'fire', zone_water:'water', zone_lightning:'lightning',
+  zone_arcane:'arcane', zone_shadow:'shadow', zone_earth:'earth',
+  zone_wind:'wind', zone_plant:'plant', zone_metal:'metal', zone_poison:'poison'
+}
+
 window.goTo = async function goTo(nextId, choice={}) {
+  if (!NODES[nextId]) return
+
+  // ── Resonance deviation warning ───────────────────────────────────────────
+  // If player has a chapter resonance and is entering a different element zone,
+  // show a confirmation overlay before proceeding.
+  const zoneElement = ZONE_ELEMENT_MAP[nextId]
+  if (zoneElement && isDeviating(zoneElement)) {
+    const resonance   = getChapterResonance()
+    const resName     = ELEMENT_NAMES[resonance]  || resonance
+    const zoneName    = ELEMENT_NAMES[zoneElement] || zoneElement
+    const existing    = document.getElementById('deviation-warning')
+    if (existing) existing.remove()
+    const el = document.createElement('div')
+    el.id = 'deviation-warning'
+    el.style.cssText = 'position:fixed;inset:0;z-index:800;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;padding:1rem'
+    el.innerHTML = `<div style="max-width:400px;background:#12111a;border:1px solid #f4c45a44;padding:1.5rem;border-radius:4px;text-align:center">
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#f4c45a;letter-spacing:.12em;margin-bottom:.75rem">DEVIATION DETECTED</p>
+      <p style="font-family:'Cormorant Garamond',serif;font-size:1rem;color:#e8e3d6;line-height:1.6;margin-bottom:.5rem">Your chapter resonance is <strong style="color:#f4c45a">${resName}</strong>.</p>
+      <p style="font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.9rem;color:#857f92;line-height:1.6;margin-bottom:1.25rem">Entering the ${zoneName} zone will escalate enemy parameters. The Judges will note the deviation.<br><br>This path again?</p>
+      <div style="display:flex;gap:.75rem;justify-content:center">
+        <button onclick="document.getElementById('deviation-warning').remove();window._goToConfirmed('${nextId}',${JSON.stringify(choice)})" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.08em;color:#e8e3d6;background:rgba(244,196,90,.1);border:1px solid rgba(244,196,90,.4);padding:.5rem 1.2rem;cursor:pointer">Enter anyway</button>
+        <button onclick="document.getElementById('deviation-warning').remove()" style="font-family:'Share Tech Mono',monospace;font-size:.6rem;letter-spacing:.08em;color:#857f92;background:transparent;border:1px solid #26232f;padding:.5rem 1.2rem;cursor:pointer">Turn back</button>
+      </div>
+    </div>`
+    document.body.appendChild(el)
+    return
+  }
+
+  await _goToCore(nextId, choice)
+}
+
+window._goToConfirmed = async function(nextId, choice) {
+  await _goToCore(nextId, choice)
+}
+
+async function _goToCore(nextId, choice={}) {
   if (!NODES[nextId]) return
   const cur = NODES[nodeId]
   const oldXp=player.xp||0, oldLvl=player.level||1
@@ -1507,6 +1609,19 @@ window.goTo = async function goTo(nextId, choice={}) {
   if (choice.outcome) outcome=choice.outcome
   if (cur?.rewards) for (const r of cur.rewards) await addItem(r.itemKey,r.qty)
   if (updates.xp) { const lu=await checkLevelUp(oldXp,updates.xp,oldLvl); if(lu) Object.assign(updates,lu) }
+
+  // ── Set chapter resonance on first zone boss kill ─────────────────────────
+  const WIN_ELEMENT_MAP = {
+    zone_fire_boss_win:'fire',      zone_water_boss_win:'water',
+    zone_lightning_boss_win:'lightning', zone_arcane_boss_win:'arcane',
+    zone_shadow_boss_win:'shadow',  zone_earth_boss_win:'earth',
+    zone_wind_boss_win:'wind',      zone_plant_boss_win:'plant',
+    zone_metal_boss_win:'metal',    zone_poison_boss_win:'poison',
+  }
+  if (WIN_ELEMENT_MAP[nextId] && !getChapterResonance()) {
+    await setChapterResonance(WIN_ELEMENT_MAP[nextId])
+  }
+
   await save(updates)
   const lp=document.getElementById('left-page')
   lp.style.cssText+='transition:opacity .3s,transform .3s;opacity:0;transform:translateX(-8px)'
@@ -1561,16 +1676,16 @@ function renderChoices(panel,node) {
 
 // District hub — 9 elemental zones
 const ZONES = [
-  { id:'zone_fire',      icon:'🔥', name:'Kitchen Supply Store',    element:'Ignis',  color:'#ff5500', branch:'Offense' },
-  { id:'zone_water',     icon:'💧', name:'Food Court Basement',     element:'Aqua',   color:'#0088ff', branch:'Defense' },
-  { id:'zone_lightning', icon:'⚡', name:'Electronics Hub',         element:'Volt',   color:'#ffee58', branch:'Flow' },
-  { id:'zone_arcane',    icon:'✨', name:'Kessler Bookshop',        element:'Arcane', color:'#b06eff', branch:'Arcane' },
-  { id:'zone_shadow',    icon:'🌑', name:'Closed Cinema',           element:'Umbra',  color:'#9a6fd8', branch:'Decay' },
-  { id:'zone_earth',     icon:'🪨', name:'Parking Structure',        element:'Terra',  color:'#8b5e3c', branch:'Defense+Offense' },
-  { id:'zone_wind',      icon:'💨', name:'Glass Atrium',            element:'Aero',   color:'#a8d8ea', branch:'Flow+Arcane' },
-  { id:'zone_plant',     icon:'🌿', name:'Garden Centre',           element:'Flora',  color:'#66bb6a', branch:'Defense+Decay' },
-  { id:'zone_metal',     icon:'⚙️', name:'Hardware Megastore',      element:'Ferro',  color:'#90a4ae', branch:'Offense+Arcane' },
-  { id:'zone_poison',    icon:'☠️', name:'Pharmacy — Anchor Store', element:'Venom',  color:'#7aad30', branch:'Decay+Offense' },
+  { id:'zone_fire',      icon:'🔥', name:'Kitchen Supply Store',    element:'Ignis',  color:'#ff5500', branch:'Offense',        img:'../assets/zones/zone_fire.webp' },
+  { id:'zone_water',     icon:'💧', name:'Food Court Basement',     element:'Aqua',   color:'#0088ff', branch:'Defense',        img:'../assets/zones/zone_water_clean.webp' },
+  { id:'zone_lightning', icon:'⚡', name:'Electronics Hub',         element:'Volt',   color:'#ffee58', branch:'Flow',           img:'../assets/zones/zone_lightning_clean.webp' },
+  { id:'zone_arcane',    icon:'✨', name:'Kessler Bookshop',        element:'Arcane', color:'#b06eff', branch:'Arcane',         img:'../assets/zones/zone_arcane_clean.webp' },
+  { id:'zone_shadow',    icon:'🌑', name:'Closed Cinema',           element:'Umbra',  color:'#9a6fd8', branch:'Decay',          img:'../assets/zones/zone_shadow_clean.webp' },
+  { id:'zone_earth',     icon:'🪨', name:'Parking Structure',        element:'Terra',  color:'#8b5e3c', branch:'Defense+Offense', img:'../assets/zones/zone_earth.webp' },
+  { id:'zone_wind',      icon:'💨', name:'Glass Atrium',            element:'Aero',   color:'#a8d8ea', branch:'Flow+Arcane',    img:'../assets/zones/zone_wind_clean.webp' },
+  { id:'zone_plant',     icon:'🌿', name:'Garden Centre',           element:'Flora',  color:'#66bb6a', branch:'Defense+Decay',  img:'../assets/zones/zone_plant_clean.webp' },
+  { id:'zone_metal',     icon:'⚙️', name:'Hardware Megastore',      element:'Ferro',  color:'#90a4ae', branch:'Offense+Arcane', img:'../assets/zones/zone_metal_clean.webp' },
+  { id:'zone_poison',    icon:'☠️', name:'Pharmacy — Anchor Store', element:'Venom',  color:'#7aad30', branch:'Decay+Offense',  img:'../assets/zones/zone_poison.webp' },
 ]
 
 const STORY_EVENTS = [
@@ -1587,43 +1702,51 @@ function renderDistrictHub(panel) {
   const hasAlliance = (player.alliance_log||[]).includes('builders')
 
   const stEl=document.getElementById('story-text')
-  stEl.textContent=`The shopping district spreads out before you. Nine elemental zones pulse across your radar — some bright and accessible, others dim, waiting for the right resonance to open them.
+  const resonance = getChapterResonance()
+  const resDisplay = resonance
+    ? `CHAPTER RESONANCE: ${ELEMENT_NAMES[resonance]} — established this run`
+    : `CHAPTER RESONANCE: None — defeat a zone boss to establish`
+
+  stEl.textContent=`The shopping district spreads out before you. Ten elemental zones pulse across your radar — some bright and accessible, others dim, waiting for the right resonance to open them.
 
 Your interface shows the faction positions, the zone locations, and below it all, a quiet indicator:
 
 ALLIANCE LOG: ${hasAlliance?'Builders (Active)':'No alliances recorded'}
 MORAL SCORE: ${moral>0?'+':''}${moral}
+${resDisplay}
 JUDGES: ${judgeReady?'Both defeated — Chapter complete':'Watching'}`
 
   let zonesHtml = ZONES.map(z=>{
-    const unlockNode = z.id+'_unlock'
-    const done = player.skills_unlocked?.some(s=>s.startsWith(z.element.toLowerCase()+'_'))||defeated.includes(z.element.toLowerCase())
-    return `<div onclick="goTo('${z.id}')" style="border:.5px solid ${z.color}${done?'':'44'};border-radius:5px;padding:.55rem .65rem;background:${z.color}${done?'18':'08'};cursor:pointer;transition:all .2s;margin-bottom:6px"
-      onmouseover="this.style.background='${z.color}28'" onmouseout="this.style.background='${z.color}${done?'18':'08'}'">
-      <div style="display:flex;align-items:center;gap:.5rem">
+    const bossKey = 'zone_boss_'+z.id.replace('zone_','')
+    const done = defeated.includes(bossKey)||player.skills_unlocked?.some(s=>s.startsWith(z.element.toLowerCase()+'_'))
+    const imgHtml = z.img ? `<div style="height:56px;background:url('${z.img}') center/cover no-repeat;opacity:${done?'0.9':'0.55'};border-bottom:.5px solid ${z.color}44"></div>` : ''
+    return `<div onclick="goTo('${z.id}')" style="border:.5px solid ${z.color}${done?'':'44'};border-radius:5px;overflow:hidden;background:${z.color}${done?'18':'08'};cursor:pointer;transition:all .2s;margin-bottom:6px"
+      onmouseover="this.style.opacity='.85'" onmouseout="this.style.opacity='1'">
+      ${imgHtml}
+      <div style="display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem">
         <span style="font-size:1rem">${z.icon}</span>
         <div style="flex:1;min-width:0">
-          <p style="font-family:'Cinzel',serif;font-size:.78rem;color:${done?z.color:'#9a8050'};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${z.element} — ${z.name}</p>
-          <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;margin:0">${z.branch} branch · ${done?'✓ UNLOCKED':'Enter to unlock'}</p>
+          <p style="font-family:'Cinzel',serif;font-size:.78rem;color:${done?z.color:'var(--ink-dim)'};margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${z.element} — ${z.name}</p>
+          <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:var(--ink-dim);margin:0">${z.branch} · ${done?'✓ CLEARED':'Enter zone'}</p>
         </div>
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:${done?z.color:'#5a4825'};border:.5px solid ${done?z.color+'44':'rgba(139,106,32,.2)'};padding:1px 6px;border-radius:10px">${done?'ACTIVE':'ZONE'}</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:${done?z.color:'#5a4825'};border:.5px solid ${done?z.color+'44':'rgba(139,106,32,.2)'};padding:1px 6px;border-radius:10px">${done?'CLEARED':'ZONE'}</span>
       </div>
     </div>`
   }).join('')
 
   let eventsHtml = `<div style="margin-top:.75rem">
-    <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#7a6435;letter-spacing:.08em;margin-bottom:.4rem">STORY EVENTS</p>
+    <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:var(--ink-dim);letter-spacing:.08em;margin-bottom:.4rem">STORY EVENTS</p>
     <div onclick="goTo('cache_betrayal_offer')" style="border:.5px solid rgba(200,184,128,.2);border-radius:5px;padding:.45rem .6rem;cursor:pointer;margin-bottom:5px;background:rgba(0,0,0,.05);transition:all .2s" onmouseover="this.style.background='rgba(200,184,128,.08)'" onmouseout="this.style.background='rgba(0,0,0,.05)'">
       <p style="font-family:'Cinzel',serif;font-size:.76rem;color:#c8b96e;margin:0">⚖️ The Cache Offer</p>
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;margin:0">A decision waits in the east corridor</p>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:var(--ink-dim);margin:0">A decision waits in the east corridor</p>
     </div>
     <div onclick="goTo('trader_intro')" style="border:.5px solid rgba(200,184,128,.2);border-radius:5px;padding:.45rem .6rem;cursor:pointer;margin-bottom:5px;background:rgba(0,0,0,.05);transition:all .2s" onmouseover="this.style.background='rgba(200,184,128,.08)'" onmouseout="this.style.background='rgba(0,0,0,.05)'">
       <p style="font-family:'Cinzel',serif;font-size:.76rem;color:#c8b96e;margin:0">🏪 Pell's Shop</p>
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;margin:0">Neutral trader — open for business</p>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:var(--ink-dim);margin:0">Neutral trader — open for business</p>
     </div>
     <div onclick="goTo('pre_boss_ch2')" style="border:.5px solid ${judgeReady?'#5ec45e44':'rgba(200,81,42,.4)'};border-radius:5px;padding:.45rem .6rem;cursor:pointer;background:rgba(200,81,42,.06);transition:all .2s" onmouseover="this.style.background='rgba(200,81,42,.12)'" onmouseout="this.style.background='rgba(200,81,42,.06)'">
       <p style="font-family:'Cinzel',serif;font-size:.76rem;color:${judgeReady?'#5ec45e':'#c8512a'};margin:0">⚖️ The Twin Judges</p>
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;margin:0">${judgeReady?'Both defeated — Chapter complete':'End chapter — face the Judges'}</p>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:var(--ink-dim);margin:0">${judgeReady?'Both defeated — Chapter complete':'End chapter — face the Judges'}</p>
     </div>
   </div>`
 
@@ -1671,11 +1794,11 @@ function buildCombatUI(panel,enemy,onWin,onLose,onEscape,isBoss,extraCtx={}) {
   panel.innerHTML=`
     <div style="font-family:'Cinzel',serif;font-size:.9rem;color:#c8b96e;margin-bottom:.5rem">${enemy.icon||'👁'} ${enemy.name}</div>
     <div style="margin-bottom:.5rem">
-      <div style="display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;margin-bottom:2px"><span>ENEMY HP</span><span id="${cid}-ehp-txt">${enemyHp}/${maxEnemyHp}</span></div>
+      <div style="display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:.5rem;color:var(--ink-dim);margin-bottom:2px"><span>ENEMY HP</span><span id="${cid}-ehp-txt">${enemyHp}/${maxEnemyHp}</span></div>
       <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px"><div id="${cid}-ebar" style="height:100%;width:100%;background:#e05555;border-radius:3px;transition:width .3s"></div></div>
     </div>
     <div style="margin-bottom:.75rem">
-      <div style="display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;margin-bottom:2px"><span>YOUR HP</span><span id="${cid}-php-txt">${currentHp}/${maxPlayerHp}</span></div>
+      <div style="display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:.5rem;color:var(--ink-dim);margin-bottom:2px"><span>YOUR HP</span><span id="${cid}-php-txt">${currentHp}/${maxPlayerHp}</span></div>
       <div style="height:6px;background:rgba(255,255,255,.08);border-radius:3px"><div id="${cid}-pbar" style="height:100%;width:100%;background:#5ec45e;border-radius:3px;transition:width .3s"></div></div>
     </div>
     <div id="${cid}-log" style="font-family:'IM Fell English',serif;font-style:italic;font-size:.78rem;color:#c8b96e;min-height:3rem;margin-bottom:.75rem;line-height:1.55"></div>
@@ -1705,10 +1828,35 @@ function buildCombatUI(panel,enemy,onWin,onLose,onEscape,isBoss,extraCtx={}) {
       const updates={xp:newXp,hp:currentHp}
       if (isBoss) {
         const uls=player.chapters_unlocked||[1]; if(!uls.includes(3)) uls.push(3)
-        updates.chapters_unlocked=uls; updates.skill_points=(player.skill_points||0)+2
+        updates.chapters_unlocked=uls
         if (enemy.loot) for (const l of enemy.loot) await addItem(l.itemKey,l.qty)
+        const node=NODES[nodeId]
         if (node?.bossKey) { const d=markBossDefeated(node.bossKey); updates.defeated_bosses=d }
-        showToast('Chapter 2 Complete! +2 Bonus SP!')
+
+        // ── Per-form SP — 1 SP each, awarded once ever per form ──
+        const moral = extraCtx.playerMoral    || 0
+        const elems = extraCtx.elementsAttempted || 1
+        let formKey
+        if      (Math.abs(moral)>=70 && elems>=3) formKey='verdict'
+        else if (Math.abs(moral)<40  && elems>=2) formKey='dual_powered'
+        else if (moral>=40  && elems>=2)          formKey='mercy_powered'
+        else if (moral<=-40 && elems>=2)          formKey='wrath_powered'
+        else if (Math.abs(moral)<40)              formKey='dual'
+        else if (moral>=40)                        formKey='mercy'
+        else                                       formKey='wrath'
+
+        const spKey = 'judges_sp_'+formKey
+        const alreadyClaimed = (player.defeated_bosses||[]).includes(spKey)
+        if (!alreadyClaimed) {
+          const d2=markBossDefeated(spKey); updates.defeated_bosses=d2
+          updates.skill_points=(player.skill_points||0)+1
+          updates.sp_claimed=(player.sp_claimed||0)+1
+          player.skill_points=updates.skill_points
+          player.sp_claimed=updates.sp_claimed
+          showToast('The Judges are defeated. +'+(enemy.xp||600)+' XP · +1 SP')
+        } else {
+          showToast('The Judges are defeated. +'+(enemy.xp||600)+' XP')
+        }
       }
       const lu=await checkLevelUp(oldXp,newXp,oldLvl); if(lu) Object.assign(updates,lu)
       await save(updates)
@@ -1783,11 +1931,11 @@ function renderEnd(panel,node) {
   const mColor=moral>=60?'#a0d0ff':moral>=20?'#c8e8a0':moral>=-20?'#c8b96e':moral>=-60?'#e07a40':'#e05555'
 
   const verdicts = {
-    hero:     'Kaelith steps back. The record speaks for itself. You built more than you took — not because the System asked you to, but because you decided that mattered. Morren watches, satisfied at the precision even in cooperation. Both Judges acknowledge you with the same gesture: a slow opening of the hand. Whatever you are, you are consistent. The System calls it: complete.',
-    good:     'Kaelith weighs the record and finds it positive. More construction than demolition. More alliance than betrayal. Morren notes the decisive moments where you acted without hesitation. Both Judges accept the accounting. Neither is surprised. You move into Chapter 3 with both evaluations behind you.',
+    hero:     'Mercy steps back. The record speaks for itself. You built more than you took — not because the System asked you to, but because you decided that mattered. Wrath watches, satisfied at the precision even in cooperation. Both Judges acknowledge you with the same gesture: a slow opening of the hand. Whatever you are, you are consistent. The System calls it: complete.',
+    good:     'Mercy weighs the record and finds it positive. More construction than demolition. More alliance than betrayal. Wrath notes the decisive moments where you acted without hesitation. Both Judges accept the accounting. Neither is surprised. You move into Chapter 3 with both evaluations behind you.',
     neutral:  'The Judges stand close together and consult in a language you cannot hear. The record is balanced — cooperation and betrayal, construction and taking, alliance and independence. Both Judges look at you simultaneously. Whatever they conclude, they keep to themselves. The System records: inconclusive, and moves you forward.',
-    ruthless: 'Morren steps forward and nods once. The record is decisive if not generous. You took more than you built. Kaelith observes this without condemnation — just notation. You are what you are, and you were consistent about it. The System records this accurately and advances you.',
-    villain:  'Morren records everything with the expression of someone finding exactly what they expected. Kaelith stands back — not in judgment, but in documentation. You were deliberate. The System respects deliberate choices. It advances you with full knowledge of what you are.',
+    ruthless: 'Wrath steps forward and nods once. The record is decisive if not generous. You took more than you built. Mercy observes this without condemnation — just notation. You are what you are, and you were consistent about it. The System records this accurately and advances you.',
+    villain:  'Wrath records everything with the expression of someone finding exactly what they expected. Mercy stands back — not in judgment, but in documentation. You were deliberate. The System respects deliberate choices. It advances you with full knowledge of what you are.',
   }
 
   const END_BEATS = [
@@ -1841,7 +1989,7 @@ Chapter 3 is waiting.`,
     document.getElementById('story-text').textContent=b.text
     panel.innerHTML=`
       <div class="end-box">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;letter-spacing:.1em;margin-bottom:.4rem">${beatIdx+1} / ${END_BEATS.length}</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:var(--ink-dim);letter-spacing:.1em;margin-bottom:.4rem">${beatIdx+1} / ${END_BEATS.length}</p>
         <p class="end-title" style="font-size:.95rem;margin-bottom:.6rem">${b.title}</p>
         <button class="end-btn" id="beat-btn" style="display:block;width:100%">${isLast?'→ Chapter 3':'Continue ›'}</button>
       </div>`
@@ -1856,9 +2004,9 @@ Chapter 3 is waiting.`,
     <div class="end-box">
       <p class="end-title">Chapter 2 Complete</p>
       <div style="margin:.5rem 0 .75rem;padding:.5rem .75rem;background:rgba(0,0,0,.08);border-radius:4px;border-left:3px solid ${mColor}">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:#7a6435;letter-spacing:.08em;margin-bottom:2px">EVALUATION COMPLETE</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.5rem;color:var(--ink-dim);letter-spacing:.08em;margin-bottom:2px">EVALUATION COMPLETE</p>
         <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:${mColor};margin:0">${morality.toUpperCase()}</p>
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#9a8050;margin-top:2px">Moral score: ${moral>0?'+':''}${moral}</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:var(--ink-dim);margin-top:2px">Moral score: ${moral>0?'+':''}${moral}</p>
       </div>
       <p class="end-sub" style="margin-bottom:.75rem">The Twin Judges have rendered their verdict.<br>Chapter 3 awaits.</p>
       <button class="end-btn" id="continue-ch2" style="display:block;width:100%;margin-bottom:.75rem">Continue ›</button>
@@ -1912,33 +2060,33 @@ window.openStatWindow = function() {
   modal.innerHTML=`
     <div style="background:#b8a568;border:1px solid #8b6a20;border-radius:6px;padding:1.25rem;min-width:320px;max-width:400px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.8)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:#1a1208">Character Stats</p>
-        <button onclick="document.getElementById('stat-window').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:#1a1208">✕</button>
+        <p style="font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:var(--ink)">Character Stats</p>
+        <button onclick="document.getElementById('stat-window').remove()" style="background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink)">✕</button>
       </div>
       <div style="background:rgba(0,0,0,.08);border-radius:4px;padding:.6rem .75rem;margin-bottom:.75rem">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:4px">DERIVED STATS</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:var(--ink);letter-spacing:.08em;margin-bottom:4px">DERIVED STATS</p>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px">
           ${[['ATK',calcATK(),'#e05555'],['DEF',calcDEF(),'#5ec45e'],['SPD',calcSPD(),'#a8d8ea'],
              ['HP',player.max_hp||100,'#5eaee0'],['LVL',player.level||1,'#c8b96e'],['GOLD',player.gold||0,'#c8b96e']
-          ].map(([k,v,c])=>'<div style="text-align:center;background:rgba(0,0,0,.1);border-radius:3px;padding:4px 2px"><span style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:#3a2008;display:block">'+k+'</span><span style="font-family:\'Cinzel\',serif;font-size:.95rem;font-weight:600;color:'+c+'">'+v+'</span></div>').join('')}
+          ].map(([k,v,c])=>'<div style="text-align:center;background:rgba(0,0,0,.1);border-radius:3px;padding:4px 2px"><span style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:var(--ink-dim);display:block">'+k+'</span><span style="font-family:\'Cinzel\',serif;font-size:.95rem;font-weight:600;color:'+c+'">'+v+'</span></div>').join('')}
         </div>
       </div>
-      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:6px">CORE STATS <span style="color:#a08858">· Unlocked via Skill Tree</span></p>
+      <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:var(--ink);letter-spacing:.08em;margin-bottom:6px">CORE STATS <span style="color:var(--ink-dim)">· Unlocked via Skill Tree</span></p>
       ${STATS.map(s=>`<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:5px;padding:5px 7px;background:rgba(0,0,0,.07);border-radius:3px">
         <div style="width:8px;height:8px;border-radius:50%;background:${s.color};flex-shrink:0"></div>
         <div style="flex:1">
           <div style="display:flex;align-items:baseline;gap:4px">
-            <span style="font-family:'Cinzel',serif;font-size:.78rem;color:#1a1208;font-weight:600">${s.label}</span>
-            <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208">${s.val}</span>
-            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:#3a2008;margin-left:auto">${s.derived}</span>
+            <span style="font-family:'Cinzel',serif;font-size:.78rem;color:var(--ink);font-weight:600">${s.label}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--ink)">${s.val}</span>
+            <span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:var(--ink-dim);margin-left:auto">${s.derived}</span>
           </div>
-          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.62rem;color:#3a2008;margin:0">${s.desc}</p>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;font-size:.62rem;color:var(--ink-dim);margin:0">${s.desc}</p>
         </div></div>`).join('')}
       <div style="margin-top:.75rem;padding:.6rem .75rem;background:rgba(0,0,0,.08);border-radius:4px">
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;letter-spacing:.08em;margin-bottom:3px">EQUIPPED</p>
-        <p style="font-family:'IM Fell English',serif;font-size:.72rem;color:#1a1208;margin:0">${eqItems.map(i=>i.name).join(', ')||'None'}</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.55rem;color:var(--ink);letter-spacing:.08em;margin-bottom:3px">EQUIPPED</p>
+        <p style="font-family:'IM Fell English',serif;font-size:.72rem;color:var(--ink);margin:0">${eqItems.map(i=>i.name).join(', ')||'None'}</p>
       </div>
-      ${(player.skill_points||0)>0?`<button onclick="document.getElementById('stat-window').remove();window.location.href='skills.html'" style="width:100%;margin-top:.75rem;font-family:'Cinzel',serif;font-size:.8rem;color:#1a1208;background:rgba(160,125,224,.35);border:1px solid rgba(160,125,224,.6);border-radius:3px;padding:.45rem;cursor:pointer">⬡ Spend ${player.skill_points} Skill Points → Skills Page</button>`:''}
+      ${(player.skill_points||0)>0?`<button onclick="document.getElementById('stat-window').remove();window.location.href='skills.html'" style="width:100%;margin-top:.75rem;font-family:'Cinzel',serif;font-size:.8rem;color:var(--ink);background:rgba(160,125,224,.35);border:1px solid rgba(160,125,224,.6);border-radius:3px;padding:.45rem;cursor:pointer">⬡ Spend ${player.skill_points} Skill Points → Skills Page</button>`:''}
     </div>`
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove()})
   document.body.appendChild(modal)
@@ -1980,22 +2128,22 @@ function renderHUD() {
     </div>
     <div style="margin-bottom:5px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
-        <span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:#7a6435;letter-spacing:.07em">REPUTATION</span>
+        <span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:var(--ink-dim);letter-spacing:.07em">REPUTATION</span>
         <span style="font-family:'Cinzel',serif;font-size:.5rem;font-weight:600;color:${moralCol};letter-spacing:.06em">${moralLabel}</span>
       </div>
       <div style="position:relative;height:5px;background:linear-gradient(to right,#e05555,#e07a40,#c8b96e,#c8e8a0,#a0d0ff);border-radius:3px">
         <div style="position:absolute;top:-2px;left:${dotLeft}%;width:9px;height:9px;background:${moralCol};border-radius:50%;transform:translateX(-50%);border:1px solid rgba(0,0,0,.3);transition:left .5s,background .5s"></div>
       </div>
     </div>
-    ${(player.skill_points||0)>0?`<div onclick="window.location.href='skills.html'" style="background:rgba(160,125,224,.25);border:1px solid rgba(160,125,224,.5);border-radius:3px;padding:4px 8px;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:#1a1208;cursor:pointer;text-align:center">⬡ ${player.skill_points} SKILL POINTS — tap to spend</div>`:''}
+    ${(player.skill_points||0)>0?`<div onclick="window.location.href='skills.html'" style="background:rgba(160,125,224,.25);border:1px solid rgba(160,125,224,.5);border-radius:3px;padding:4px 8px;margin-bottom:6px;font-family:'Share Tech Mono',monospace;font-size:.6rem;color:var(--ink);cursor:pointer;text-align:center">⬡ ${player.skill_points} SKILL POINTS — tap to spend</div>`:''}
     <div class="stat-grid">
       <div class="stat-box"><span class="stat-box-key">ATK</span><span class="stat-box-val">${calcATK()}</span></div>
       <div class="stat-box"><span class="stat-box-key">DEF</span><span class="stat-box-val">${calcDEF()}</span></div>
       <div class="stat-box"><span class="stat-box-key">GOLD</span><span class="stat-box-val" style="color:#c8b96e">${player.gold||0}</span></div>
     </div>
     <div style="display:flex;gap:4px;margin-top:6px">
-      <button onclick="openStatWindow()" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">📊 STATS</button>
-      <button onclick="window.location.href='skills.html'" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:#1a1208;background:rgba(160,125,224,.2);border:.5px solid rgba(160,125,224,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">⬡ SKILLS</button>
+      <button onclick="openStatWindow()" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:var(--ink);background:rgba(200,184,128,.2);border:.5px solid rgba(139,106,32,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">📊 STATS</button>
+      <button onclick="window.location.href='skills.html'" style="flex:1;font-family:'Share Tech Mono',monospace;font-size:.55rem;color:var(--ink);background:rgba(160,125,224,.2);border:.5px solid rgba(160,125,224,.4);border-radius:2px;padding:3px 0;cursor:pointer;letter-spacing:.06em">⬡ SKILLS</button>
     </div>`
 }
 
