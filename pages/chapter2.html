@@ -1761,7 +1761,16 @@ function renderBoss(panel,node) {
   // Scale to player level
   enemy.hp = node.enemy.hp + lvl*20
   enemy.atk = node.enemy.atk + Math.floor(lvl*1.5)
-  // Count distinct elemental zones the player has entered (via defeated array or skills)
+
+  // Is this a zone boss (not the Twin Judges)?
+  const isZoneBoss = node.bossKey && node.bossKey !== 'twin_judges'
+  const isBoss = !isZoneBoss  // only Twin Judges triggers chapter-end logic
+
+  // Zone bosses use their own onLose/onEscape (back to approach node)
+  // Twin Judges fall back to pre_boss_ch2
+  const onLose   = node.onLose   || (isZoneBoss ? 'district_hub' : 'pre_boss_ch2')
+  const onEscape = node.onEscape || (isZoneBoss ? 'district_hub' : 'pre_boss_ch2')
+
   const elementsAttempted = (() => {
     const elementKeys = ['ignis','aqua','volt','arcane','umbra','terra','aero','flora','ferro','venom']
     const skills = player.skills_unlocked || []
@@ -1770,10 +1779,10 @@ function renderBoss(panel,node) {
     for (const k of elementKeys) {
       if (skills.some(s=>s.startsWith(k+'_')) || defeated.includes(k)) found.add(k)
     }
-    // Also count via current_node history not available, so floor at 1
     return Math.max(1, found.size)
   })()
-  buildCombatUI(panel,enemy,node.onWin,node.onLose||'pre_boss_ch2',node.onEscape||'pre_boss_ch2',true,{
+
+  buildCombatUI(panel,enemy,node.onWin,onLose,onEscape,isBoss,{
     playerMoral: player.moral_score||0,
     elementsAttempted,
   })
@@ -2012,12 +2021,19 @@ function buildCombatUI(panel,enemy,onWin,onLose,onEscape,isBoss,extraCtx={}) {
       const oldXp=player.xp||0, oldLvl=player.level||1
       const newXp=oldXp+(enemy.xp||50)
       const updates={xp:newXp,hp:currentHp}
+
+      // ── Mark boss defeated + loot (zone bosses AND Twin Judges) ──
+      const bossNode=NODES[nodeId]
+      if (bossNode?.bossKey) {
+        const d=markBossDefeated(bossNode.bossKey)
+        updates.defeated_bosses=d
+      }
+      if (enemy.loot) for(const l of enemy.loot) await addItem(l.itemKey,l.qty)
+
       if (isBoss) {
+        // Twin Judges only — chapter unlock + per-form SP
         const uls=player.chapters_unlocked||[1]; if(!uls.includes(3)) uls.push(3)
         updates.chapters_unlocked=uls
-        if (enemy.loot) for(const l of enemy.loot) await addItem(l.itemKey,l.qty)
-        const node=NODES[nodeId]
-        if (node?.bossKey) { const d=markBossDefeated(node.bossKey); updates.defeated_bosses=d }
         // ── Per-form SP ──
         const moral = extraCtx.playerMoral||0, elems = extraCtx.elementsAttempted||1
         let formKey
@@ -2029,7 +2045,7 @@ function buildCombatUI(panel,enemy,onWin,onLose,onEscape,isBoss,extraCtx={}) {
         else if(moral>=40)                      formKey='mercy'
         else                                    formKey='wrath'
         const spKey='judges_sp_'+formKey
-        const alreadyClaimed=(player.defeated_bosses||[]).includes(spKey)
+        const alreadyClaimed=(updates.defeated_bosses||player.defeated_bosses||[]).includes(spKey)
         if (!alreadyClaimed) {
           const d2=markBossDefeated(spKey); updates.defeated_bosses=d2
           updates.skill_points=(player.skill_points||0)+1
