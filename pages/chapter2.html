@@ -1952,7 +1952,13 @@ function buildCombatUI(panel,enemy,onWin,onLose,onEscape,isBoss,extraCtx={}) {
       ?'<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">'+
         passive.map(k=>{const sk=BATTLE_SKILLS[k];return`<span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:${sk.color};border:.5px solid ${sk.color}50;border-radius:12px;padding:1px 6px;background:${sk.color}12;letter-spacing:.04em">⚡ ${sk.label}</span>`}).join('')
         +'</div>':''
-    if(!active.length){row.innerHTML=passiveStrip+'<p style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:var(--ink-dim);padding:4px 0">No active skills — visit Skills page</p>';return}
+    if(!active.length){
+      row.innerHTML=passiveStrip+`<div style="border:.5px solid rgba(160,125,224,.3);border-radius:3px;padding:6px 8px;margin-bottom:4px;background:rgba(160,125,224,.06)">
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#b06eff;letter-spacing:.06em;margin:0">No active skills assigned</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:var(--ink-dim);margin:2px 0 0">Visit <strong>Skills → Combat Skills</strong> to assign battle skills</p>
+      </div>`
+      return
+    }
     const EL_ICON={fire:'🔥',water:'💧',earth:'🪨',wind:'💨',dark:'🌑',light:'✨',lightning:'⚡',metal:'⚙',plant:'🌿'}
     let html=passiveStrip+'<p style="font-family:\'Share Tech Mono\',monospace;font-size:.48rem;color:var(--ink-dim);letter-spacing:.09em;margin-bottom:4px">— SKILLS —</p>'
     html+='<div style="display:grid;grid-template-columns:'+(active.length===1?'1fr':active.length===2?'1fr 1fr':'1fr 1fr 1fr')+';gap:4px">'
@@ -2441,14 +2447,6 @@ function updateHpBar(hp) {
   if(val)val.textContent=Math.round(hp)+'/'+mhp
 }
 
-// Also load equipped items for stat display
-;(async()=>{
-  if(!window._equippedItems){
-    const {data}=await supabase.from('inventory').select('*').eq('player_id',player.id).not('equipped_slot','is',null)
-    window._equippedItems=data||[]
-  }
-})()
-
 // ── Init ──────────────────────────────────────────
 let player   = await renderNav('nav')
 if (!player) throw new Error('no player')
@@ -2458,6 +2456,13 @@ let nodeId = (player.current_node||'').startsWith('ch2_')
   ? player.current_node.replace('ch2_','')
   : 'opening'
 let outcome = null
+
+;(async()=>{
+  if(!window._equippedItems){
+    const {data}=await supabase.from('inventory').select('*').eq('player_id',player.id).not('equipped_slot','is',null)
+    window._equippedItems=data||[]
+  }
+})()
 
 if (!NODES[nodeId]) nodeId='opening'
 
