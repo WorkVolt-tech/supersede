@@ -1948,14 +1948,20 @@ function buildCombatUI(panel,enemy,onWin,onLose,onEscape,isBoss,extraCtx={}) {
     const row=$('skill-slots-row'); if(!row) return
     const active=battleSkillKeys.filter(k=>{const s=BATTLE_SKILLS[k];return s&&s.type!=='passive'})
     const passive=battleSkillKeys.filter(k=>{const s=BATTLE_SKILLS[k];return s&&s.type==='passive'})
+    // Debug: show what keys we have
+    const knownKeys=battleSkillKeys.filter(k=>BATTLE_SKILLS[k])
+    const unknownKeys=battleSkillKeys.filter(k=>!BATTLE_SKILLS[k])
     const passiveStrip=passive.length
       ?'<div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px">'+
         passive.map(k=>{const sk=BATTLE_SKILLS[k];return`<span style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:${sk.color};border:.5px solid ${sk.color}50;border-radius:12px;padding:1px 6px;background:${sk.color}12;letter-spacing:.04em">⚡ ${sk.label}</span>`}).join('')
         +'</div>':''
     if(!active.length){
+      const debugInfo = battleSkillKeys.length === 0
+        ? 'player.battle_skills is empty — go to Skills page and assign skills to battle slots, then save'
+        : `battle_skills has ${battleSkillKeys.length} keys: [${battleSkillKeys.join(', ')}] — ${unknownKeys.length} not recognized in combat engine`
       row.innerHTML=passiveStrip+`<div style="border:.5px solid rgba(160,125,224,.3);border-radius:3px;padding:6px 8px;margin-bottom:4px;background:rgba(160,125,224,.06)">
         <p style="font-family:'Share Tech Mono',monospace;font-size:.48rem;color:#b06eff;letter-spacing:.06em;margin:0">No active skills assigned</p>
-        <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:var(--ink-dim);margin:2px 0 0">Visit <strong>Skills → Combat Skills</strong> to assign battle skills</p>
+        <p style="font-family:'Share Tech Mono',monospace;font-size:.44rem;color:var(--ink-dim);margin:2px 0 0">${debugInfo}</p>
       </div>`
       return
     }
