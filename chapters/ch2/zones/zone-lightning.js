@@ -14,8 +14,8 @@ They mean it. They're not lying.
 VOLT SKILL TREE — UNLOCKED.`,
     xp: 120,
     choices: [
-      { label: 'Wait. Let them finish. Split it.', sub: 'Moral +10.', next: 'zone_lightning_wait', moral: 10 },
-      { label: 'Channel through the junction yourself now.', sub: 'Faster — releases a pulse hurting district players.', next: 'zone_lightning_pulse', moral: -10 },
+      { label: 'Wait. Let them finish. Split it.', sub: 'Moral +5.', next: 'zone_lightning_wait', moral: 5 },
+      { label: 'Channel through the junction yourself now.', sub: 'Faster — releases a pulse hurting district players.', next: 'zone_lightning_pulse', moral: -5 },
       { label: 'Discharge it safely through yourself.', sub: 'Costs 20% max HP — they get nothing.', next: 'zone_lightning_unlock' },
     ],
   },
@@ -43,7 +43,7 @@ One of the screens has gone dark.`,
   },
 
   zone_lightning_unlock: {
-    id: 'zone_lightning_unlock', type: 'story',
+    id: 'zone_lightning_unlock', type: 'story', hpLoss: 20,
     text: `You discharge it through yourself. The jolt drops your HP. The other player gets nothing.
 
 They look at you. Not angry. Just reading you. Then leave without a word.
@@ -111,7 +111,7 @@ On a workbench: an insulated tool bag, left by whoever was maintaining this equi
   },
 
   zone_lightning_extract: {
-    id: 'zone_lightning_extract', type: 'story',
+    id: 'zone_lightning_extract', type: 'story', hpLoss: 15,
     text: `Contact. The discharge runs through you — painful, disorienting. You hold on. The node collapses into three compressed rune units in your hand.
 
 Your hair is standing on end. Your HP is down. Worth it.`,

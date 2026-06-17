@@ -14,8 +14,8 @@ Inside: a narrow corridor of hanging fire that doesn't burn. Near the entrance, 
 IGNIS SKILL TREE — UNLOCKED.`,
     xp: 120,
     choices: [
-      { label: 'Give them a med pack before going further', sub: 'Moral +10', next: 'zone_fire_help', moral: 10 },
-      { label: 'Break the glass cache and move on', sub: 'Full supplies. Moral -5.', next: 'zone_fire_break', moral: -5 },
+      { label: 'Give them a med pack before going further', sub: 'Moral +5', next: 'zone_fire_help', moral: 5 },
+      { label: 'Break the glass cache and move on', sub: 'Full supplies. Moral -3.', next: 'zone_fire_break', moral: -3 },
       { label: 'Take the long path. Leave both.', sub: 'Costs your health.', next: 'zone_fire_unlock' },
     ],
   },
@@ -45,7 +45,7 @@ IGNIS TREE UNLOCKED. IGNIS BINDING: Strike damage +15%. Regen −20%.`,
   },
 
   zone_fire_unlock: {
-    id: 'zone_fire_unlock', type: 'story',
+    id: 'zone_fire_unlock', type: 'story', hpLoss: 20,
     text: `The long path costs you. Residual heat, scored walls, everything harder than expected.
 
 IGNIS TREE UNLOCKED. IGNIS BINDING: Strike damage +15%. Regen −20%.`,
@@ -69,7 +69,7 @@ It finds yours.`,
   },
 
   zone_fire_slip_1: {
-    id: 'zone_fire_slip_1', type: 'story',
+    id: 'zone_fire_slip_1', type: 'story', hpLoss: 10,
     text: `You move low and slow along the far wall. The Char Hound turns toward you once. Pauses. Moves away. You're through — barely.`,
     xp: 30,
     choices: [{ label: 'Continue', next: 'zone_fire_explore_2' }],
@@ -92,7 +92,7 @@ On the far wall, a note taped to the emergency exit: "Back corridor is clear. Lo
 Someone added in different handwriting: "Don't fight it. Just don't."`,
     xp: 60,
     choices: [
-      { label: 'Harvest the elemental sprite for a rune', sub: 'Moral -5', next: 'zone_fire_harvest', moral: -5 },
+      { label: 'Harvest the elemental sprite for a rune', sub: 'Moral -3', next: 'zone_fire_harvest', moral: -3 },
       { label: 'Leave it alone and continue', next: 'zone_fire_corridor' },
     ],
   },
@@ -119,7 +119,7 @@ Two Slag Drones block the path. Former warehouse equipment, now running on heat-
   },
 
   zone_fire_pipe: {
-    id: 'zone_fire_pipe', type: 'story',
+    id: 'zone_fire_pipe', type: 'story', hpLoss: 12,
     text: `You hit the pipe coupling. The pressurized system vents downward — a burst that catches both drones. One goes down. The other staggers, damaged but functional. The burst caught your arm. You're singed.`,
     xp: 50,
     choices: [{ label: 'Finish the second drone', next: 'zone_fire_enemy_2b' }],
