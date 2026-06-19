@@ -38,6 +38,9 @@ import ZONE_METAL     from './zones/zone-metal.js'
 import ZONE_POISON    from './zones/zone-poison.js'
 import ZONE_FARMING, { randomizeFarmingWaves } from './zones/zone-farming.js'
 import { NODES } from './nodes.js'
+import { xpForLevel, xpProgress, resolveLevelUp } from '../../data/leveling.js'
+import { playHitFx, playBuffFx } from '../../data/combat-fx.js'
+import { damageMult as elDamageMult, resistMult as elResistMult, reflectFraction as elReflect } from '../../data/elemental-bonuses.js'
 
 const MODULE_STYLE_ID = 'book-module-style-chapter-2'
 const MODULE_MARKUP = "<div class=\"book-wrap\">\n  \n  <div class=\"book animate-in\" style=\"position:relative;\">\n    <div class=\"page-left parchment\" id=\"left-page\">\n      <div class=\"page-inner\">\n        <p class=\"chapter-label\">Chapter 2 \u2014 Broken Alliances</p>\n        <p class=\"chapter-sub\">Groups form. Groups break. The System watches both.</p>\n        <hr class=\"ink-divider\">\n        <p class=\"story-text\" id=\"story-text\"></p>\n        <div class=\"notice-box animate-in\" id=\"outcome-box\" style=\"display:none\"></div>\n      </div>\n    </div>\n    <div class=\"page-right parchment\">\n      <div class=\"page-inner\">\n        <div class=\"hud\" id=\"hud\"></div>\n        <hr class=\"ink-divider\">\n        <div id=\"right-panel\"></div>\n      </div>\n    </div>\n    <!-- Decorative page-flip animation \u2014 purely visual, no pointer events -->\n    <div class=\"page-flip-decorator\" aria-hidden=\"true\"></div>\n  </div>\n</div>"
@@ -67,7 +70,6 @@ export async function mountChapter2(__mountOptions = {}) {
   // ENGINE — mirrors chapter1 exactly
   // ═══════════════════════════════════════════════════════════
 
-  function xpForLevel(lv) { return Math.floor(100 * Math.pow(1.5, lv - 1)) }
   function getDefeatedBosses() { return player.defeated_bosses || [] }
   function markBossDefeated(key) { const d=[...getDefeatedBosses()]; if(!d.includes(key)) d.push(key); player.defeated_bosses=d; return d }
   function escapeHtml(value) {
@@ -1636,6 +1638,8 @@ You walk back out.`
     if(has('dcn4')) statusEffects.shadeWalk=true
     if(has('dcn5')) statusEffects.enduringRoot=true
     if(has('dc_ks2'))statusEffects.ancientRootShield=Math.round(maxPlayerHp*0.2)
+    if(has('dcn3')) statusEffects.thornwall=true        // Thornwall: defend reflects 15%
+    if(has('dfn6')) statusEffects.bulwarkPassive=true   // Bulwark: DEF doubles after 2 consecutive hits
 
     // ── Class skill combat hooks: initialize ─────────────────────────────────
     // Equal Sky (Arbiter t5b) grants +5 SP at combat start via statusEffects.cls_bonusSP
@@ -1654,9 +1658,12 @@ You walk back out.`
     // (messages will print in the first combat-log push after enemy actions)
 
     // ── Build UI — mirrors chapter1 structure exactly ─────────────────────────
-    const enemyImg = enemy.img
-      ? '<img src="'+enemy.img+'" style="width:80px;height:80px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))">'
+    const enemyArtInner = enemy.img
+      ? '<img src="'+enemy.img+'" style="width:80px;height:80px;object-fit:contain;border-radius:6px;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))">'
       : '<span style="font-size:2.5rem;line-height:1">'+( enemy.icon||'⚔')+'</span>'
+    // Wrap in a positioned box so the hit-FX burst can anchor directly over
+    // the enemy art (not the whole row, which would put it over the HP bar).
+    const enemyImg = '<div class="combat-enemy-art" style="position:relative;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center">'+enemyArtInner+'</div>'
 
     // ── Twin Judges form banner (#20 / #21) ────────────────────────────────
     // Shown only when the Judges fight is active. Renders the leading Judge,
@@ -1685,7 +1692,7 @@ You walk back out.`
       + '<p id="'+cid+'-e-hp" style="font-family:\'Share Tech Mono\',monospace;font-size:.62rem;color:var(--ink-dim);margin-top:2px">'+enemyHp+' / '+maxEnemyHp+' HP</p>'
       + '</div></div>'
       + '<div class="combat-log" id="'+cid+'-combat-log">The encounter begins.</div>'
-      + '<div class="stat-row" style="margin-bottom:.4rem">'
+      + '<div class="stat-row combat-player-row" style="margin-bottom:.4rem;position:relative">'
       + '<span class="stat-key" style="font-family:\'Share Tech Mono\',monospace;font-size:.62rem;color:var(--ink)">YOUR HP</span>'
       + '<div class="stat-bar-wrap"><div class="stat-bar" id="'+cid+'-c-player-bar" style="background:#5ec45e;width:100%;transition:width .4s,background .4s"></div></div>'
       + '<span id="'+cid+'-c-player-hp" style="font-family:\'Share Tech Mono\',monospace;font-size:.62rem;color:var(--ink);min-width:50px;text-align:right">'+currentHp+'/'+maxPlayerHp+'</span>'
@@ -2702,6 +2709,31 @@ You walk back out.`
       let messages=[]
 
       function resolvePlayerAction() {
+        // ── Tier-2 elemental hit FX ──────────────────────────────────
+        // Fire a burst over the enemy keyed to the attack's element. Skills
+        // carry sk.el; basic strike/heavy are 'physical'. Purely cosmetic,
+        // wrapped so it can never interfere with damage resolution.
+        try {
+          // Skill fns that actually strike the enemy → enemy hit-burst.
+          // Everything else (buffs/heals/stances/debuffs) → self-cast aura on
+          // the player side. Basic Strike/Heavy are always enemy hits.
+          const _ATTACK_FNS = new Set(['fireBlast','earthquake','earthSpike','lightningStrike',
+            'thunderstorm','tsunami','dashStrike','overgrowth','embersEnd','chaosEngine'])
+          let _fxEl = 'physical'
+          let _isAttack = true
+          if (playerAction === 'skill' && skillKey) {
+            const _sk = BATTLE_SKILLS[skillKey]
+            if (_sk && _sk.el) _fxEl = _sk.el
+            _isAttack = _sk && _ATTACK_FNS.has(_sk.fn)
+          }
+          if (_isAttack) {
+            const _enemyArt = panel.querySelector('.combat-enemy-art') || panel.querySelector('.combat-enemy-row')
+            playHitFx(_enemyArt, _fxEl)
+          } else {
+            const _playerRow = panel.querySelector('.combat-player-row')
+            playBuffFx(_playerRow, _fxEl)
+          }
+        } catch (_e) { /* FX must never break combat */ }
         if(playerAction==='strike') {
           const roll=Math.floor(Math.random()*(6+luckBonus))+1
           let baseATK=playerATK()+(statusEffects.playerATKBonus||0)
@@ -2736,6 +2768,12 @@ You walk back out.`
               messages.push(`⚖ Executioner's Eye — pierced ${defBonus} DEF.`)
             }
           }
+          // Elemental tree: scale basic-strike damage by the player's
+          // element-damage bonus. Basic strike is physical (mult 1); a skill
+          // strike would carry its element, but the basic Strike action is
+          // always physical, so this is a no-op unless a future basic attack
+          // is elementally tagged. Skill damage is scaled in the skill block.
+          try { dmg = Math.round(dmg * elDamageMult(player, 'physical')) } catch(_e){}
           const oldEnemyHp = enemyHp
           enemyHp=Math.max(0,enemyHp-dmg)
           messages.push('You strike for <strong>'+dmg+'</strong>.'+(ignoreDEF?' (DEF ignored)':''))
@@ -2933,7 +2971,12 @@ You walk back out.`
       function resolveEnemyAction() {
         if(statusEffects.enemyStunTurns>0||statusEffects.rootTrapTurns>0){messages.push(enemy.name+' is <em>immobilized</em> this turn!');return}
         if(statusEffects.phantomStep){statusEffects.phantomStep=false;messages.push(enemy.name+' attacks — but you phase out!');return}
-        let eDmg=Math.max(1,Math.round((enemy.atk||10)-(defending?playerDEF()*2:playerDEF())+(Math.random()*6|0)))
+        // Bulwark passive: if a DEF-double is queued, apply 2x DEF this turn then consume it.
+        let _bulwarkDef = 0
+        if(statusEffects.bulwarkDefDouble){_bulwarkDef=playerDEF();statusEffects.bulwarkDefDouble=false}
+        let eDmg=Math.max(1,Math.round((enemy.atk||10)-(defending?playerDEF()*2:playerDEF())-_bulwarkDef+(Math.random()*6|0)))
+        // Elemental tree: apply total resistance to incoming damage (capped in module).
+        try { eDmg = Math.max(1, Math.round(eDmg * elResistMult(player))) } catch(_e){}
         eDmg=Math.round(eDmg*(statusEffects.enemyATKMult||1.0))
         // Cowardice modifier (#20): Twin Judges hit harder while player is
         // under 50% HP. Only applies to the Judges fight (gated by judgesForm).
@@ -2968,8 +3011,14 @@ You walk back out.`
           }
           currentHp = newHp
           messages.push(enemy.name+' strikes for <strong>'+eDmg+'</strong>.')
+          // Elemental tree: reflect a share of damage taken back at the enemy.
+          try { const _rf = elReflect(player); if(_rf>0 && eDmg>0){ const _rb=Math.max(1,Math.round(eDmg*_rf)); enemyHp=Math.max(0,enemyHp-_rb); messages.push('☠ Caustic reflect <strong>'+_rb+'</strong>!') } } catch(_e){}
+          // Bulwark (passive): count consecutive enemy hits; at 2, queue a DEF-double next turn.
+          if(statusEffects.bulwarkPassive){statusEffects.bulwarkHitStreak=(statusEffects.bulwarkHitStreak||0)+1;if(statusEffects.bulwarkHitStreak>=2){statusEffects.bulwarkDefDouble=true;statusEffects.bulwarkHitStreak=0;messages.push('🛡 Bulwark — DEF doubled next turn!')}}
         }
         if(statusEffects.metalReflect&&eDmg>0){const ref=Math.round(eDmg*0.15);enemyHp=Math.max(0,enemyHp-ref);messages.push('⚙ Reflect <strong>'+ref+'</strong> back!')}
+        // Thornwall (passive): while defending, reflect 15% of damage taken as thorns.
+        if(statusEffects.thornwall&&defending&&eDmg>0){const tr=Math.max(1,Math.round(eDmg*0.15));enemyHp=Math.max(0,enemyHp-tr);messages.push('🌿 Thornwall reflects <strong>'+tr+'</strong>!')}
         if(statusEffects.liveWire&&Math.random()<0.20){statusEffects.enemyStunTurns=1;messages.push('⚡ Thorns — enemy stunned!')}
         if(statusEffects.ironMirror){const ref=Math.round(eDmg*0.4);enemyHp=Math.max(0,enemyHp-ref);statusEffects.ironMirror=false;messages.push('⚙ Iron Mirror reflected <strong>'+ref+'</strong>!')}
         // Ghost step dodge on counterattack
@@ -3231,10 +3280,10 @@ You walk back out.`
     player.skill_points=newSP;player.sp_claimed=(player.sp_claimed||0)+spGained
     const sg=levelsGained
     const us={atk:(player.atk||1)+sg,def:(player.def||0)+sg,power:(player.power||0)+sg,guard:(player.guard||0)+sg,speed:(player.speed||0)+sg,insight:(player.insight||0)+sg,luck:(player.luck||0)+sg,control:(player.control||0)+sg}
-    Object.assign(player,us);currentHp=newHp;player.max_hp=newMaxHp;player.level=level;player.xp=newXp
+    Object.assign(player,us);currentHp=newHp;player.max_hp=newMaxHp;player.level=level;player.xp=xp
     window.showToast('LEVEL UP! Lvl '+level+' — +5 HP · +1 all stats · +'+spGained+' SP!')
     renderHUD()
-    return{level,max_hp:newMaxHp,hp:newHp,xp:newXp,skill_points:newSP,sp_claimed:player.sp_claimed,...us}
+    return{level,max_hp:newMaxHp,hp:newHp,xp:xp,skill_points:newSP,sp_claimed:player.sp_claimed,...us}
   }
 
   function getEquippedBonus(stat) {
@@ -3315,9 +3364,10 @@ You walk back out.`
     const moralPct = getMoralBarPct(player.moral_score)
     const hpPct=Math.max(0,Math.round(hp/mhp*100))
     const hpCol=hpPct>60?'#5ec45e':hpPct>30?'#c8b96e':'#e05555'
-    const xpNext=xpForLevel(lvl)
-    const xpIntoLevel=Math.max(0,Math.min(xp,xpNext-1))
-    const xpPct=Math.min(100,Math.round(xpIntoLevel/xpNext*100))
+    const _xpP=xpProgress(player)
+    const xpNext=_xpP.needed
+    const xpIntoLevel=_xpP.into
+    const xpPct=_xpP.pct
     const dotLeft=Math.max(2,Math.min(94,moralPct))
 
     document.getElementById('hud').innerHTML=`
