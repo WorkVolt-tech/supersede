@@ -328,7 +328,7 @@ export async function mountSkills(__mountOptions = {}) {
       desc:'◆ FLOW NOTABLE: +8 SPD. On dodge, your next Strike deals double damage. If you have Arcane nodes, the proc also triggers a free spell hit. Agility becomes your opener.' },
     { id:'fln5', label:'Stagger',    type:'notable', battleType:'passive', branch:'flow', x:CX-546, y:CY-325,  cost:2, stat:'control_bonus', val:6, requires:['flc6'],
       desc:'◆ SYNERGY — FLOW × ARCANE: +6 CTR. 25% chance each turn to stagger the enemy — they miss their attack. Control debuffs further reduce their hit chance by 5% per stack.' },
-    { id:'fln6', label:'Momentum',   type:'notable', battleType:'passive', branch:'flow', x:CX-618, y:CY-201, cost:2, stat:'speed_bonus',  val:8,  requires:['fl6'],
+    { id:'fln6', label:'Momentum',   type:'notable', battleType:'active', branch:'flow', x:CX-618, y:CY-201, cost:2, stat:'speed_bonus',  val:8,  requires:['fl6'],
       desc:'◆ SYNERGY — FLOW × OFFENSE: +8 SPD. Gain +1 ATK per SPD point above the enemy — moving faster translates directly into hitting harder. Speed is damage.' },
     // Pre-keystone
     { id:'fl7',  label:'+3 SPD',     type:'small', branch:'flow', x:CX-706, y:CY-156, cost:1, stat:'speed_bonus',   val:3, requires:['fln4','fln6'] },
@@ -2087,21 +2087,42 @@ export async function mountSkills(__mountOptions = {}) {
     // First-time-see-new-system check: if resonance_shards is undefined
     // on the player record, we haven't migrated yet. Convert the old
     // balance and wipe unlocks (their node IDs no longer exist).
-    if (typeof player.resonance_shards === 'undefined') {
-      shards = player.esp || 0
-      elUnlocked = []
-      player.resonance_shards = shards
-      player.elemental_unlocked = []
-      // Old fields stay on the record but stop being read; we'll purge
-      // them in a future cleanup pass once the new system is proven.
-      // Persist the migration so next load is a no-op.
-      supabase.from('players').update({
-        resonance_shards: shards,
-        elemental_unlocked: [],
-      }).eq('id', player.id).then(() => {
-        console.info('[elements] Migrated ESP → Resonance Shards. Balance:', shards)
-      }).catch(e => console.warn('[elements] migration save failed:', e))
-    } else {
+    // Reconcile ESP → Resonance Shards on EVERY load. The chapters award
+    // player.esp on zone-boss wins, but the tree spends resonance_shards.
+    // The old code migrated the two only ONCE, so every esp earned after the
+    // first skills-page visit became invisible — players had no shards to
+    // spend. esp is only ever ADDED (never spent), so the shards owed =
+    // total esp earned minus what we've already banked. esp_banked tracks the
+    // converted amount so we never double-credit.
+    {
+      const firstTime = typeof player.resonance_shards === 'undefined'
+      if (firstTime) {
+        player.resonance_shards = 0
+        player.elemental_unlocked = []
+        player.esp_banked = 0
+      }
+      // Players who migrated under the OLD one-time code have resonance_shards
+      // set but no esp_banked. Their existing shard balance already accounted
+      // for the esp they had AT migration time, so seed esp_banked from their
+      // current esp to avoid re-crediting that already-migrated portion. They
+      // still correctly receive any esp earned AFTER this point.
+      if (typeof player.esp_banked === 'undefined') {
+        player.esp_banked = player.esp || 0
+      }
+      const totalEsp = player.esp || 0
+      const banked   = player.esp_banked || 0
+      const owed     = Math.max(0, totalEsp - banked)
+      if (owed > 0 || firstTime) {
+        player.resonance_shards = (player.resonance_shards || 0) + owed
+        player.esp_banked = totalEsp
+        supabase.from('players').update({
+          resonance_shards: player.resonance_shards,
+          esp_banked: player.esp_banked,
+          ...(firstTime ? { elemental_unlocked: player.elemental_unlocked } : {}),
+        }).eq('id', player.id)
+          .then(() => console.info('[elements] Credited', owed, 'shards. Balance:', player.resonance_shards))
+          .catch(e => console.warn('[elements] shard sync failed:', e))
+      }
       shards = player.resonance_shards || 0
       elUnlocked = Array.isArray(player.elemental_unlocked) ? player.elemental_unlocked : []
     }
