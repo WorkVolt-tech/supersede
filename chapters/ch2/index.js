@@ -1144,7 +1144,11 @@ You walk back out.`
 
     let zonesHtml = ZONES.map(z=>{
       const bossKey = 'zone_boss_'+z.id.replace('zone_','')
-      const done = defeated.includes(bossKey)||player.skills_unlocked?.some(s=>s.startsWith(z.element.toLowerCase()+'_'))
+      // Use the zone's INTERNAL element key (ZONE_ELEMENT_MAP) for the skill-
+      // prefix fallback, not z.element — display names get renamed (Arcane→Lux,
+      // Venom→Venin) which would silently break this check. The id never changes.
+      const _elKey = ZONE_ELEMENT_MAP[z.id] || z.element.toLowerCase()
+      const done = defeated.includes(bossKey)||player.skills_unlocked?.some(s=>s.startsWith(_elKey+'_'))
       // Visual: UNCLEARED zones are bright/inviting; CLEARED zones dim out so
       // the player can see at a glance what's left to do. (Brightness inverted
       // from done — bright = still available, dim = finished.)
@@ -2141,10 +2145,17 @@ You walk back out.`
             const elNodes=['off_n','def_n','flo_n','arc_n','dec_n','off_k','def_k','flo_k','arc_k','dec_k'].map(s=>elKey+'_'+s).filter(k=>!espTree.collected.includes(k))
             if(elNodes.length){espTree.collected.push(...elNodes);player.esp_tree=espTree;updates.esp_tree=espTree}
             const newEsp=(player.esp||0)+3; player.esp=newEsp; updates.esp=newEsp
-            window.showToast('⬡ +3 ESP · '+elKey+' nodes unlocked!')
+            // Award Resonance Shards directly (the tree spends these). Keep
+            // esp_banked in lockstep so the skills-page reconciliation never
+            // re-credits this same amount. This is the real source-of-award.
+            const newShards=(player.resonance_shards||0)+3; player.resonance_shards=newShards; updates.resonance_shards=newShards
+            player.esp_banked=newEsp; updates.esp_banked=newEsp
+            window.showToast('⬡ +3 Resonance Shards · '+elKey+' nodes unlocked!')
           } else {
             const newEsp=(player.esp||0)+1; player.esp=newEsp; updates.esp=newEsp
-            window.showToast('⬡ +1 ESP')
+            const newShards=(player.resonance_shards||0)+1; player.resonance_shards=newShards; updates.resonance_shards=newShards
+            player.esp_banked=newEsp; updates.esp_banked=newEsp
+            window.showToast('⬡ +1 Resonance Shard')
           }
         }
         const lu=await checkLevelUp(oldXp,newXp,oldLvl); if(lu) Object.assign(updates,lu)
