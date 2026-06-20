@@ -40,7 +40,8 @@ import ZONE_FARMING, { randomizeFarmingWaves } from './zones/zone-farming.js'
 import { NODES } from './nodes.js'
 import { xpForLevel, xpProgress, resolveLevelUp } from '../../data/leveling.js'
 import { playHitFx, playBuffFx } from '../../data/combat-fx.js'
-import { damageMult as elDamageMult, resistMult as elResistMult, reflectFraction as elReflect } from '../../data/elemental-bonuses.js'
+import { damageMult as elDamageMult, resistMult as elResistMult, reflectFraction as elReflect, critChanceBonus as elCritChance, critDamageBonus as elCritDmg, mpMaxBonus as elMpMax, mpRegenCombat as elMpRegen, rawBonus as elRaw } from '../../data/elemental-bonuses.js'
+import { getUnlockedKeystones, applyKeystone } from '../../data/elemental-keystones.js'
 
 const MODULE_STYLE_ID = 'book-module-style-chapter-2'
 const MODULE_MARKUP = "<div class=\"book-wrap\">\n  \n  <div class=\"book animate-in\" style=\"position:relative;\">\n    <div class=\"page-left parchment\" id=\"left-page\">\n      <div class=\"page-inner\">\n        <p class=\"chapter-label\">Chapter 2 \u2014 Broken Alliances</p>\n        <p class=\"chapter-sub\">Groups form. Groups break. The System watches both.</p>\n        <hr class=\"ink-divider\">\n        <p class=\"story-text\" id=\"story-text\"></p>\n        <div class=\"notice-box animate-in\" id=\"outcome-box\" style=\"display:none\"></div>\n      </div>\n    </div>\n    <div class=\"page-right parchment\">\n      <div class=\"page-inner\">\n        <div class=\"hud\" id=\"hud\"></div>\n        <hr class=\"ink-divider\">\n        <div id=\"right-panel\"></div>\n      </div>\n    </div>\n    <!-- Decorative page-flip animation \u2014 purely visual, no pointer events -->\n    <div class=\"page-flip-decorator\" aria-hidden=\"true\"></div>\n  </div>\n</div>"
@@ -1559,11 +1560,14 @@ You walk back out.`
       if (ally.maxHp === undefined) ally.maxHp = ally.hp
     }
 
-    let enemyHp=enemy.hp, maxEnemyHp=enemy.hp, maxPlayerHp=player.max_hp||100
+    let enemyHp=enemy.hp, maxEnemyHp=enemy.hp, maxPlayerHp=(player.max_hp||100)+(()=>{try{return elRaw(player,'hp_bonus')}catch(_e){return 0}})()
+    let turnCount = 0   // increments each turn; used by Slow Bloom (Flora) scaling
     let over=false, defending=false
     let currentHp = player.hp || 100
 
     window._enemyAIState = initEnemyState(enemy)
+    // Elemental keystone cooldowns: { keystoneId: turnsRemaining }
+    let ksCooldowns = {}
 
     function playerATK() { return (player.atk||5)+(player.power||0)*.5+(player.strength||0)+Math.floor(Math.random()*6) }
     function playerDEF() {
@@ -1717,6 +1721,7 @@ You walk back out.`
       + '</div>'
       + '<div id="'+cid+'-skill-slots-row" style="margin-bottom:4px"></div>'
       + '<div id="'+cid+'-class-skills-row" style="margin-bottom:4px"></div>'
+      + '<div id="'+cid+'-keystone-row" style="margin-bottom:4px"></div>'
       + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">'
       + '<button class="combat-btn" id="'+cid+'-btn-items" style="color:#5eaee0;font-size:.6rem" title="Use a consumable item.">🎒 Items</button>'
       + (onEscape ? '<button class="combat-btn" id="'+cid+'-btn-escape" style="font-size:.6rem" title="Attempt to flee.">💨 Flee</button>' : '<span></span>')
@@ -1773,12 +1778,10 @@ You walk back out.`
         : ''
 
       if(!activeSkills.length) {
+        // No active skills equipped — just show any passives quietly. The basic
+        // Strike / Heavy / Defend actions are always available above, so there's
+        // nothing the player needs to be warned about here.
         row.innerHTML = passiveStrip
-          + '<p style="font-family:\'Share Tech Mono\',monospace;font-size:.5rem;color:var(--ink-dim);padding:4px 0">'
-          + (battleSkillKeys.length===0
-              ? 'No active skills assigned — visit Skills page'
-              : battleSkillKeys.length+' skill key(s) found but not recognized — visit Skills page to re-save')
-          + '</p>'
         return
       }
 
@@ -1823,6 +1826,65 @@ You walk back out.`
       row.querySelectorAll('[data-skill-key]').forEach(btn => {
         btn.addEventListener('click', () => useSkillLocal(btn.dataset.skillKey))
       })
+    }
+
+    // ── Elemental keystone action buttons ─────────────────────────────────
+    // Renders unlocked elemental-tree keystones (Forge-Body, Chain Lightning,
+    // etc.) as clickable cooldown abilities — mirrors the class-skills row.
+    function renderKeystones() {
+      const row = $('keystone-row')
+      if (!row) return
+      let list = []
+      try { list = getUnlockedKeystones(player, ksCooldowns) } catch(_e) { list = [] }
+      if (!list.length) { row.innerHTML = ''; return }
+      row.innerHTML = '<div style="display:flex;gap:3px;flex-wrap:wrap">'
+        + list.map(k => {
+            const dim = k.available ? '' : 'opacity:.4;cursor:not-allowed;'
+            const cdTxt = k.available ? '' : ' ('+k.cooldown+')'
+            return '<button class="combat-btn" data-keystone="'+k.id+'" '+(k.available?'':'disabled ')
+              + 'style="font-size:.6rem;border-color:'+k.color+'99;color:'+k.color+';'+dim+'" '
+              + 'title="'+(k.desc||'').replace(/"/g,'&quot;')+'">✦ '+k.label+cdTxt+'</button>'
+          }).join('')
+        + '</div>'
+      row.querySelectorAll('[data-keystone]').forEach(btn => {
+        btn.addEventListener('click', () => useKeystoneLocal(btn.dataset.keystone))
+      })
+    }
+
+    // Fires when the player clicks a keystone button. Applies the effect,
+    // logs it, sets the cooldown, and (unless the keystone grants a free
+    // action) ends the turn by resolving the enemy's move.
+    async function useKeystoneLocal(id) {
+      if (over) return
+      if ((ksCooldowns[id]||0) > 0) return
+      let res
+      try {
+        res = applyKeystone(id, player, statusEffects, {
+          enemyHp, maxEnemyHp, currentHp, maxPlayerHp, playerATK: playerATK(), playerDEF: playerDEF(),
+        })
+      } catch(_e) { return }
+      const msgs = [...(res.messages||[])]
+      if (res.enemyDamage > 0) enemyHp = Math.max(0, enemyHp - res.enemyDamage)
+      if (res.healPlayer  > 0) currentHp = Math.min(maxPlayerHp, currentHp + res.healPlayer)
+      // Apply any status flags the keystone set.
+      if (res.setStatus) for (const k of Object.keys(res.setStatus)) statusEffects[k] = res.setStatus[k]
+      ksCooldowns[id] = res.cooldown || 3
+      syncBars()
+      log(msgs.join('<br>'))
+      // Win check after keystone damage.
+      if (enemyHp <= 0) { await endCombat('win'); return }
+      // Most keystones consume the turn (enemy acts); free-action ones don't.
+      if (res.consumesTurn) {
+        setButtons(false)
+        // Resolve enemy turn via a lightweight strike, mirroring how defend works.
+        // We reuse doTurn's flow by simulating a 'defend-less' enemy action:
+        // simplest correct approach is to let the enemy act through doTurn with
+        // a no-op player action. We call doTurn('skip') which the engine treats
+        // as no player action but a full enemy turn.
+        await doTurn('keystone_pass', null)
+      } else {
+        renderKeystones()
+      }
     }
 
     // ── Class skill action buttons ───────────────────────────────────────
@@ -1995,6 +2057,7 @@ You walk back out.`
 
     renderSkillSlots()
     renderClassSkills()
+    renderKeystones()
     syncBars()
 
     // ── Oathbreaker oath picker ──────────────────────────────────────
@@ -2639,6 +2702,15 @@ You walk back out.`
     }
 
     async function doTurn(playerAction, skillKey=null) {
+      turnCount++
+      // Held Breath (Aero): gain a stack when you take a non-attack action
+      // (defend / keystone_pass), spend them on your next attack.
+      if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('wind_aggr_3')){
+        if(playerAction==='defend' || playerAction==='keystone_pass'){
+          const att3 = (player.attuned_element||player.element)==='wind'
+          statusEffects.cfx_heldBreathStacks = Math.min(3, (statusEffects.cfx_heldBreathStacks||0)+1)
+        }
+      }
       if(over)return
       setButtons(false)
       defending=false
@@ -2687,6 +2759,8 @@ You walk back out.`
       if(statusEffects.enemyStunTurns>0) statusEffects.enemyStunTurns--
       if(statusEffects.rootTrapTurns>0)  statusEffects.rootTrapTurns--
       Object.keys(statusEffects.skillCooldowns).forEach(k=>{if(statusEffects.skillCooldowns[k]>0)statusEffects.skillCooldowns[k]--})
+      // Tick elemental keystone cooldowns too.
+      Object.keys(ksCooldowns).forEach(k=>{if(ksCooldowns[k]>0)ksCooldowns[k]--})
 
       // Mourner's Pace (Hollow t2b): SPD doubles below 50% HP.
       let pSPD=playerSPD()+(statusEffects.playerSPDBonus||0)
@@ -2715,6 +2789,100 @@ You walk back out.`
 
       let messages=[]
 
+      // Applies signature stacks (Ember Memory / Long Decay) to the enemy when
+      // the player attacks. Two sources: (1) keystone-forced windows — Cinder
+      // Step sets cfx_emberStepTurns, Plague Fang sets cfx_plagueFangTurns, each
+      // counting down per attack (and applying 2 stacks while the attuned 6-turn
+      // version is active); (2) proc nodes — Ash Recall (fire_aggr_3) / Virulence
+      // (poison_aggr_3) give a chance-on-attack to apply a stack. Max stacks are
+      // capped (base 3, +tree *_max_stacks nodes).
+      // Reverberation (Lux): when a Lux skill lands, it may ECHO — dealing a
+      // fraction of its damage again. Echo CHANCE comes from the tree's
+      // reverberation_chance_pct nodes (base 15% if Reverberation notable is
+      // unlocked, +Sustain); echo DAMAGE fraction is 50% base, boosted by
+      // reverberation_dmg_pct (Amplitude). The Standing Wave keystone sets
+      // cfx_standingWave to a count of GUARANTEED full-power echoes (and, if
+      // attuned, those ignore DEF — handled by the flag).
+      function applyReverbEcho(baseDamage) {
+        const has = id => Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes(id)
+        const att = (player.attuned_element||player.element) === 'arcane'
+        let echoes = 0
+        let fullPower = false
+        // Standing Wave: guaranteed full-power echoes first.
+        if ((statusEffects.cfx_standingWave||0) > 0) {
+          echoes = 1
+          fullPower = true
+          statusEffects.cfx_standingWave--
+        } else if (has('arcane_aggr_3')) {
+          // Reverberation notable: chance-based echo.
+          let chance = (att ? 0.30 : 0.15) + (()=>{try{return elRaw(player,'reverberation_chance_pct')}catch(_e){return 0}})()/100
+          if (Math.random() < chance) echoes = 1
+        }
+        if (echoes <= 0) return
+        const dmgPct = (()=>{try{return elRaw(player,'reverberation_dmg_pct')}catch(_e){return 0}})()/100
+        const frac = fullPower ? 1 : (0.5 + dmgPct)
+        const echoDmg = Math.max(1, Math.round(baseDamage * frac))
+        enemyHp = Math.max(0, enemyHp - echoDmg)
+        messages.push('✨ Reverberation echo — <strong>'+echoDmg+'</strong>!')
+      }
+
+      function applyStacksOnAttack() {
+        const has = id => Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes(id)
+        const att = el => (player.attuned_element||player.element) === el
+        // ── Ember Memory (fire) ──
+        {
+          const maxStacks = 3 + (()=>{try{return elRaw(player,'ember_memory_max_stacks')}catch(_e){return 0}})()
+          let add = 0
+          if((statusEffects.cfx_emberStepTurns||0) > 0){ add += att('fire') ? 2 : 1; statusEffects.cfx_emberStepTurns-- }
+          if(has('fire_aggr_3')){ const chance = att('fire') ? 0.30 : 0.15; if(Math.random() < chance) add += 1 }
+          if(add > 0){
+            statusEffects.cfx_emberStacks = Math.min(maxStacks, (statusEffects.cfx_emberStacks||0) + add)
+            messages.push('🔥 Ember Memory applied ('+statusEffects.cfx_emberStacks+').')
+          }
+        }
+        // ── Long Decay (poison) ──
+        {
+          const maxStacks = 3 + (()=>{try{return elRaw(player,'long_decay_max_stacks')}catch(_e){return 0}})()
+          let add = 0
+          if((statusEffects.cfx_plagueFangTurns||0) > 0){ add += att('poison') ? 2 : 1; statusEffects.cfx_plagueFangTurns-- }
+          if(has('poison_aggr_3')){ const chance = att('poison') ? 0.30 : 0.15; if(Math.random() < chance) add += 1 }
+          if(add > 0){
+            statusEffects.cfx_longDecayStacks = Math.min(maxStacks, (statusEffects.cfx_longDecayStacks||0) + add)
+            messages.push('☠ Long Decay applied ('+statusEffects.cfx_longDecayStacks+').')
+          }
+        }
+        // ── Second Strike (Volt): chance to immediately strike again ──
+        if(has('lightning_aggr_3')){
+          const chance = att('lightning') ? 0.30 : 0.15
+          if(Math.random() < chance){
+            // Second hit at 50% ATK, boosted by second_strike_dmg_pct nodes.
+            const bonus = (()=>{try{return elRaw(player,'second_strike_dmg_pct')}catch(_e){return 0}})()/100
+            const d = Math.max(1, Math.round(playerATK() * (0.5 + bonus)))
+            enemyHp = Math.max(0, enemyHp - d)
+            messages.push('⚡ Second Strike — <strong>'+d+'</strong>!')
+          }
+        }
+        // ── Still Water (Aqua): chance to strip a buff from the enemy ──
+        if(has('water_aggr_3')){
+          const chance = att('water') ? 0.30 : 0.15
+          if(Math.random() < chance){
+            let stripped = false
+            if(statusEffects.enemyATKBuff){ statusEffects.enemyATKBuff=0; stripped=true }
+            if(statusEffects.enemyDEFBuff){ statusEffects.enemyDEFBuff=0; stripped=true }
+            messages.push(stripped ? '💧 Still Water — stripped the enemy\'s buff!' : '💧 Still Water — nothing to strip.')
+          }
+        }
+        // ── Unseen (Shadow): chance to gain a stealth stack on attack ──
+        if(has('shadow_aggr_3')){
+          const chance = att('shadow') ? 0.30 : 0.15
+          if(Math.random() < chance){
+            const maxStacks = 3 + (()=>{try{return elRaw(player,'unseen_max_stacks')}catch(_e){return 0}})()
+            statusEffects.cfx_unseenStacks = Math.min(maxStacks, (statusEffects.cfx_unseenStacks||0) + 1)
+            messages.push('🌑 Unseen — you slip from sight ('+statusEffects.cfx_unseenStacks+').')
+          }
+        }
+      }
+
       function resolvePlayerAction() {
         // ── Tier-2 elemental hit FX ──────────────────────────────────
         // Fire a burst over the enemy keyed to the attack's element. Skills
@@ -2741,7 +2909,8 @@ You walk back out.`
             playBuffFx(_playerRow, _fxEl)
           }
         } catch (_e) { /* FX must never break combat */ }
-        if(playerAction==='strike') {
+        if(playerAction==='keystone_pass') { /* keystone already resolved; player takes no further action this turn */ }
+        else if(playerAction==='strike') {
           const roll=Math.floor(Math.random()*(6+luckBonus))+1
           let baseATK=playerATK()+(statusEffects.playerATKBonus||0)
           const ignoreDEF=statusEffects.ignoreEnemyDEF; statusEffects.ignoreEnemyDEF=false
@@ -2762,12 +2931,17 @@ You walk back out.`
           const _bonusFlatDmg  = (typeof _clsAtk.bonusFlatDmg  === 'number') ? _clsAtk.bonusFlatDmg  : 0
 
           let dmg=Math.max(1,Math.round(((baseATK+roll)*flickerMult+_bonusFlatDmg)*_dmgMult))
-          // Crit chance from Judgment Chain or other sources — roll it.
+          // Crit chance: class sources (_critChanceAdd) PLUS the elemental tree's
+          // crit_chance_pct nodes. Crit multiplier is the base 1.5 plus the tree's
+          // crit_dmg_pct nodes. Both wrapped so the tree can never break the roll.
+          let _elCritCh = 0, _elCritDmg = 0
+          try { _elCritCh = elCritChance(player); _elCritDmg = elCritDmg(player) } catch(_e){}
+          const _totalCritChance = _critChanceAdd + _elCritCh
           let wasCrit = false
-          if (_critChanceAdd > 0 && Math.random() < _critChanceAdd) {
+          if (_totalCritChance > 0 && Math.random() < _totalCritChance) {
             wasCrit = true
-            dmg = Math.round(dmg * 1.5)
-            messages.push('⚖ Judgment Chain — critical strike.')
+            dmg = Math.round(dmg * (1.5 + _elCritDmg))
+            messages.push('🎯 Critical strike!')
             // Executioner's Eye: crits ignore 50% enemy DEF
             if (_defIgnoreFrac > 0 && (enemy.def||0) > 0) {
               const defBonus = Math.round((enemy.def||0) * _defIgnoreFrac)
@@ -2780,10 +2954,59 @@ You walk back out.`
           // strike would carry its element, but the basic Strike action is
           // always physical, so this is a no-op unless a future basic attack
           // is elementally tagged. Skill damage is scaled in the skill block.
+          // Unseen (Shadow): spend stealth stacks for bonus damage on this strike.
+          if((statusEffects.cfx_unseenStacks||0) > 0){
+            const per = (()=>{try{return elRaw(player,'unseen_dmg_pct')}catch(_e){return 12}})() || 12
+            const bonus = Math.round(dmg * (per/100) * statusEffects.cfx_unseenStacks)
+            if(bonus>0){ dmg += bonus; messages.push('🌑 Unseen strike +'+bonus+' ('+statusEffects.cfx_unseenStacks+' stacks).') }
+            statusEffects.cfx_unseenStacks = 0
+          }
+          // No Witnesses keystone: next strike is a guaranteed crit.
+          if(statusEffects.cfx_guaranteedCrit){ dmg = Math.round(dmg * 1.5); statusEffects.cfx_guaranteedCrit=false; messages.push('🌑 Guaranteed crit!') }
+          // Tremor (Terra): add a % of your DEF as bonus damage.
+          {
+            const gdp = (()=>{try{return elRaw(player,'guard_damage_pct')}catch(_e){return 0}})()
+            if(gdp>0){ const tb=Math.round(playerDEF()*(gdp/100)); if(tb>0){ dmg+=tb; messages.push('🪨 Tremor +'+tb+' (from DEF).') } }
+          }
+          // Landslide (Terra): chance to stun the enemy on attack.
+          {
+            const scp = (()=>{try{return elRaw(player,'stun_chance_pct')}catch(_e){return 0}})()
+            if(scp>0 && Math.random() < scp/100){ statusEffects.enemyStunTurns=Math.max(statusEffects.enemyStunTurns||0,1); messages.push('🪨 Landslide — enemy stunned!') }
+          }
+          // Armor Pierce (Ferro): ignore a % of enemy DEF — add it back as damage.
+          {
+            const dip = (()=>{try{return elRaw(player,'def_ignore_pct')}catch(_e){return 0}})()
+            if(dip>0 && (enemy.def||0)>0){ const back=Math.round((enemy.def||0)*Math.min(0.9,dip/100)); if(back>0){ dmg+=back; } }
+          }
+          // Slow Bloom (Flora): attacks grow stronger each turn elapsed this battle.
+          if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('plant_aggr_3')){
+            const att2 = (player.attuned_element||player.element)==='plant'
+            const perTurn = att2 ? 0.10 : 0.05
+            const cap = 0.50 + (()=>{try{return elRaw(player,'slow_bloom_cap_pct')}catch(_e){return 0}})()/100
+            const grow = Math.min(cap, perTurn * (turnCount||0))
+            if(grow>0){ const gb=Math.round(dmg*grow); if(gb>0){ dmg+=gb; } }
+          }
+          // Held Breath (Aero): spend stored stacks for bonus damage.
+          if((statusEffects.cfx_heldBreathStacks||0) > 0){
+            const per = 0.25 + (()=>{try{return elRaw(player,'held_breath_dmg_pct')}catch(_e){return 0}})()/100
+            const hb = Math.round(dmg * per * statusEffects.cfx_heldBreathStacks)
+            if(hb>0){ dmg+=hb; messages.push('💨 Held Breath released +'+hb+'!') }
+            statusEffects.cfx_heldBreathStacks = 0
+          }
           try { dmg = Math.round(dmg * elDamageMult(player, 'physical')) } catch(_e){}
           const oldEnemyHp = enemyHp
           enemyHp=Math.max(0,enemyHp-dmg)
           messages.push('You strike for <strong>'+dmg+'</strong>.'+(ignoreDEF?' (DEF ignored)':''))
+
+          // ── Lifesteal (Flora): heal a share of damage dealt ──
+          try {
+            let ls = (()=>{try{return elRaw(player,'lifesteal_pct')}catch(_e){return 0}})()/100
+            if((statusEffects.cfx_bloodflowerTurns||0) > 0){ ls = Math.max(ls, statusEffects.cfx_bloodflowerPct||0.5); statusEffects.cfx_bloodflowerTurns-- }
+            if(ls > 0 && dmg > 0){ const heal=Math.round(dmg*ls); if(heal>0){ currentHp=Math.min(maxPlayerHp,currentHp+heal); messages.push('🌿 Lifesteal +'+heal+' HP.') } }
+          } catch(_e){}
+
+          // ── Signature stack application on attack ──────────────────────
+          try { applyStacksOnAttack() } catch(_e){}
 
           // ── Class skill: post-attack hook ──────────────────────────────
           // Computes deferred damage from Delayed Verdict, increments hit counters.
@@ -2880,6 +3103,11 @@ You walk back out.`
           messages.push('Heavy strike <strong>'+dmg+'</strong>!')
         } else if(playerAction==='defend') {
           defending=true; messages.push('You brace — defense doubled.')
+          // Stoneborn (Terra): defending builds a stack (max 3, +bonus from Bastion etc.)
+          if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('earth_def_3')){
+            statusEffects.cfx_stonebornStacks = Math.min(3, (statusEffects.cfx_stonebornStacks||0) + 1)
+            messages.push('🪨 Stoneborn — you harden ('+statusEffects.cfx_stonebornStacks+').')
+          }
           if(statusEffects.absorptionHeal){const h=statusEffects.absorptionHeal;currentHp=Math.min(maxPlayerHp,currentHp+h);statusEffects.absorptionHeal=0;messages.push('🛡 Absorption +<strong>'+h+'</strong> HP!')}
           // ── Bastion Bulwark on Defend (t1a) ─────────────────────────
           if (player.active_class === 'bastion') {
@@ -2928,29 +3156,39 @@ You walk back out.`
           }
         } else if(playerAction==='skill'&&skillKey) {
           const sk=BATTLE_SKILLS[skillKey]; if(!sk)return
-          statusEffects.skillCooldowns[skillKey]=sk.type==='ultimate'?4:2
+          { const _cdr=(()=>{try{return elRaw(player,'cooldown_reduction')}catch(_e){return 0}})(); const _base=sk.type==='ultimate'?4:2;
+            if(statusEffects.cfx_perfectRecall){ statusEffects.skillCooldowns[skillKey]=0; statusEffects.cfx_perfectRecall=false; messages.push('✨ Perfect Recall — no cooldown!') }
+            else { statusEffects.skillCooldowns[skillKey]=Math.max(1,_base-_cdr) } }
           const sc=skillScale(skillKey),lv=_skillLv(skillKey)
+          // Elemental tree: damage multiplier for THIS skill's element. The
+          // damage-dealing skills below multiply their computed damage by this
+          // so the tree's +X% <element> damage nodes actually apply. Buffs and
+          // heals don't use it. Falls back to 1 on any error.
+          let _elMult = 1
+          try { _elMult = elDamageMult(player, sk.el || 'physical') } catch(_e){}
           // Skill effects
           if(sk.fn==='shadowStep'){statusEffects.ignoreEnemyDEF=true;messages.push('🌑 Shadow Step — next attack ignores DEF!')}
           else if(sk.fn==='rockArmor'){const b=Math.round(20*sc);statusEffects.playerDEFBonus=(statusEffects.playerDEFBonus||0)+b;statusEffects.rockArmorTurns=2;messages.push('🪨 Rock Armor +'+b+' DEF!')}
-          else if(sk.fn==='earthquake'){const d=Math.max(5,Math.round(playerATK()*2*sc));enemyHp=Math.max(0,enemyHp-d);statusEffects.enemyStunTurns=1;messages.push('🌍 Earthquake <strong>'+d+'</strong> — stunned!')}
-          else if(sk.fn==='fireBlast'){const d=Math.max(1,Math.round((25*sc+playerATK())-Math.floor((enemy.def||0)*0.5)));enemyHp=Math.max(0,enemyHp-d);messages.push('🔥 Fire Blast <strong>'+d+'</strong>!')}
+          else if(sk.fn==='earthquake'){const d=Math.max(5,Math.round(playerATK()*2*sc*_elMult));enemyHp=Math.max(0,enemyHp-d);statusEffects.enemyStunTurns=1;messages.push('🌍 Earthquake <strong>'+d+'</strong> — stunned!')}
+          else if(sk.fn==='fireBlast'){const d=Math.max(1,Math.round(((25*sc+playerATK())-Math.floor((enemy.def||0)*0.5))*_elMult));enemyHp=Math.max(0,enemyHp-d);messages.push('🔥 Fire Blast <strong>'+d+'</strong>!')}
           else if(sk.fn==='infernoZone'){statusEffects.infernoTurns=3;statusEffects.infernoDmg=Math.round(40*sc);messages.push('🔥 Inferno Zone — '+statusEffects.infernoDmg+' dmg/turn!')}
           else if(sk.fn==='healPulse'){const h=Math.round(25*sc);currentHp=Math.min(maxPlayerHp,currentHp+h);messages.push('✨ Heal Pulse +<strong>'+h+'</strong> HP!')}
           else if(sk.fn==='divineBarrier'){statusEffects.invulnerable=true;statusEffects.divineBarrierReflect=true;messages.push('✨ Divine Barrier — invulnerable this turn!')}
-          else if(sk.fn==='lightningStrike'){const d=Math.round((30+playerATK()*0.5)*sc);enemyHp=Math.max(0,enemyHp-d);messages.push('⚡ Lightning Strike <strong>'+d+'</strong>!')}
-          else if(sk.fn==='thunderstorm'){let tot=0;for(let i=0;i<5;i++){const b=Math.round(10*sc)+Math.floor(Math.random()*Math.round(10*sc));tot+=b;enemyHp=Math.max(0,enemyHp-b)};messages.push('⚡ Thunderstorm <strong>'+tot+'</strong>!')}
+          else if(sk.fn==='lightningStrike'){const d=Math.round((30+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('⚡ Lightning Strike <strong>'+d+'</strong>!')}
+          else if(sk.fn==='resonantBolt'){const d=Math.round((30+playerATK()*0.4)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('✨ Resonant Bolt <strong>'+d+'</strong>!');try{applyReverbEcho(d)}catch(_e){}}
+          else if(sk.fn==='standingChord'){const d=Math.round((45+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('✨ Standing Chord <strong>'+d+'</strong>!');try{applyReverbEcho(d)}catch(_e){}}
+          else if(sk.fn==='thunderstorm'){let tot=0;for(let i=0;i<5;i++){const b=Math.round((Math.round(10*sc)+Math.floor(Math.random()*Math.round(10*sc)))*_elMult);tot+=b;enemyHp=Math.max(0,enemyHp-b)};messages.push('⚡ Thunderstorm <strong>'+tot+'</strong>!')}
           else if(sk.fn==='bladeForm'){const ab=Math.round(20*sc),sb=Math.round(5*sc);statusEffects.playerATKBonus=(statusEffects.playerATKBonus||0)+ab;statusEffects.playerSPDBonus=(statusEffects.playerSPDBonus||0)+sb;messages.push('⚙ Blade Form ATK+'+ab+' SPD+'+sb+'!')}
           else if(sk.fn==='ironDomain'){const ab=Math.round(playerATK()*sc);statusEffects.playerATKBonus=(statusEffects.playerATKBonus||0)+ab;messages.push('⚙ Iron Domain ATK+'+ab+'!')}
           else if(sk.fn==='rootTrap'){statusEffects.rootTrapTurns=1;messages.push('🌿 Root Trap — enemy rooted!')}
-          else if(sk.fn==='overgrowth'){const h=Math.round(40*sc),d=Math.round(30*sc);currentHp=Math.min(maxPlayerHp,currentHp+h);enemyHp=Math.max(0,enemyHp-d);messages.push('🌿 Overgrowth +'+h+' HP & <strong>'+d+'</strong> dmg!')}
+          else if(sk.fn==='overgrowth'){const h=Math.round(40*sc),d=Math.round(30*sc*_elMult);currentHp=Math.min(maxPlayerHp,currentHp+h);enemyHp=Math.max(0,enemyHp-d);messages.push('🌿 Overgrowth +'+h+' HP & <strong>'+d+'</strong> dmg!')}
           else if(sk.fn==='waterShield'){const s=Math.round(30*sc);statusEffects.waterShield=(statusEffects.waterShield||0)+s;messages.push('💧 Water Shield absorbs '+s+' dmg!')}
-          else if(sk.fn==='tsunami'){const d=Math.round((50+playerATK()*0.4)*sc);enemyHp=Math.max(0,enemyHp-d);statusEffects.enemyStunTurns=1;messages.push('🌊 Tsunami <strong>'+d+'</strong> — stunned!')}
-          else if(sk.fn==='dashStrike'){const d=Math.max(1,Math.round((playerATK()*2+Math.floor(Math.random()*8))*sc));enemyHp=Math.max(0,enemyHp-d);messages.push('💨 Dash Strike <strong>'+d+'</strong>!')}
+          else if(sk.fn==='tsunami'){const d=Math.round((50+playerATK()*0.4)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);statusEffects.enemyStunTurns=1;messages.push('🌊 Tsunami <strong>'+d+'</strong> — stunned!')}
+          else if(sk.fn==='dashStrike'){const d=Math.max(1,Math.round((playerATK()*2+Math.floor(Math.random()*8))*sc*_elMult));enemyHp=Math.max(0,enemyHp-d);messages.push('💨 Dash Strike <strong>'+d+'</strong>!')}
           else if(sk.fn==='tornadoField'){statusEffects.enemyATKMult=Math.min(1,1-Math.round(sc*30)/100);statusEffects.playerSPDBonus=(statusEffects.playerSPDBonus||0)+pSPD;messages.push('💨 Tornado Field — enemy ATK -'+Math.round(sc*30)+'%!')}
           else if(sk.fn==='voidZone'){statusEffects.enemyATKMult=Math.min(1,1-Math.round(sc*30)/100);messages.push('🌑 Void Zone — enemy ATK -'+Math.round(sc*30)+'%!')}
           else if(sk.fn==='warbound'){statusEffects.playerATKBonus=(statusEffects.playerATKBonus||0)+Math.round(playerATK()*0.15);messages.push('✦ Warbound — ATK +15% this turn!')}
-          else if(sk.fn==='embersEnd'){const eb=enemyHp/maxEnemyHp<0.3?0.25:0;const d=Math.max(1,Math.round(playerATK()*(1+eb)*sc));enemyHp=Math.max(0,enemyHp-d);messages.push('✦ Executioner <strong>'+d+'</strong>!'+(eb>0?' [execute bonus]':''))}
+          else if(sk.fn==='embersEnd'){const eb=enemyHp/maxEnemyHp<0.3?0.25:0;const d=Math.max(1,Math.round(playerATK()*(1+eb)*sc*_elMult));enemyHp=Math.max(0,enemyHp-d);messages.push('✦ Executioner <strong>'+d+'</strong>!'+(eb>0?' [execute bonus]':''))}
           else if(sk.fn==='venomLance'){statusEffects.venomLanceTurns=3;messages.push('☠ Venom Lance — next Heavy poisons!')}
           else if(sk.fn==='predator'){const ab=Math.round(20*sc);statusEffects.playerATKBonus=(statusEffects.playerATKBonus||0)+ab;messages.push('✦ Predator ATK+'+ab+'!')}
           else if(sk.fn==='foresight'){statusEffects.foresightThisTurn=true;messages.push('🔮 Hex Weave — incoming dmg -90% this turn!')}
@@ -2958,7 +3196,7 @@ You walk back out.`
           else if(sk.fn==='heavyGround'){statusEffects.enemySPDDebuff=(statusEffects.enemySPDDebuff||0)+6;messages.push('🌀 Lockdown — enemy SPD -6!')}
           else if(sk.fn==='phantomStep'){statusEffects.phantomStep=true;statusEffects.nextCrit=true;messages.push('👻 Phantom Step — untargetable + guaranteed crit!')}
           else if(sk.fn==='timeLock'){statusEffects.enemyStunTurns=1;statusEffects.nextCrit=true;messages.push('⏱ Time Lock — enemy frozen, next attack ×2!')}
-          else if(sk.fn==='earthSpike'){const d=Math.max(1,Math.round((20-Math.floor((enemy.def||0)*0.3))*sc));enemyHp=Math.max(0,enemyHp-d);messages.push('🪨 Ground Spike <strong>'+d+'</strong>!')}
+          else if(sk.fn==='earthSpike'){const d=Math.max(1,Math.round((20-Math.floor((enemy.def||0)*0.3))*sc*_elMult));enemyHp=Math.max(0,enemyHp-d);messages.push('🪨 Ground Spike <strong>'+d+'</strong>!')}
           else if(sk.fn==='nightshroud'){statusEffects.nightshroud=true;messages.push('🌑 Nightshroud — first dodge is free!')}
           else if(sk.fn==='thornwall'){statusEffects.thornwall=true;messages.push('🌿 Thornwall — Defend reflects 15% dmg!')}
           else if(sk.fn==='dreadPulse'){statusEffects.dreadPulseStacks=(statusEffects.dreadPulseStacks||0);messages.push('💀 Dread Pulse active — each hit -2 enemy ATK!')}
@@ -2970,8 +3208,12 @@ You walk back out.`
           else if(sk.fn==='bloodthirst'){messages.push('🩸 Bloodthirst ready — triggers on kill!')}
           else if(sk.fn==='spellSurge'){statusEffects.spellSurge=true;messages.push('✨ Spell Surge — next skill ×1.5!')}
           else if(sk.fn==='sixthSense'){statusEffects.sixthSense=true;messages.push('👁 Sixth Sense — predicting enemy move!')}
-          else if(sk.fn==='chaosEngine'){const effects=['fire','stun','heal','buff'];const ef=effects[Math.floor(Math.random()*effects.length)];if(ef==='fire'){const d=Math.round(30*sc);enemyHp=Math.max(0,enemyHp-d);messages.push('🌀 Chaos — blast for <strong>'+d+'</strong>!')}else if(ef==='stun'){statusEffects.enemyStunTurns=1;messages.push('🌀 Chaos — enemy stunned!')}else if(ef==='heal'){const h=Math.round(25*sc);currentHp=Math.min(maxPlayerHp,currentHp+h);messages.push('🌀 Chaos — healed <strong>'+h+'</strong>!')}else{statusEffects.playerATKBonus=(statusEffects.playerATKBonus||0)+Math.round(15*sc);messages.push('🌀 Chaos — ATK buffed!')}}
+          else if(sk.fn==='chaosEngine'){const effects=['fire','stun','heal','buff'];const ef=effects[Math.floor(Math.random()*effects.length)];if(ef==='fire'){const d=Math.round(30*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('🌀 Chaos — blast for <strong>'+d+'</strong>!')}else if(ef==='stun'){statusEffects.enemyStunTurns=1;messages.push('🌀 Chaos — enemy stunned!')}else if(ef==='heal'){const h=Math.round(25*sc);currentHp=Math.min(maxPlayerHp,currentHp+h);messages.push('🌀 Chaos — healed <strong>'+h+'</strong>!')}else{statusEffects.playerATKBonus=(statusEffects.playerATKBonus||0)+Math.round(15*sc);messages.push('🌀 Chaos — ATK buffed!')}}
           else if(sk.fn==='ancientRoot'){statusEffects.ancientRootShield=Math.round(maxPlayerHp*0.2*sc);messages.push('🌿 Ancient Root — shield activated!')}
+          // Signature stacks also apply when casting attack skills (e.g. Fire
+          // Blast during a Cinder Step window applies Ember Memory).
+          const _ATTACK_FNS_STACK = new Set(['fireBlast','earthquake','earthSpike','lightningStrike','thunderstorm','tsunami','dashStrike','overgrowth','embersEnd','chaosEngine'])
+          if(_ATTACK_FNS_STACK.has(sk.fn)){ try { applyStacksOnAttack() } catch(_e){} }
         }
       }
 
@@ -2981,9 +3223,31 @@ You walk back out.`
         // Bulwark passive: if a DEF-double is queued, apply 2x DEF this turn then consume it.
         let _bulwarkDef = 0
         if(statusEffects.bulwarkDefDouble){_bulwarkDef=playerDEF();statusEffects.bulwarkDefDouble=false}
-        let eDmg=Math.max(1,Math.round((enemy.atk||10)-(defending?playerDEF()*2:playerDEF())-_bulwarkDef+(Math.random()*6|0)))
+        // ── Shadow dodge: Misdirection node + Nightshade keystone buff ──
+        let _dodged = false
+        {
+          let dodgeCh = (()=>{try{return elRaw(player,'dodge_chance_pct')}catch(_e){return 0}})()/100
+          if((statusEffects.cfx_dodgeBuffTurns||0) > 0) dodgeCh += 0.50
+          if((statusEffects.cfx_untargetableTurns||0) > 0) dodgeCh = 1   // No Witnesses: can't be hit
+          if(dodgeCh > 0 && Math.random() < dodgeCh){
+            _dodged = true
+            const hod = (()=>{try{return elRaw(player,'hp_on_dodge')}catch(_e){return 0}})()
+            if(hod > 0){ currentHp = Math.min(maxPlayerHp, currentHp + hod); messages.push('🌑 Dodged — slipped aside (+'+hod+' HP).') }
+            else messages.push('🌑 Dodged — the blow finds only shadow.')
+          }
+        }
+        let eDmg = _dodged ? 0 : Math.max(1,Math.round((enemy.atk||10)-(defending?playerDEF()*2:playerDEF())-_bulwarkDef+(Math.random()*6|0)))
         // Elemental tree: apply total resistance to incoming damage (capped in module).
         try { eDmg = Math.max(1, Math.round(eDmg * elResistMult(player))) } catch(_e){}
+        // Elemental keystone: Forge-Body / Glacier-Body / Storm Ward / Aegis /
+        // Living Antidote — half damage from ALL sources while active.
+        if ((statusEffects.cfx_damageHalveTurns||0) > 0) { eDmg = Math.max(1, Math.round(eDmg * 0.5)) }
+        // Stoneborn (Terra): each stack reduces incoming damage (8%/stack, 16% attuned).
+        if((statusEffects.cfx_stonebornStacks||0) > 0 && eDmg > 0){
+          const perStack = ((player.attuned_element||player.element)==='earth') ? 0.16 : 0.08
+          const reduce = Math.min(0.6, perStack * statusEffects.cfx_stonebornStacks)
+          eDmg = Math.max(1, Math.round(eDmg * (1 - reduce)))
+        }
         eDmg=Math.round(eDmg*(statusEffects.enemyATKMult||1.0))
         // Cowardice modifier (#20): Twin Judges hit harder while player is
         // under 50% HP. Only applies to the Judges fight (gated by judgesForm).
@@ -3020,6 +3284,20 @@ You walk back out.`
           messages.push(enemy.name+' strikes for <strong>'+eDmg+'</strong>.')
           // Elemental tree: reflect a share of damage taken back at the enemy.
           try { const _rf = elReflect(player); if(_rf>0 && eDmg>0){ const _rb=Math.max(1,Math.round(eDmg*_rf)); enemyHp=Math.max(0,enemyHp-_rb); messages.push('☠ Caustic reflect <strong>'+_rb+'</strong>!') } } catch(_e){}
+          // Keystone reflect: Forge-Body / Living Antidote / Storm Ward etc. reflect
+          // 25% of damage taken back while their reflect timer is active.
+          if(eDmg>0 && ((statusEffects.cfx_fireReflectTurns||0)>0 || (statusEffects.cfx_poisonReflectTurns||0)>0)){
+            const _kr=Math.max(1,Math.round(eDmg*0.25)); enemyHp=Math.max(0,enemyHp-_kr);
+            messages.push('✦ Keystone reflect <strong>'+_kr+'</strong>!')
+          }
+          // Metal reflect: Mirror Skin (passive metal_reflect_pct) + Iron Maiden (50%).
+          if(eDmg>0){
+            let mr = (()=>{try{return elRaw(player,'metal_reflect_pct')}catch(_e){return 0}})()/100
+            if((statusEffects.cfx_ironMaidenTurns||0) > 0) mr = Math.max(mr, 0.5)
+            if(mr > 0){ const _mr=Math.max(1,Math.round(eDmg*Math.min(0.6,mr))); enemyHp=Math.max(0,enemyHp-_mr); messages.push('⚙ Reflect <strong>'+_mr+'</strong> back!') }
+          }
+          // Aegis / Storm Ward: convert a share of damage taken into... nothing yet
+          // (no MP system) — left as damage-halve only, which is already applied.
           // Bulwark (passive): count consecutive enemy hits; at 2, queue a DEF-double next turn.
           if(statusEffects.bulwarkPassive){statusEffects.bulwarkHitStreak=(statusEffects.bulwarkHitStreak||0)+1;if(statusEffects.bulwarkHitStreak>=2){statusEffects.bulwarkDefDouble=true;statusEffects.bulwarkHitStreak=0;messages.push('🛡 Bulwark — DEF doubled next turn!')}}
         }
@@ -3086,7 +3364,29 @@ You walk back out.`
       // DoT effects
       if(statusEffects.burnTurns>0){const bd=statusEffects.burnDmg;enemyHp=Math.max(0,enemyHp-bd);statusEffects.burnTurns--;messages.push('🔥 Burn — <strong>'+bd+'</strong> dmg ('+statusEffects.burnTurns+' left)')}
       if(statusEffects.infernoTurns>0){const id=statusEffects.infernoDmg||40;enemyHp=Math.max(0,enemyHp-id);statusEffects.infernoTurns--;messages.push('🔥 Inferno — <strong>'+id+'</strong> dmg!')}
+      // ── Signature stacking DoTs: Ember Memory (Ignis) & Long Decay (Venin) ──
+      // Each stack deals per-stack damage every turn, then all stacks decay by 1.
+      // Per-stack damage and max-stacks scale from the tree's *_dmg_pct / *_max_stacks
+      // nodes (read via elRaw). Base per-stack damage is 4.
+      if((statusEffects.cfx_emberStacks||0) > 0){
+        const perStack = Math.round(4 * (1 + (()=>{try{return elRaw(player,'ember_memory_dmg_pct')}catch(_e){return 0}})()/100))
+        const dmg = perStack * statusEffects.cfx_emberStacks
+        enemyHp = Math.max(0, enemyHp - dmg)
+        messages.push('🔥 Ember Memory — <strong>'+dmg+'</strong> ('+statusEffects.cfx_emberStacks+' stacks)')
+        statusEffects.cfx_emberStacks--   // stacks decay over time
+      }
+      if((statusEffects.cfx_longDecayStacks||0) > 0){
+        const perStack = Math.round(4 * (1 + (()=>{try{return elRaw(player,'long_decay_dmg_pct')}catch(_e){return 0}})()/100))
+        const dmg = perStack * statusEffects.cfx_longDecayStacks
+        enemyHp = Math.max(0, enemyHp - dmg)
+        messages.push('☠ Long Decay — <strong>'+dmg+'</strong> ('+statusEffects.cfx_longDecayStacks+' stacks)')
+        statusEffects.cfx_longDecayStacks--
+      }
       if(statusEffects.regenTurns>0){const rh=Math.round(maxPlayerHp*0.04);currentHp=Math.min(maxPlayerHp,currentHp+rh);messages.push('💧 Flow regen +'+rh+' HP')}
+      // Living Stone (Terra): flat HP regen each turn from the tree.
+      { const hpr=(()=>{try{return elRaw(player,'hp_regen_combat')}catch(_e){return 0}})(); if(hpr>0 && currentHp<maxPlayerHp){ currentHp=Math.min(maxPlayerHp,currentHp+hpr); messages.push('🪨 Living Stone +'+hpr+' HP') } }
+      // World Tree (Flora keystone): heal 10% max HP each turn while active.
+      if((statusEffects.cfx_worldTreeTurns||0) > 0){ const wh=Math.round(maxPlayerHp*0.10); currentHp=Math.min(maxPlayerHp,currentHp+wh); statusEffects.cfx_worldTreeTurns--; messages.push('🌿 World Tree +'+wh+' HP') }
 
       // Player-side status DoTs and counter decrements. Player statuses are
       // applied by enemyAI.js (when used) via apply* helpers; ticking lives
@@ -3126,6 +3426,20 @@ You walk back out.`
         statusEffects.playerStunTurns--
         if(statusEffects.playerStunTurns===0){messages.push('⚡ Stun fades.')}
       }
+
+      // Worldspine (Terra): cleanse player debuffs when flagged.
+      if(statusEffects.cfx_cleanseDebuffs){
+        ;['playerStunTurns','playerTerrorTurns','enemySPDDebuff','burnTurns','poisonTurns'].forEach(k=>{ if(statusEffects[k]) statusEffects[k]=0 })
+        statusEffects.cfx_cleanseDebuffs=false
+        messages.push('🪨 Worldspine — debuffs cleansed.')
+      }
+      // ── Elemental keystone duration ticking ───────────────────────────
+      // Decrement the active-effect timers the keystones set. When a shield
+      // (damage-halve) expires, note it. Reflect timers tick silently.
+      ;['cfx_damageHalveTurns','cfx_fireReflectTurns','cfx_poisonReflectTurns',
+        'cfx_dmgToMpTurns','cfx_stunMeleeTurns','cfx_dodgeBuffTurns','cfx_untargetableTurns','cfx_ironMaidenTurns'].forEach(k=>{
+        if((statusEffects[k]||0)>0){ statusEffects[k]--; if(statusEffects[k]===0 && k==='cfx_damageHalveTurns') messages.push('✦ Your ward fades.') }
+      })
 
       // ── Class skill: turn-end hook (mark/silence countdown + DoT) ─────
       const _clsTurn = ClsCombat.onTurnEnd(player, statusEffects)
@@ -3185,6 +3499,7 @@ You walk back out.`
       setButtons(true)
       renderSkillSlots()
       renderClassSkills()
+      renderKeystones()
     }
   }
 
@@ -3297,10 +3612,10 @@ You walk back out.`
     return (window._equippedItems||[]).reduce((s,i)=>s+(i[stat]||0),0)
   }
   function calcATK() {
-    return Math.max(1,Math.round((player.atk||1)+(player.power||0)*0.6+(player.speed||0)*0.2+getEquippedBonus('atk_bonus')))
+    { let _a=(player.atk||1)+(player.power||0)*0.6+(player.speed||0)*0.2+getEquippedBonus('atk_bonus')+(()=>{try{return elRaw(player,'atk_bonus')}catch(_e){return 0}})(); if(statusEffects.cfx_forgeAtk)_a*=1.3; return Math.max(1,Math.round(_a)) }
   }
   function calcDEF() {
-    return Math.round((player.def||0)+(player.guard||0)*0.6+(player.control||0)*0.2+getEquippedBonus('def_bonus'))
+    { let _d=(player.def||0)+(player.guard||0)*0.6+(player.control||0)*0.2+getEquippedBonus('def_bonus')+(()=>{try{return elRaw(player,'def_bonus')}catch(_e){return 0}})(); if(statusEffects.cfx_forgeDef)_d*=1.3; return Math.round(_d) }
   }
   function calcSPD() {
     return Math.round((player.speed||0)+(player.insight||0)*0.1+getEquippedBonus('speed_bonus'))
