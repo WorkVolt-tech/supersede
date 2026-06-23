@@ -3,9 +3,11 @@ import { supabase } from '../../supabase.js'
 import { META, SOCKET_RULES, rollSockets, ZONE_GUARDIANS } from './config.js'
 import { NODES } from './nodes.js'
 import { ITEM_IMAGES } from './items.js'
-import { xpForLevel, xpProgress, resolveLevelUp } from '../../data/leveling.js'
 import * as ClsCombat from '../../data/class_combat.js'
 import { BATTLE_SKILLS_REGISTRY, NOTABLE_SKILLS_REGISTRY } from '../../data/skills_registry.js'
+import { damageMult as elDamageMult, resistMult as elResistMult, reflectFraction as elReflect, critChanceBonus as elCritChance, critDamageBonus as elCritDmg, rawBonus as elRaw } from '../../data/elemental-bonuses.js'
+import { getUnlockedKeystones, applyKeystone } from '../../data/elemental-keystones.js'
+import { playHitFx, playBuffFx } from '../../data/combat-fx.js'
 import {
   getMoralTier,
   getMoralBarPct,
@@ -62,6 +64,9 @@ export async function mountChapter1(__mountOptions = {}) {
   // ── Constants ────────────────────────────────────
   // XP needed to reach next level — exponential curve
   // Level 1→2: 100, 2→3: 150, 3→4: 225, 4→5: 337, 5→6: 506, 6→7: 759...
+  function xpForLevel(level) {
+    return Math.floor(100 * Math.pow(1.5, level - 1))
+  }
 
   // ── App state ────────────────────────────────────
   // Always call renderNav so the bookmark re-paints on every mount.
@@ -129,12 +134,12 @@ export async function mountChapter1(__mountOptions = {}) {
     currentHp = newHp
     player.max_hp = newMaxHp
     player.level  = level
-    player.xp     = xp
+    player.xp     = newXp
 
     window.showToast('LEVEL UP! Lvl ' + level + ' — +5 HP · +1 all stats · +' + spGained + ' SP!')
     renderHUD()
 
-    return { level, max_hp: newMaxHp, hp: newHp, xp: xp,
+    return { level, max_hp: newMaxHp, hp: newHp, xp: newXp,
              skill_points: newSP, sp_claimed: newClaimed, ...updStats }
   }
 
@@ -146,10 +151,9 @@ export async function mountChapter1(__mountOptions = {}) {
     const lvl = player.level || 1
     const hpPct  = Math.max(0, Math.round(hp / mhp * 100))
     const hpCol  = hpPct > 60 ? '#5ec45e' : hpPct > 30 ? '#c8b96e' : '#e05555'
-    const _xpP = xpProgress(player)
-    const xpNext = _xpP.needed
-    const xpIntoLevel = _xpP.into
-    const xpPct = _xpP.pct
+    const xpNext = xpForLevel(lvl)
+    const xpIntoLevel = Math.max(0, Math.min(xp, xpNext - 1))
+    const xpPct = Math.min(100, Math.round(xpIntoLevel / xpNext * 100))
 
     // ── Moral standing (HUD display) ─────────────────────────
     // Shared 6-tier ladder via reputation.js (Hero/Good/Neutral/Ruthless/Corrupt/Villain).
@@ -400,8 +404,8 @@ export async function mountChapter1(__mountOptions = {}) {
   function triggerForcedEyeEncounter(encounterType, resumeNextId) {
     const isSwarm   = encounterType === 'watcher_eye_swarm'
     const enemyData = isSwarm
-      ? { name:"Watcher's Eye Swarm", icon:'👁', hp:140, atk:14, xp:180, loot:[{itemKey:'rune_aero',qty:1},{itemKey:'rune_terra',qty:1}], img:'../assets/boss/watcher_eye_swarm.png' }
-      : { name:"Watcher's Eye",       icon:'👁', hp:60,  atk:12, xp:80,  loot:[{itemKey:'rune_aqua',qty:1}],                               img:'../assets/boss/watcher_eye.png' }
+      ? { name:"Watcher's Eye Swarm", icon:'👁', hp:140, atk:14, xp:180, loot:[{itemKey:'rune_aero',qty:1},{itemKey:'rune_terra',qty:1}], img:'../assets/boss/watcher_eye_swarm.webp' }
+      : { name:"Watcher's Eye",       icon:'👁', hp:60,  atk:12, xp:80,  loot:[{itemKey:'rune_aqua',qty:1}],                               img:'../assets/boss/watcher_eye.webp' }
 
     const alertLines = isSwarm ? [
       "The sky fractures in seven places at once.",
@@ -925,7 +929,7 @@ export async function mountChapter1(__mountOptions = {}) {
       if (!watcherImg) {
         const img = document.createElement('img')
         img.id    = 'watcher-img'
-        img.src   = '../assets/boss/the_watcher.png'
+        img.src   = '../assets/boss/the_watcher.webp'
         img.alt   = 'The Watcher'
         img.style.cssText = 'width:100%;max-width:320px;display:block;margin:1.5rem auto 0;border-radius:4px;opacity:0;transition:opacity 1s;filter:' + (nodeId==='boss'?'none':'brightness(.7) saturate(0.6)')
         document.getElementById('story-text').insertAdjacentElement('afterend', img)
@@ -1055,7 +1059,7 @@ export async function mountChapter1(__mountOptions = {}) {
       <p class="choices-label">Choose a Zone</p>
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:1rem">
         ${node.locations.map(loc => {
-          const zMap = {'loc_garage':'../assets/zones/zone_parking_garage.png','loc_market':'../assets/zones/zone_frozen_market.png','loc_tower':'../assets/zones/zone_glass_tower.png'}
+          const zMap = {'loc_garage':'../assets/zones/zone_parking_garage.webp','loc_market':'../assets/zones/zone_frozen_market.webp','loc_tower':'../assets/zones/zone_glass_tower.webp'}
           const zImg = zMap[loc.id]
           const unlocked = isZoneUnlocked(loc.id)
           const guardian = ZONE_GUARDIANS[loc.id]
@@ -1118,9 +1122,9 @@ export async function mountChapter1(__mountOptions = {}) {
 
   function renderFarmZone(panel, loc) {
     const zoneImgs = {
-      'loc_garage': '../assets/zones/zone_parking_garage.png',
-      'loc_market': '../assets/zones/zone_frozen_market.png',
-      'loc_tower':  '../assets/zones/zone_glass_tower.png',
+      'loc_garage': '../assets/zones/zone_parking_garage.webp',
+      'loc_market': '../assets/zones/zone_frozen_market.webp',
+      'loc_tower':  '../assets/zones/zone_glass_tower.webp',
     }
     const zoneImg = zoneImgs[loc.id]
 
@@ -1138,32 +1142,32 @@ export async function mountChapter1(__mountOptions = {}) {
             return `<span style="font-family:'Share Tech Mono',monospace;font-size:.52rem;color:var(--ink-dim)">${label} ${pct}%</span>`
           }).join(' · ')
           const eImgs = {
-            'Glitch Rat':              '../assets/enemy/enemy_glitch_rat.png',
-            'Glitch Rats x2':         '../assets/enemy/enemy_glitch_rat.png',
-            'Garage Glitch Rats':     '../assets/enemy/enemy_glitch_rat.png',
-            'Static Crawler':         '../assets/enemy/enemy_static_crawler.png',
-            'Static Crawlers':        '../assets/enemy/enemy_static_crawler.png',
-            'Static Crawlers x5':     '../assets/enemy/enemy_static_crawler.png',
-            'Pixel Shard':            '../assets/enemy/enemy_pixel_shard.png',
-            'Flicker Hound':          '../assets/enemy/enemy_flicker_hound.png',
-            "Lena's Flicker Hounds":  '../assets/enemy/enemy_flicker_hound.png',
-            'Pixel Drone':            '../assets/enemy/enemy_pixel_drone.png',
-            'Jury-Rigged Pixel Drones':'../assets/enemy/enemy_jury_rigged_pixel_drones.png',
-            'Fracture Wolf':          '../assets/enemy/enemy_fracture_wolf.png',
-            'Fracture Wolves':        '../assets/enemy/enemy_fracture_wolf.png',
-            'Market Creature Cluster':'../assets/enemy/enemy_market_creature_cluster_wolf.png',
-            'Fragment Cluster':       '../assets/enemy/enemy_fragment_cluster.png',
-            'Corrupted Sentry':       '../assets/enemy/enemy_corrupted_sentry.png',
-            'Lobby Corrupted Sentries':'../assets/enemy/enemy_corrupted_sentry.png',
-            'Void Sentinel':          '../assets/enemy/enemy_void_sentinel.png',
-            'System Enforcer':        '../assets/enemy/enemy_system_enforcer.png',
-            'Dorian':                 '../assets/npc/dorian_normal.png',
-            'Dorian (Betrayal)':      '../assets/npc/dorian_betrayal.png',
-            "Watcher's Eye":          '../assets/boss/watcher_eye.png',
-            "Watcher's Eye Swarm":    '../assets/boss/watcher_eye_swarm.png',
-            'Sentinel of the First Eye': '../assets/boss/sentinel_of_the_first_eye.png',
-            'The Surveyor':           '../assets/boss/the_surveyor.png',
-            'The Unseen':             '../assets/boss/the_unseen.png',
+            'Glitch Rat':              '../assets/enemy/enemy_glitch_rat.webp',
+            'Glitch Rats x2':         '../assets/enemy/enemy_glitch_rat.webp',
+            'Garage Glitch Rats':     '../assets/enemy/enemy_glitch_rat.webp',
+            'Static Crawler':         '../assets/enemy/enemy_static_crawler.webp',
+            'Static Crawlers':        '../assets/enemy/enemy_static_crawler.webp',
+            'Static Crawlers x5':     '../assets/enemy/enemy_static_crawler.webp',
+            'Pixel Shard':            '../assets/enemy/enemy_pixel_shard.webp',
+            'Flicker Hound':          '../assets/enemy/enemy_flicker_hound.webp',
+            "Lena's Flicker Hounds":  '../assets/enemy/enemy_flicker_hound.webp',
+            'Pixel Drone':            '../assets/enemy/enemy_pixel_drone.webp',
+            'Jury-Rigged Pixel Drones':'../assets/enemy/enemy_jury_rigged_pixel_drones.webp',
+            'Fracture Wolf':          '../assets/enemy/enemy_fracture_wolf.webp',
+            'Fracture Wolves':        '../assets/enemy/enemy_fracture_wolf.webp',
+            'Market Creature Cluster':'../assets/enemy/enemy_market_creature_cluster_wolf.webp',
+            'Fragment Cluster':       '../assets/enemy/enemy_fragment_cluster.webp',
+            'Corrupted Sentry':       '../assets/enemy/enemy_corrupted_sentry.webp',
+            'Lobby Corrupted Sentries':'../assets/enemy/enemy_corrupted_sentry.webp',
+            'Void Sentinel':          '../assets/enemy/enemy_void_sentinel.webp',
+            'System Enforcer':        '../assets/enemy/enemy_system_enforcer.webp',
+            'Dorian':                 '../assets/npc/dorian_normal.webp',
+            'Dorian (Betrayal)':      '../assets/npc/dorian_betrayal.webp',
+            "Watcher's Eye":          '../assets/boss/watcher_eye.webp',
+            "Watcher's Eye Swarm":    '../assets/boss/watcher_eye_swarm.webp',
+            'Sentinel of the First Eye': '../assets/boss/sentinel_of_the_first_eye.webp',
+            'The Surveyor':           '../assets/boss/the_surveyor.webp',
+            'The Unseen':             '../assets/boss/the_unseen.webp',
           }
           const eImg = eImgs[e.name]
           return `<div onclick="fightFarmEnemy(${i})"
@@ -1576,36 +1580,36 @@ export async function mountChapter1(__mountOptions = {}) {
         <div class="combat-enemy-row">
           ${(()=>{
             const EIMGS = {
-              'Glitch Rat':              '../assets/enemy/enemy_glitch_rat.png',
-              'Glitch Rats x2':         '../assets/enemy/enemy_glitch_rat.png',
-              'Garage Glitch Rats':     '../assets/enemy/enemy_glitch_rat.png',
-              'Static Crawler':         '../assets/enemy/enemy_static_crawler.png',
-              'Static Crawlers':        '../assets/enemy/enemy_static_crawler.png',
-              'Static Crawlers x5':     '../assets/enemy/enemy_static_crawler.png',
-              'Pixel Shard':            '../assets/enemy/enemy_pixel_shard.png',
-              'Flicker Hound':          '../assets/enemy/enemy_flicker_hound.png',
-              "Lena's Flicker Hounds":  '../assets/enemy/enemy_flicker_hound.png',
-              'Pixel Drone':            '../assets/enemy/enemy_pixel_drone.png',
-              'Jury-Rigged Pixel Drones':'../assets/enemy/enemy_jury_rigged_pixel_drones.png',
-              'Fracture Wolf':          '../assets/enemy/enemy_fracture_wolf.png',
-              'Fracture Wolves':        '../assets/enemy/enemy_fracture_wolf.png',
-              'Market Creature Cluster':'../assets/enemy/enemy_market_creature_cluster_wolf.png',
-              'Fragment Cluster':       '../assets/enemy/enemy_fragment_cluster.png',
-              'Corrupted Sentry':       '../assets/enemy/enemy_corrupted_sentry.png',
-              'Lobby Corrupted Sentries':'../assets/enemy/enemy_corrupted_sentry.png',
-              'Void Sentinel':          '../assets/enemy/enemy_void_sentinel.png',
-              'System Enforcer':        '../assets/enemy/enemy_system_enforcer.png',
-              'Dorian':                 '../assets/npc/dorian_normal.png',
-              'Dorian (Betrayal)':      '../assets/npc/dorian_betrayal.png',
-              "Watcher's Eye":              '../assets/boss/watcher_eye.png',
-              "Watcher's Eye Swarm":        '../assets/boss/watcher_eye_swarm.png',
-              'Sentinel of the First Eye':  '../assets/boss/sentinel_of_the_first_eye.png',
-              'The Surveyor':               '../assets/boss/the_surveyor.png',
-              'The Unseen':                 '../assets/boss/the_unseen.png',
+              'Glitch Rat':              '../assets/enemy/enemy_glitch_rat.webp',
+              'Glitch Rats x2':         '../assets/enemy/enemy_glitch_rat.webp',
+              'Garage Glitch Rats':     '../assets/enemy/enemy_glitch_rat.webp',
+              'Static Crawler':         '../assets/enemy/enemy_static_crawler.webp',
+              'Static Crawlers':        '../assets/enemy/enemy_static_crawler.webp',
+              'Static Crawlers x5':     '../assets/enemy/enemy_static_crawler.webp',
+              'Pixel Shard':            '../assets/enemy/enemy_pixel_shard.webp',
+              'Flicker Hound':          '../assets/enemy/enemy_flicker_hound.webp',
+              "Lena's Flicker Hounds":  '../assets/enemy/enemy_flicker_hound.webp',
+              'Pixel Drone':            '../assets/enemy/enemy_pixel_drone.webp',
+              'Jury-Rigged Pixel Drones':'../assets/enemy/enemy_jury_rigged_pixel_drones.webp',
+              'Fracture Wolf':          '../assets/enemy/enemy_fracture_wolf.webp',
+              'Fracture Wolves':        '../assets/enemy/enemy_fracture_wolf.webp',
+              'Market Creature Cluster':'../assets/enemy/enemy_market_creature_cluster_wolf.webp',
+              'Fragment Cluster':       '../assets/enemy/enemy_fragment_cluster.webp',
+              'Corrupted Sentry':       '../assets/enemy/enemy_corrupted_sentry.webp',
+              'Lobby Corrupted Sentries':'../assets/enemy/enemy_corrupted_sentry.webp',
+              'Void Sentinel':          '../assets/enemy/enemy_void_sentinel.webp',
+              'System Enforcer':        '../assets/enemy/enemy_system_enforcer.webp',
+              'Dorian':                 '../assets/npc/dorian_normal.webp',
+              'Dorian (Betrayal)':      '../assets/npc/dorian_betrayal.webp',
+              "Watcher's Eye":              '../assets/boss/watcher_eye.webp',
+              "Watcher's Eye Swarm":        '../assets/boss/watcher_eye_swarm.webp',
+              'Sentinel of the First Eye':  '../assets/boss/sentinel_of_the_first_eye.webp',
+              'The Surveyor':               '../assets/boss/the_surveyor.webp',
+              'The Unseen':                 '../assets/boss/the_unseen.webp',
             }
-            if (isBoss) return '<img src=\'../assets/boss/the_watcher.png\' alt=\'The Watcher\' style=\'width:80px;height:80px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 12px #00ffe740)\'>'
+            if (isBoss) return '<img src=\'../assets/boss/the_watcher.webp\' alt=\'The Watcher\' style=\'width:120px;height:120px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 12px #00ffe740)\'>'
             const src = EIMGS[enemy.name]
-            if (src) return `<img src="${src}" alt="${enemy.name}" style="width:80px;height:80px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))" onerror="this.outerHTML='<span class=\'combat-enemy-icon\'>${enemy.icon}</span>'">`
+            if (src) return `<img src="${src}" alt="${enemy.name}" style="width:110px;height:110px;object-fit:contain;border-radius:6px;flex-shrink:0;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))" onerror="this.outerHTML='<span class=\'combat-enemy-icon\'>${enemy.icon}</span>'">`
             return `<span class="combat-enemy-icon">${enemy.icon}</span>`
           })()}
           <div style="flex:1">
@@ -1673,6 +1677,9 @@ export async function mountChapter1(__mountOptions = {}) {
 
           <!-- Class skills — only renders if player has unlocked active-type skills -->
           <div id="${cid}-class-skills-row" style="margin-bottom:4px"></div>
+
+          <!-- Elemental keystones — auto-renders unlocked keystones as buttons -->
+          <div id="${cid}-keystone-row" style="margin-bottom:4px"></div>
 
           <!-- Utility row -->
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
@@ -1922,9 +1929,11 @@ export async function mountChapter1(__mountOptions = {}) {
           }
 
           if (isBoss) {
-            // NOTE: Chapter 2 is NOT unlocked here. The drive (vehicle.js) is the
-            // real gate — it unlocks the destination chapter on arrival. Unlocking
-            // on boss-win let players skip the drive, so that line was removed.
+            // Chapter 2 is NOT unlocked here — the drive (vehicle.js) is the real
+            // gate and unlocks the chapter on arrival. The boss only unlocks the
+            // DRIVE so the Drive button appears; finishing the drive unlocks Ch2.
+            const dru = player.drives_unlocked || []
+            if (!dru.includes(2)) { dru.push(2); updates.drives_unlocked = dru }
             // ── 1 SP for boss kill — only once ever ──
             const spKey = 'watcher_sp_claimed'
             const currentDefeated = updates.defeated_bosses || player.defeated_bosses || []
@@ -2090,6 +2099,8 @@ export async function mountChapter1(__mountOptions = {}) {
     Object.assign(BATTLE_SKILLS, NOTABLE_SKILLS)
 
     // ── Combat status effects ────────────────────────────────
+    let ksCooldowns = {}   // elemental keystone cooldowns { id: turnsLeft }
+    let turnCount = 0      // for Slow Bloom scaling
     let statusEffects = {
       playerATKBonus:  0,
       playerDEFBonus:  0,
@@ -2250,6 +2261,48 @@ export async function mountChapter1(__mountOptions = {}) {
       row.innerHTML = html
     }
 
+    // ── Elemental keystone action buttons (Ch1) ───────────────────────────
+    function renderKeystones() {
+      const row = $('keystone-row')
+      if (!row) return
+      let list = []
+      try { list = getUnlockedKeystones(player, ksCooldowns) } catch(_e) { list = [] }
+      if (!list.length) { row.innerHTML = ''; return }
+      row.innerHTML = '<div style="display:flex;gap:3px;flex-wrap:wrap">'
+        + list.map(k => {
+            const dim = k.available ? '' : 'opacity:.4;cursor:not-allowed;'
+            const cdTxt = k.available ? '' : ' ('+k.cooldown+')'
+            return '<button class="combat-btn" data-keystone="'+k.id+'" '+(k.available?'':'disabled ')
+              + 'style="font-size:.6rem;border-color:'+k.color+'99;color:'+k.color+';'+dim+'" '
+              + 'title="'+(k.desc||'').replace(/"/g,'&quot;')+'">✦ '+k.label+cdTxt+'</button>'
+          }).join('')
+        + '</div>'
+      row.querySelectorAll('[data-keystone]').forEach(btn => {
+        btn.addEventListener('click', () => useKeystoneLocal(btn.dataset.keystone))
+      })
+    }
+
+    async function useKeystoneLocal(id) {
+      if (over) return
+      if ((ksCooldowns[id]||0) > 0) return
+      let res
+      try {
+        res = applyKeystone(id, player, statusEffects, {
+          enemyHp, maxEnemyHp, currentHp, maxPlayerHp, playerATK: playerATK(), playerDEF: playerDEF(),
+        })
+      } catch(_e) { return }
+      const msgs = [...(res.messages||[])]
+      if (res.enemyDamage > 0) enemyHp = Math.max(0, enemyHp - res.enemyDamage)
+      if (res.healPlayer  > 0) currentHp = Math.min(maxPlayerHp, currentHp + res.healPlayer)
+      if (res.setStatus) for (const k of Object.keys(res.setStatus)) statusEffects[k] = res.setStatus[k]
+      ksCooldowns[id] = res.cooldown || 3
+      syncBars()
+      log(msgs.join('<br>'))
+      if (enemyHp <= 0) { await endCombat('win'); return }
+      if (res.consumesTurn) { setButtons(false); await doTurn('keystone_pass', null) }
+      else { renderKeystones() }
+    }
+
     // ── Class skill action buttons (Ch1 mirror of Ch2 renderClassSkills) ──
     // Renders a row of active class skills under the regular skill row.
     // Hidden if the player has no active class or no active-type skills.
@@ -2400,6 +2453,10 @@ export async function mountChapter1(__mountOptions = {}) {
       if (over) return
       setButtons(false)
       defending = false
+      turnCount++
+      if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('wind_aggr_3') && (playerAction==='defend'||playerAction==='keystone_pass')){
+        statusEffects.cfx_heldBreathStacks = Math.min(3, (statusEffects.cfx_heldBreathStacks||0)+1)
+      }
       const luckBonus  = Math.floor(eqLuck / 2)
       const unlocked   = player.skills_unlocked || []
 
@@ -2441,6 +2498,8 @@ export async function mountChapter1(__mountOptions = {}) {
       Object.keys(statusEffects.skillCooldowns).forEach(k => {
         if (statusEffects.skillCooldowns[k] > 0) statusEffects.skillCooldowns[k]--
       })
+      Object.keys(ksCooldowns).forEach(k => { if (ksCooldowns[k] > 0) ksCooldowns[k]-- })
+      ;['cfx_damageHalveTurns','cfx_fireReflectTurns','cfx_poisonReflectTurns','cfx_ironMaidenTurns','cfx_dodgeBuffTurns','cfx_untargetableTurns','cfx_worldTreeTurns'].forEach(k=>{ if((statusEffects[k]||0)>0) statusEffects[k]-- })
 
       // ── FF-Style Turn Order ───────────────────────────────────
       // Base speed comparison with jitter. Faster player goes first.
@@ -2491,7 +2550,11 @@ export async function mountChapter1(__mountOptions = {}) {
         // Wind dodge: Lv1 +20%, Lv10 +35%
         const windLv = unlocked.includes('wind_passive_dodge') ? _skillLvGlobal('wind_passive_dodge') : 0
         const windBonus = windLv > 0 ? 0.20 + (windLv - 1) * (0.15 / 9) : 0
-        return Math.min(0.55, base + windBonus)
+        // Elemental tree dodge: Misdirection/Drift/Tailwind nodes + Nightshade/Eye keystone buff.
+        let elDodge = (()=>{try{return elRaw(player,'dodge_chance_pct')}catch(_e){return 0}})()/100
+        if((statusEffects.cfx_dodgeBuffTurns||0) > 0) elDodge += 0.50
+        if((statusEffects.cfx_untargetableTurns||0) > 0) return 1
+        return Math.min(0.85, base + windBonus + elDodge)
       }
       function calcEnemyDodge() {
         const speedAdv = Math.max(0, eSPD - pSPD)
@@ -2505,6 +2568,9 @@ export async function mountChapter1(__mountOptions = {}) {
 
       // ── Player action ─────────────────────────────────────
       function resolvePlayerAction() {
+        // keystone_pass: the keystone already resolved; player takes no action,
+        // the enemy still gets its turn. Just return so no strike/skill fires.
+        if (playerAction === 'keystone_pass') return
         // Enemy dodge check (applies to attack actions only)
         const enemyDodged = (playerAction === 'strike' || playerAction === 'heavy') && Math.random() < calcEnemyDodge()
         if (enemyDodged) {
@@ -2542,22 +2608,60 @@ export async function mountChapter1(__mountOptions = {}) {
           const _bonusFlatDmg  = (typeof _clsAtk.bonusFlatDmg  === 'number') ? _clsAtk.bonusFlatDmg  : 0
 
           let dmg = Math.max(1, Math.round((baseATK + roll) * (backstab ? bsMult : 1) * flickerMult * _dmgMult + _bonusFlatDmg))
+          // Elemental tree: basic strike is physical (no element skill in Ch1),
+          // so damage% doesn't apply, but crit chance/damage from the trees do.
+          let _elCritCh = 0, _elCritDmg = 0
+          try { _elCritCh = elCritChance(player); _elCritDmg = elCritDmg(player) } catch(_e){}
+          const _totalCritChance = _critChanceAdd + _elCritCh
           let wasCrit = false
-          if (_critChanceAdd > 0 && Math.random() < _critChanceAdd) {
+          if (_totalCritChance > 0 && Math.random() < _totalCritChance) {
             wasCrit = true
-            dmg = Math.round(dmg * 1.5)
-            messages.push('⚖ Judgment Chain — critical strike.')
+            dmg = Math.round(dmg * (1.5 + _elCritDmg))
+            messages.push('🎯 Critical strike!')
             if (_defIgnoreFrac > 0 && (enemy.def || 0) > 0) {
               const defBonus = Math.round((enemy.def || 0) * _defIgnoreFrac)
               dmg += defBonus
               messages.push(`⚖ Executioner's Eye — pierced ${defBonus} DEF.`)
             }
           }
+          // ── Elemental tree offensive procs (ported from Ch2) ──
+          const _hasEl = id => Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes(id)
+          const _attEl = el => (player.attuned_element||player.element) === el
+          // Armor Pierce (Ferro): ignore a % of enemy DEF.
+          { const dip=(()=>{try{return elRaw(player,'def_ignore_pct')}catch(_e){return 0}})(); if(dip>0 && (enemy.def||0)>0){ const back=Math.round((enemy.def||0)*Math.min(0.9,dip/100)); if(back>0) dmg+=back } }
+          // Fault Line (Terra): ignore DEF per Stoneborn stack.
+          if(_hasEl('earth_aggr_3') && (statusEffects.cfx_stonebornStacks||0)>0 && (enemy.def||0)>0){ const ps=_attEl('earth')?0.30:0.15; const back=Math.round((enemy.def||0)*Math.min(0.9,ps*statusEffects.cfx_stonebornStacks)); if(back>0){ dmg+=back; messages.push('🪨 Fault Line — pierced '+back+' DEF.') } }
+          // Tailwind (Aero): next attack after dodge deals double.
+          if(statusEffects.cfx_tailwindNext){ dmg=Math.round(dmg*2); statusEffects.cfx_tailwindNext=false; messages.push('💨 Tailwind — twice as hard!') }
+          // Tremor (Terra): bonus damage from DEF.
+          { const gdp=(()=>{try{return elRaw(player,'guard_damage_pct')}catch(_e){return 0}})(); if(gdp>0){ const tb=Math.round(playerDEF()*(gdp/100)); if(tb>0){ dmg+=tb; messages.push('🪨 Tremor +'+tb+'.') } } }
+          // Slow Bloom (Flora): scale with turns elapsed.
+          if(_hasEl('plant_aggr_3')){ const per=_attEl('plant')?0.10:0.05; const cap=0.50+(()=>{try{return elRaw(player,'slow_bloom_cap_pct')}catch(_e){return 0}})()/100; const grow=Math.min(cap,per*(turnCount||0)); if(grow>0){ const gb=Math.round(dmg*grow); if(gb>0) dmg+=gb } }
+          // Held Breath (Aero): spend stored stacks.
+          if((statusEffects.cfx_heldBreathStacks||0)>0){ const per=0.25+(()=>{try{return elRaw(player,'held_breath_dmg_pct')}catch(_e){return 0}})()/100; const hb=Math.round(dmg*per*statusEffects.cfx_heldBreathStacks); if(hb>0){ dmg+=hb; messages.push('💨 Held Breath +'+hb+'!') } statusEffects.cfx_heldBreathStacks=0 }
+          // Unseen (Shadow): spend stealth stacks.
+          if((statusEffects.cfx_unseenStacks||0)>0){ const per=(()=>{try{return elRaw(player,'unseen_dmg_pct')}catch(_e){return 12}})()||12; const ub=Math.round(dmg*(per/100)*statusEffects.cfx_unseenStacks); if(ub>0){ dmg+=ub; messages.push('🌑 Unseen strike +'+ub+'.') } statusEffects.cfx_unseenStacks=0 }
+          // No Witnesses keystone: guaranteed crit.
+          if(statusEffects.cfx_guaranteedCrit){ dmg=Math.round(dmg*1.5); statusEffects.cfx_guaranteedCrit=false; messages.push('🌑 Guaranteed crit!') }
           const oldEnemyHp = enemyHp
           enemyHp          = Math.max(0, enemyHp - dmg)
           messages.push(backstab
             ? '⚡ Backstab Lv' + bsLv + '! You strike for <strong>' + dmg + '</strong> (' + Math.round(bsMult*10)/10 + '× dmg)!'
             : 'You strike for <strong>' + dmg + '</strong>.' + (ignoreDEF ? ' (DEF ignored)' : ''))
+
+          // ── Elemental tree post-hit procs (Ch1) ──
+          // Lifesteal (Flora): heal a share of damage dealt.
+          { let ls=(()=>{try{return elRaw(player,'lifesteal_pct')}catch(_e){return 0}})()/100; if((statusEffects.cfx_bloodflowerTurns||0)>0){ ls=Math.max(ls,statusEffects.cfx_bloodflowerPct||0.5); statusEffects.cfx_bloodflowerTurns-- } if(ls>0 && dmg>0){ const h=Math.round(dmg*ls); if(h>0){ currentHp=Math.min(maxPlayerHp,currentHp+h); messages.push('🌿 Lifesteal +'+h+' HP.') } } }
+          // Ember Memory (Ignis) stack application.
+          if(_hasEl('fire_aggr_3') || (statusEffects.cfx_emberStepTurns||0)>0){ const maxS=3+(()=>{try{return elRaw(player,'ember_memory_max_stacks')}catch(_e){return 0}})(); let add=0; if((statusEffects.cfx_emberStepTurns||0)>0){ add+=_attEl('fire')?2:1; statusEffects.cfx_emberStepTurns-- } if(_hasEl('fire_aggr_3') && Math.random()<(_attEl('fire')?0.30:0.15)) add+=1; if(add>0){ statusEffects.cfx_emberStacks=Math.min(maxS,(statusEffects.cfx_emberStacks||0)+add); messages.push('🔥 Ember Memory ('+statusEffects.cfx_emberStacks+').') } }
+          // Long Decay (Venin) stack application.
+          if(_hasEl('poison_aggr_3') || (statusEffects.cfx_plagueFangTurns||0)>0){ const maxS=3+(()=>{try{return elRaw(player,'long_decay_max_stacks')}catch(_e){return 0}})(); let add=0; if((statusEffects.cfx_plagueFangTurns||0)>0){ add+=_attEl('poison')?2:1; statusEffects.cfx_plagueFangTurns-- } if(_hasEl('poison_aggr_3') && Math.random()<(_attEl('poison')?0.30:0.15)) add+=1; if(add>0){ statusEffects.cfx_longDecayStacks=Math.min(maxS,(statusEffects.cfx_longDecayStacks||0)+add); messages.push('☠ Long Decay ('+statusEffects.cfx_longDecayStacks+').') } }
+          // Unseen (Shadow) stack gain.
+          if(_hasEl('shadow_aggr_3') && Math.random()<(_attEl('shadow')?0.30:0.15)){ const maxS=3+(()=>{try{return elRaw(player,'unseen_max_stacks')}catch(_e){return 0}})(); statusEffects.cfx_unseenStacks=Math.min(maxS,(statusEffects.cfx_unseenStacks||0)+1); messages.push('🌑 Unseen ('+statusEffects.cfx_unseenStacks+').') }
+          // Second Strike (Volt).
+          if(_hasEl('lightning_aggr_3') && Math.random()<(_attEl('lightning')?0.30:0.15)){ const bonus=(()=>{try{return elRaw(player,'second_strike_dmg_pct')}catch(_e){return 0}})()/100; const d2=Math.max(1,Math.round(playerATK()*(0.5+bonus))); enemyHp=Math.max(0,enemyHp-d2); messages.push('⚡ Second Strike — <strong>'+d2+'</strong>!') }
+          // Landslide (Terra) stun chance.
+          { const scp=(()=>{try{return elRaw(player,'stun_chance_pct')}catch(_e){return 0}})(); if(scp>0 && Math.random()<scp/100){ statusEffects.enemyStunTurns=Math.max(statusEffects.enemyStunTurns||0,1); messages.push('🪨 Landslide — enemy stunned!') } }
 
           // ── Class skill: post-attack hook (deferred damage, hit counters) ─
           const _clsPost = ClsCombat.onPlayerAttackPost(player, statusEffects, enemy, dmg, wasCrit)
@@ -2691,6 +2795,10 @@ export async function mountChapter1(__mountOptions = {}) {
         } else if (playerAction === 'defend') {
           defending = true
           messages.push('You brace — defense doubled this turn.')
+          if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('earth_def_3')){
+            statusEffects.cfx_stonebornStacks = Math.min(3, (statusEffects.cfx_stonebornStacks||0)+1)
+            messages.push('🪨 Stoneborn — you harden ('+statusEffects.cfx_stonebornStacks+').')
+          }
           // Absorption: heal 15 HP if charged
           if (statusEffects.absorptionHeal) {
             const healAmt = statusEffects.absorptionHeal
@@ -2751,6 +2859,9 @@ export async function mountChapter1(__mountOptions = {}) {
           const sc = skillScale(skillKey)
           const skLv = getSkillLevel(skillKey)
           if (skLv < 10) messages.push('Skill Lv ' + skLv + ' — power ' + Math.round(sc*100) + '%')
+          // Elemental tree: damage multiplier for this skill's element.
+          let _elMult = 1
+          try { _elMult = elDamageMult(player, sk.el || 'physical') } catch(_e){}
 
           if (sk.fn === 'shadowStep') {
             statusEffects.ignoreEnemyDEF = true
@@ -2761,13 +2872,13 @@ export async function mountChapter1(__mountOptions = {}) {
             statusEffects.rockArmorTurns = 2
             messages.push('🪨 Rock Armor Lv' + skLv + ' — +' + defBonus + ' DEF for 2 turns!')
           } else if (sk.fn === 'earthquake') {
-            const dmg = Math.max(5, Math.round(playerATK() * 2 * sc))
+            const dmg = Math.max(5, Math.round(playerATK() * 2 * sc * _elMult))
             enemyHp   = Math.max(0, enemyHp - dmg)
             statusEffects.enemyStunTurns = 1
             messages.push('🌍 Earthquake Lv' + skLv + '! <strong>' + dmg + '</strong> dmg — stunned!')
           } else if (sk.fn === 'fireBlast') {
             const def = Math.floor((enemy.def||0) * 0.5)
-            const dmg = Math.max(1, Math.round((25 * sc + playerATK()) - def))
+            const dmg = Math.max(1, Math.round(((25 * sc + playerATK()) - def) * _elMult))
             enemyHp   = Math.max(0, enemyHp - dmg)
             messages.push('🔥 Fire Blast Lv' + skLv + ' — <strong>' + dmg + '</strong> (50% DEF ignored)!')
           } else if (sk.fn === 'infernoZone') {
@@ -2784,7 +2895,7 @@ export async function mountChapter1(__mountOptions = {}) {
             statusEffects.divineBarrierReflect = true
             messages.push('✨ Divine Barrier Lv' + skLv + ' — invulnerable this turn! Damage reflected.')
           } else if (sk.fn === 'lightningStrike') {
-            const dmg = Math.round((30 + playerATK() * 0.5) * sc)
+            const dmg = Math.round((30 + playerATK() * 0.5) * sc * _elMult)
             enemyHp   = Math.max(0, enemyHp - dmg)
             messages.push('⚡ Lightning Strike Lv' + skLv + ' — <strong>' + dmg + '</strong> (ignores shields)!')
           } else if (sk.fn === 'thunderstorm') {
@@ -2982,6 +3093,57 @@ export async function mountChapter1(__mountOptions = {}) {
             statusEffects.playerATKBonus = (statusEffects.playerATKBonus || 0) + atkBoost
             statusEffects.ignoreEnemyDEF = true
             messages.push('☠ Reaper Form — ATK +' + atkBoost + ', next attack ignores DEF!')
+          } else if (sk.fn === 'resonantBolt') {
+            const dmg = Math.round((30 + playerATK()*0.4) * sc * _elMult); enemyHp = Math.max(0, enemyHp - dmg)
+            messages.push('✨ Resonant Bolt Lv'+skLv+' — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'standingChord') {
+            const dmg = Math.round((45 + playerATK()*0.5) * sc * _elMult); enemyHp = Math.max(0, enemyHp - dmg)
+            messages.push('✨ Standing Chord Lv'+skLv+' — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'shadowLance') {
+            const dmg = Math.round((28 + playerATK()*0.4) * sc * _elMult); enemyHp = Math.max(0, enemyHp - dmg)
+            messages.push('🌑 Shadow Lance Lv'+skLv+' — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'venomSpit') {
+            const dmg = Math.round((24 + playerATK()*0.35) * sc * _elMult); enemyHp = Math.max(0, enemyHp - dmg)
+            statusEffects.cfx_longDecayStacks = Math.min(3, (statusEffects.cfx_longDecayStacks||0)+1)
+            messages.push('☠ Venom Spit Lv'+skLv+' — <strong>'+dmg+'</strong> + Long Decay!')
+          } else if (sk.fn === 'waterJet') {
+            const dmg = Math.round((28 + playerATK()*0.4) * sc * _elMult); enemyHp = Math.max(0, enemyHp - dmg)
+            messages.push('💧 Water Jet Lv'+skLv+' — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'stoneThrow') {
+            const dmg = Math.round((26 + playerATK()*0.4 + playerDEF()*0.3) * sc * _elMult); enemyHp = Math.max(0, enemyHp - dmg)
+            messages.push('🪨 Stone Throw Lv'+skLv+' — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'thornVolley') {
+            const dmg = Math.round((26 + playerATK()*0.4) * sc * _elMult); enemyHp = Math.max(0, enemyHp - dmg)
+            const h = Math.round(dmg*0.2); currentHp = Math.min(maxPlayerHp, currentHp + h)
+            messages.push('🌿 Thorn Volley Lv'+skLv+' — <strong>'+dmg+'</strong> (+'+h+' HP)!')
+          } else if (sk.fn === 'bladeArc') {
+            const pierce = Math.round((enemy.def||0)*0.25)
+            const dmg = Math.round((28 + playerATK()*0.4 + pierce) * sc * _elMult); enemyHp = Math.max(0, enemyHp - dmg)
+            messages.push('⚙ Blade Arc Lv'+skLv+' — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'cinderstorm') {
+            const dmg = Math.round((55+playerATK()*0.5)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); statusEffects.cfx_emberStacks=Math.min(3,(statusEffects.cfx_emberStacks||0)+1); messages.push('🔥 Cinderstorm — <strong>'+dmg+'</strong> + Ember!')
+          } else if (sk.fn === 'maelstrom') {
+            const dmg = Math.round((55+playerATK()*0.5)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); messages.push('💧 Maelstrom — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'tempest') {
+            const dmg = Math.round((55+playerATK()*0.5)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); if(Math.random()<0.4){statusEffects.enemyStunTurns=Math.max(statusEffects.enemyStunTurns||0,1);messages.push('⚡ Tempest — <strong>'+dmg+'</strong> stunned!')}else messages.push('⚡ Tempest — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'resonanceBurst') {
+            const dmg = Math.round((55+playerATK()*0.5)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); messages.push('✨ Resonance Burst — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'eclipse') {
+            const dmg = Math.round((55+playerATK()*0.5)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); statusEffects.cfx_unseenStacks=Math.min(3,(statusEffects.cfx_unseenStacks||0)+2); messages.push('🌑 Eclipse — <strong>'+dmg+'</strong> + Unseen!')
+          } else if (sk.fn === 'tectonicCrush') {
+            const dmg = Math.round((55+playerATK()*0.4+playerDEF()*0.5)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); statusEffects.enemyStunTurns=Math.max(statusEffects.enemyStunTurns||0,1); messages.push('🪨 Tectonic Crush — <strong>'+dmg+'</strong> stunned!')
+          } else if (sk.fn === 'wildCyclone') {
+            const dmg = Math.round((55+playerATK()*0.5)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); messages.push('💨 Wild Cyclone — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'carnivoreBloom') {
+            const dmg = Math.round((55+playerATK()*0.5)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); const h=Math.round(dmg*0.5); currentHp=Math.min(maxPlayerHp,currentHp+h); messages.push('🌿 Carnivore Bloom — <strong>'+dmg+'</strong> (+'+h+' HP)!')
+          } else if (sk.fn === 'annihilate') {
+            const dmg = Math.round((55+playerATK()*0.6)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); messages.push('⚙ Annihilate — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'pandemic') {
+            const dmg = Math.round((55+playerATK()*0.5)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); statusEffects.cfx_longDecayStacks=Math.min(3,(statusEffects.cfx_longDecayStacks||0)+2); messages.push('☠ Pandemic — <strong>'+dmg+'</strong> + Long Decay!')
+          } else if (sk.fn === 'blightNova') {
+            const dmg = Math.round((38+playerATK()*0.45)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); messages.push('☠ Blight Nova — <strong>'+dmg+'</strong>!')
+          } else if (sk.fn === 'umbralBurst') {
+            const dmg = Math.round((38+playerATK()*0.45)*sc*_elMult); enemyHp=Math.max(0,enemyHp-dmg); messages.push('🌑 Umbral Burst — <strong>'+dmg+'</strong>!')
           }
         }
       }
@@ -3006,8 +3168,18 @@ export async function mountChapter1(__mountOptions = {}) {
         if (statusEffects.ghostStep  || statusEffects.umbralVeil) dodgeChance = Math.max(dodgeChance, 0.15)
         if (statusEffects.nightshroud) { dodgeChance = 1.0; statusEffects.nightshroud = false }
 
+        // Parry (Ferro): independent chance to negate the attack and counter.
+        let _parried = false
+        { const pc=(()=>{try{return elRaw(player,'parry_chance_pct')}catch(_e){return 0}})()/100
+          if(pc>0 && Math.random()<pc){ _parried=true; const cnt=Math.max(1,Math.round(playerATK()*0.75)); enemyHp=Math.max(0,enemyHp-cnt); messages.push('⚙ Parry! You counter for <strong>'+cnt+'</strong>.') } }
+        if(_parried) dodgeChance = 1.0   // treat as a full dodge for damage negation
+
         if (Math.random() < dodgeChance) {
           messages.push('You <em>dodge</em> the attack!')
+          // Tailwind (Aero): on dodge, next attack deals double.
+          if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('wind_def_3')){ statusEffects.cfx_tailwindNext=true }
+          // Elemental: heal on dodge (Nightmend/Float nodes).
+          { const hod=(()=>{try{return elRaw(player,'hp_on_dodge')}catch(_e){return 0}})(); if(hod>0){ currentHp=Math.min(maxPlayerHp,currentHp+hod); messages.push('🌑 +'+hod+' HP (dodge).') } }
           // Flicker: next strike doubles
           if (statusEffects.flicker) { statusEffects.flickerReady = true }
           // Ghost Step / Umbral Veil: counter on dodge
@@ -3031,6 +3203,13 @@ export async function mountChapter1(__mountOptions = {}) {
         const eSPDReduced = (statusEffects.enemySPDReduction || 0)
         const totalDEF = playerDEF() + (statusEffects.playerDEFBonus||0)
         let eDmg       = Math.max(0, Math.round((enemy.atk * eATKMult + Math.floor(Math.random()*4) - totalDEF) * defMult))
+        // Elemental tree: resistance reduces incoming damage; keystone shields halve it.
+        try { eDmg = Math.max(0, Math.round(eDmg * elResistMult(player))) } catch(_e){}
+        if ((statusEffects.cfx_damageHalveTurns||0) > 0) { eDmg = Math.max(0, Math.round(eDmg * 0.5)) }
+        if ((statusEffects.cfx_stonebornStacks||0) > 0 && eDmg > 0) {
+          const perStack = ((player.attuned_element||player.element)==='earth') ? 0.16 : 0.08
+          eDmg = Math.max(0, Math.round(eDmg * (1 - Math.min(0.6, perStack*statusEffects.cfx_stonebornStacks))))
+        }
 
         // Water shield absorbs
         if (statusEffects.waterShield > 0 && eDmg > 0) {
@@ -3048,6 +3227,16 @@ export async function mountChapter1(__mountOptions = {}) {
           for (const m of _clsHit.messages) messages.push(m)
           eDmg = Math.round(eDmg * (_clsHit.dmgMult || 1))
           if (_clsHit.reflectAmount > 0) enemyHp = Math.max(0, enemyHp - _clsHit.reflectAmount)
+        }
+        // Elemental tree: reflect a share of damage taken (passive + keystone + metal).
+        if (eDmg > 0) {
+          let rf = 0
+          try { rf = elReflect(player) } catch(_e){}
+          let mr = 0; try { mr = elRaw(player,'metal_reflect_pct')/100 } catch(_e){}
+          if ((statusEffects.cfx_ironMaidenTurns||0) > 0) mr = Math.max(mr, 0.5)
+          if ((statusEffects.cfx_fireReflectTurns||0) > 0 || (statusEffects.cfx_poisonReflectTurns||0) > 0) rf = Math.max(rf, 0.25)
+          const totalRef = Math.min(0.6, rf + mr)
+          if (totalRef > 0) { const rb = Math.max(1, Math.round(eDmg * totalRef)); enemyHp = Math.max(0, enemyHp - rb); messages.push('✦ Reflect <strong>'+rb+'</strong> back!') }
         }
 
         // ── Class skill: HP-clamp guards (Monarch Throne / Loyal Guard) ──
@@ -3125,6 +3314,10 @@ export async function mountChapter1(__mountOptions = {}) {
 
       // Player stun gate (applied by enemyAI.js): if stunned, skip player
       // action this turn. Enemy still gets to act. The tick happens later.
+      // Rooted (Terra): immune to stun.
+      if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('earth_util_2')){
+        if((statusEffects.playerStunTurns||0)>0){ statusEffects.playerStunTurns=0; log('🪨 Rooted — you shrug off the stun.') }
+      }
       const playerStunned = (statusEffects.playerStunTurns||0) > 0
       if (playerStunned) {
         log('⚡ You are stunned and cannot act.')
@@ -3158,6 +3351,11 @@ export async function mountChapter1(__mountOptions = {}) {
         statusEffects.infernoTurns--
         messages.push('🔥 Inferno: ' + iDmg + ' dmg! (' + statusEffects.infernoTurns + ' left)')
       }
+      // ── Elemental stacking DoTs + regen (Ch1) ──
+      if((statusEffects.cfx_emberStacks||0) > 0 && enemyHp > 0){ const per=Math.round(4*(1+(()=>{try{return elRaw(player,'ember_memory_dmg_pct')}catch(_e){return 0}})()/100)); const d=per*statusEffects.cfx_emberStacks; enemyHp=Math.max(0,enemyHp-d); messages.push('🔥 Ember Memory — '+d+' ('+statusEffects.cfx_emberStacks+').'); statusEffects.cfx_emberStacks-- }
+      if((statusEffects.cfx_longDecayStacks||0) > 0 && enemyHp > 0){ const per=Math.round(4*(1+(()=>{try{return elRaw(player,'long_decay_dmg_pct')}catch(_e){return 0}})()/100)); const d=per*statusEffects.cfx_longDecayStacks; enemyHp=Math.max(0,enemyHp-d); messages.push('☠ Long Decay — '+d+' ('+statusEffects.cfx_longDecayStacks+').'); statusEffects.cfx_longDecayStacks-- }
+      { const hpr=(()=>{try{return elRaw(player,'hp_regen_combat')}catch(_e){return 0}})(); if(hpr>0 && currentHp<maxPlayerHp){ currentHp=Math.min(maxPlayerHp,currentHp+hpr); messages.push('🌿 Regen +'+hpr+' HP') } }
+      if((statusEffects.cfx_worldTreeTurns||0) > 0){ const wh=Math.round(maxPlayerHp*0.10); currentHp=Math.min(maxPlayerHp,currentHp+wh); statusEffects.cfx_worldTreeTurns--; messages.push('🌿 World Tree +'+wh+' HP') }
       if (statusEffects.regenTurns > 0 && currentHp > 0) {
         const regenLv  = _skillLvGlobal('water_passive_regen')
         const regenAmt = Math.round(5 + (regenLv - 1))
@@ -3273,6 +3471,32 @@ export async function mountChapter1(__mountOptions = {}) {
       }
 
       shake()
+      // ── Combat FX (Ch1) ─────────────────────────────────────────────
+      // Strike = fast slash, Heavy = slower heavy slash, attack skills get
+      // their per-skill/element FX, and defensive moves get a buff glow.
+      try {
+        const _enemyEl = panel.querySelector('.combat-enemy-row')
+        if (_enemyEl) {
+          const _DEFENSIVE_FNS = new Set(['foresight','ironWall','stoneSkin','guardStance','barrier','aegis'])
+          const _ATTACK_SKILL_FNS = new Set(['fireBlast','earthquake','earthSpike','lightningStrike','thunderstorm','tsunami','dashStrike','overgrowth','embersEnd','chaosEngine','resonantBolt','standingChord','shadowLance','umbralBurst','venomSpit','blightNova','waterJet','stoneThrow','thornVolley','bladeArc','cinderstorm','maelstrom','tempest','resonanceBurst','eclipse','tectonicCrush','wildCyclone','carnivoreBloom','annihilate','pandemic','preciseStrike'])
+          let _sk = null
+          if (playerAction === 'skill' && skillKey) {
+            _sk = BATTLE_SKILLS_REGISTRY[skillKey] || NOTABLE_SKILLS_REGISTRY[skillKey] || null
+          }
+          if (playerAction === 'strike') {
+            playHitFx(_enemyEl, 'physical', '__strike', 0.3)   // fast slash
+          } else if (playerAction === 'heavy') {
+            playHitFx(_enemyEl, 'physical', '__heavy', 0.65)    // slower heavy slash
+          } else if (playerAction === 'defend') {
+            playBuffFx(_enemyEl, 'physical')                    // brace glow
+          } else if (_sk) {
+            const _el = _sk.el || 'physical'
+            const _isDef = _DEFENSIVE_FNS.has(_sk.fn) || _sk.type === 'buff' || (_sk.type === 'active' && !_ATTACK_SKILL_FNS.has(_sk.fn))
+            if (_isDef) playBuffFx(_enemyEl, _el)                // defensive/buff skills (e.g. Hex Weave) glow
+            else        playHitFx(_enemyEl, _el, _sk.fn)         // attack skills hit
+          }
+        }
+      } catch(_fxe) { /* FX must never break combat */ }
       log(messages.join(' '), turnLabel)
       syncBars()
       // ── Class skill: turn-end hook (mark/silence countdown + DoT) ────
@@ -3282,6 +3506,7 @@ export async function mountChapter1(__mountOptions = {}) {
       for (const m of _clsTurn.messages) messages.push(m)
       renderSkillSlots()
       renderClassSkills()
+      renderKeystones()
 
       if (enemyHp <= 0) {
         // ── Class skill: kill hook (Final Sentence message) ────────────
@@ -3530,28 +3755,28 @@ export async function mountChapter1(__mountOptions = {}) {
       {
         item_key: 'watcher_eye_ring', name: "Watcher's Multi-Eye Ring", rarity: 'rare',
         item_type: 'accessory', icon: '💍',
-        img: '../assets/sets/watcher_eye_ring.png',
+        img: '../assets/sets/watcher_eye_ring.webp',
         stats: ['insight_bonus','luck_bonus','atk_bonus'],
         special_effect: "Observer's Sight: First attack on an unseen enemy deals +25% damage. Reveals hidden enemies nearby.",
       },
       {
         item_key: 'watcher_band', name: "Watcher's Band", rarity: 'rare',
         item_type: 'accessory', icon: '💍',
-        img: '../assets/sets/watcher_band.png',
+        img: '../assets/sets/watcher_band.webp',
         stats: ['control_bonus','speed_bonus','atk_bonus'],
         special_effect: "Pattern Recognition: Consecutive hits on the same enemy stack +2% damage (max 20%).",
       },
       {
         item_key: 'watcher_cloak', name: "Watcher's Cloak", rarity: 'rare',
         item_type: 'armor', icon: '🧥',
-        img: '../assets/sets/watcher_cloak.png',
+        img: '../assets/sets/watcher_cloak.webp',
         stats: ['speed_bonus','insight_bonus','def_bonus','luck_bonus'],
         special_effect: "Phantom Step: After dodging, your next attack cannot be dodged. 15% chance to phase (50% dmg reduction).",
       },
       {
         item_key: 'watcher_crown', name: "Watcher's Crown", rarity: 'rare',
         item_type: 'armor', icon: '👑',
-        img: '../assets/sets/watcher_crown.png',
+        img: '../assets/sets/watcher_crown.webp',
         stats: ['insight_bonus','guard_bonus','def_bonus'],
         special_effect: "Observed: Enemies you hit take -10% ATK and +10% damage from you.",
       },
@@ -3559,6 +3784,7 @@ export async function mountChapter1(__mountOptions = {}) {
 
     renderSkillSlots()
     renderClassSkills()
+    renderKeystones()
     syncBars()
   }
 

@@ -267,7 +267,7 @@ export async function mountChapter2(__mountOptions = {}) {
         setTimeout(() => {
           host.innerHTML = `<button class="choice" data-next-node="${nextNode}">
             <span class="choice-arrow">→</span>
-            <span class="choice-body">You are <em style="color:${cls.color}">${cls.name}</em>. Continue.</span>
+            <span class="choice-body" style="display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;text-align:center"><span style="font-size:.8rem;opacity:.75">You are the</span><span style="font-family:'Cinzel',serif;font-size:1.4rem;font-weight:700;letter-spacing:.04em;color:${cls.color};line-height:1.1">${cls.name}</span><span style="font-size:.72rem;opacity:.6;margin-top:6px;letter-spacing:.1em">→ CONTINUE</span></span>
           </button>`
           host.querySelector('[data-next-node]')?.addEventListener('click', e => goTo(e.currentTarget.dataset.nextNode))
         }, 1800)
@@ -1667,8 +1667,9 @@ You walk back out.`
     // (messages will print in the first combat-log push after enemy actions)
 
     // ── Build UI — mirrors chapter1 structure exactly ─────────────────────────
+    const _enemyImgSize = isBoss ? 120 : 110
     const enemyArtInner = enemy.img
-      ? '<img src="'+enemy.img+'" style="width:80px;height:80px;object-fit:contain;border-radius:6px;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))">'
+      ? '<img src="'+enemy.img+'" style="width:'+_enemyImgSize+'px;height:'+_enemyImgSize+'px;object-fit:contain;border-radius:6px;filter:drop-shadow(0 0 8px rgba(0,0,0,.7))">'
       : '<span style="font-size:2.5rem;line-height:1">'+( enemy.icon||'⚔')+'</span>'
     // Wrap in a positioned box so the hit-FX burst can anchor directly over
     // the enemy art (not the whole row, which would put it over the HP bar).
@@ -2153,9 +2154,11 @@ You walk back out.`
         if (enemy.loot) for(const l of enemy.loot) await addItem(l.itemKey,l.qty)
 
         if (isBoss) {
-          // Twin Judges only — chapter unlock + per-form SP
-          const uls=player.chapters_unlocked||[1]; if(!uls.includes(3)) uls.push(3)
-          updates.chapters_unlocked=uls
+          // Twin Judges only — unlock the DRIVE to Ch3 (not the chapter itself).
+          // The chapter unlocks only after the drive is completed (vehicle2.js),
+          // mirroring how every Ch2+ entry is meant to be gated.
+          const dru=player.drives_unlocked||[]; if(!dru.includes(3)) dru.push(3)
+          updates.drives_unlocked=dru
           // ── Per-form SP ──
           // Form key matches the canonical Judge forms from world design:
           //   verdict     — Verdict (Final Judge of Humanity)
@@ -2645,7 +2648,7 @@ You walk back out.`
                   setTimeout(() => {
                     modal.remove()
                     // Replace combat-over with just Continue (no more View Now)
-                    $('combat-over').innerHTML = `<button class="choice" data-next-node="${nextNode}"><span class="choice-arrow">→</span><span class="choice-body">You are <em style="color:${cls.color}">${cls.name}</em>. Continue.</span></button>`
+                    $('combat-over').innerHTML = `<button class="choice" data-next-node="${nextNode}" style="text-align:center;justify-content:center;flex-direction:column;gap:2px;padding:16px 14px"><span class="choice-body" style="display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;text-align:center"><span style="font-size:.8rem;opacity:.75">You are the</span><span style="font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;letter-spacing:.04em;color:${cls.color};line-height:1.1">${cls.name}</span><span style="font-size:.72rem;opacity:.6;margin-top:6px;letter-spacing:.1em">→ CONTINUE</span></span></button>`
                     $('combat-over').querySelector('[data-next-node]')?.addEventListener('click', e => goTo(e.currentTarget.dataset.nextNode))
                   }, 1800)
                 })
@@ -2894,17 +2897,26 @@ You walk back out.`
           // Everything else (buffs/heals/stances/debuffs) → self-cast aura on
           // the player side. Basic Strike/Heavy are always enemy hits.
           const _ATTACK_FNS = new Set(['fireBlast','earthquake','earthSpike','lightningStrike',
-            'thunderstorm','tsunami','dashStrike','overgrowth','embersEnd','chaosEngine'])
+            'thunderstorm','tsunami','dashStrike','overgrowth','embersEnd','chaosEngine',
+            // New element attack skills (tier I/II) + Lux:
+            'resonantBolt','standingChord','shadowLance','umbralBurst','venomSpit','blightNova',
+            'waterJet','stoneThrow','thornVolley','bladeArc',
+            // Tier-III mastery skills:
+            'cinderstorm','maelstrom','tempest','resonanceBurst','eclipse','tectonicCrush',
+            'wildCyclone','carnivoreBloom','annihilate','pandemic'])
           let _fxEl = 'physical'
+          let _fxSkill = (playerAction==='heavy') ? '__heavy' : (playerAction==='strike' ? '__strike' : null)
           let _isAttack = true
           if (playerAction === 'skill' && skillKey) {
             const _sk = BATTLE_SKILLS[skillKey]
             if (_sk && _sk.el) _fxEl = _sk.el
+            if (_sk && _sk.fn) _fxSkill = _sk.fn
             _isAttack = _sk && _ATTACK_FNS.has(_sk.fn)
           }
           if (_isAttack) {
             const _enemyArt = panel.querySelector('.combat-enemy-art') || panel.querySelector('.combat-enemy-row')
-            playHitFx(_enemyArt, _fxEl)
+            const _fxSpeed = _fxSkill==='__strike' ? 0.3 : (_fxSkill==='__heavy' ? 0.65 : undefined)
+            playHitFx(_enemyArt, _fxEl, _fxSkill, _fxSpeed)
           } else {
             const _playerRow = panel.querySelector('.combat-player-row')
             playBuffFx(_playerRow, _fxEl)
@@ -2962,6 +2974,8 @@ You walk back out.`
             if(bonus>0){ dmg += bonus; messages.push('🌑 Unseen strike +'+bonus+' ('+statusEffects.cfx_unseenStacks+' stacks).') }
             statusEffects.cfx_unseenStacks = 0
           }
+          // Tailwind (Aero): next attack after a dodge deals double.
+          if(statusEffects.cfx_tailwindNext){ dmg = Math.round(dmg * 2); statusEffects.cfx_tailwindNext=false; messages.push('💨 Tailwind — the strike lands twice as hard!') }
           // No Witnesses keystone: next strike is a guaranteed crit.
           if(statusEffects.cfx_guaranteedCrit){ dmg = Math.round(dmg * 1.5); statusEffects.cfx_guaranteedCrit=false; messages.push('🌑 Guaranteed crit!') }
           // Tremor (Terra): add a % of your DEF as bonus damage.
@@ -2978,6 +2992,13 @@ You walk back out.`
           {
             const dip = (()=>{try{return elRaw(player,'def_ignore_pct')}catch(_e){return 0}})()
             if(dip>0 && (enemy.def||0)>0){ const back=Math.round((enemy.def||0)*Math.min(0.9,dip/100)); if(back>0){ dmg+=back; } }
+          }
+          // Fault Line (Terra): ignore 15%/30% of enemy DEF per Stoneborn stack.
+          if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('earth_aggr_3') && (statusEffects.cfx_stonebornStacks||0)>0 && (enemy.def||0)>0){
+            const perStack = ((player.attuned_element||player.element)==='earth') ? 0.30 : 0.15
+            const frac = Math.min(0.9, perStack * statusEffects.cfx_stonebornStacks)
+            const back = Math.round((enemy.def||0) * frac)
+            if(back>0){ dmg+=back; messages.push('🪨 Fault Line — pierced '+back+' DEF.') }
           }
           // Slow Bloom (Flora): attacks grow stronger each turn elapsed this battle.
           if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('plant_aggr_3')){
@@ -3178,6 +3199,24 @@ You walk back out.`
           else if(sk.fn==='lightningStrike'){const d=Math.round((30+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('⚡ Lightning Strike <strong>'+d+'</strong>!')}
           else if(sk.fn==='resonantBolt'){const d=Math.round((30+playerATK()*0.4)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('✨ Resonant Bolt <strong>'+d+'</strong>!');try{applyReverbEcho(d)}catch(_e){}}
           else if(sk.fn==='standingChord'){const d=Math.round((45+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('✨ Standing Chord <strong>'+d+'</strong>!');try{applyReverbEcho(d)}catch(_e){}}
+          else if(sk.fn==='shadowLance'){const d=Math.round((28+playerATK()*0.4)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('🌑 Shadow Lance <strong>'+d+'</strong>!');try{applyStacksOnAttack()}catch(_e){}}
+          else if(sk.fn==='venomSpit'){const d=Math.round((24+playerATK()*0.35)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);statusEffects.cfx_longDecayStacks=Math.min(3,(statusEffects.cfx_longDecayStacks||0)+1);messages.push('☠ Venom Spit <strong>'+d+'</strong> + Long Decay!')}
+          else if(sk.fn==='waterJet'){const d=Math.round((28+playerATK()*0.4)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('💧 Water Jet <strong>'+d+'</strong>!')}
+          else if(sk.fn==='stoneThrow'){const d=Math.round((26+playerATK()*0.4+playerDEF()*0.3)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('🪨 Stone Throw <strong>'+d+'</strong>!')}
+          else if(sk.fn==='thornVolley'){const d=Math.round((26+playerATK()*0.4)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);const h=Math.round(d*0.2);currentHp=Math.min(maxPlayerHp,currentHp+h);messages.push('🌿 Thorn Volley <strong>'+d+'</strong> (+'+h+' HP)!')}
+          else if(sk.fn==='bladeArc'){const base=(28+playerATK()*0.4);const pierce=Math.round((enemy.def||0)*0.25);const d=Math.round((base+pierce)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('⚙ Blade Arc <strong>'+d+'</strong>!')}
+          else if(sk.fn==='cinderstorm'){const d=Math.round((55+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);statusEffects.cfx_emberStacks=Math.min(3,(statusEffects.cfx_emberStacks||0)+1);messages.push('🔥 Cinderstorm <strong>'+d+'</strong> + Ember!')}
+          else if(sk.fn==='maelstrom'){const d=Math.round((55+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('💧 Maelstrom <strong>'+d+'</strong>!')}
+          else if(sk.fn==='tempest'){const d=Math.round((55+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);if(Math.random()<0.4){statusEffects.enemyStunTurns=Math.max(statusEffects.enemyStunTurns||0,1);messages.push('⚡ Tempest <strong>'+d+'</strong> — stunned!')}else messages.push('⚡ Tempest <strong>'+d+'</strong>!')}
+          else if(sk.fn==='resonanceBurst'){const d=Math.round((55+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('✨ Resonance Burst <strong>'+d+'</strong>!');try{applyReverbEcho(d)}catch(_e){}}
+          else if(sk.fn==='eclipse'){const d=Math.round((55+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);statusEffects.cfx_unseenStacks=Math.min(3,(statusEffects.cfx_unseenStacks||0)+2);messages.push('🌑 Eclipse <strong>'+d+'</strong> + Unseen!')}
+          else if(sk.fn==='tectonicCrush'){const d=Math.round((55+playerATK()*0.4+playerDEF()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);statusEffects.enemyStunTurns=Math.max(statusEffects.enemyStunTurns||0,1);messages.push('🪨 Tectonic Crush <strong>'+d+'</strong> — stunned!')}
+          else if(sk.fn==='wildCyclone'){const d=Math.round((55+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('💨 Wild Cyclone <strong>'+d+'</strong>!')}
+          else if(sk.fn==='carnivoreBloom'){const d=Math.round((55+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);const h=Math.round(d*0.5);currentHp=Math.min(maxPlayerHp,currentHp+h);messages.push('🌿 Carnivore Bloom <strong>'+d+'</strong> (+'+h+' HP)!')}
+          else if(sk.fn==='annihilate'){const d=Math.round((55+playerATK()*0.6)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('⚙ Annihilate <strong>'+d+'</strong> (all DEF ignored)!')}
+          else if(sk.fn==='pandemic'){const d=Math.round((55+playerATK()*0.5)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);statusEffects.cfx_longDecayStacks=Math.min(3,(statusEffects.cfx_longDecayStacks||0)+2);messages.push('☠ Pandemic <strong>'+d+'</strong> + Long Decay!')}
+          else if(sk.fn==='blightNova'){const d=Math.round((38+playerATK()*0.45)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('☠ Blight Nova <strong>'+d+'</strong>!')}
+          else if(sk.fn==='umbralBurst'){const d=Math.round((38+playerATK()*0.45)*sc*_elMult);enemyHp=Math.max(0,enemyHp-d);messages.push('🌑 Umbral Burst <strong>'+d+'</strong>!')}
           else if(sk.fn==='thunderstorm'){let tot=0;for(let i=0;i<5;i++){const b=Math.round((Math.round(10*sc)+Math.floor(Math.random()*Math.round(10*sc)))*_elMult);tot+=b;enemyHp=Math.max(0,enemyHp-b)};messages.push('⚡ Thunderstorm <strong>'+tot+'</strong>!')}
           else if(sk.fn==='bladeForm'){const ab=Math.round(20*sc),sb=Math.round(5*sc);statusEffects.playerATKBonus=(statusEffects.playerATKBonus||0)+ab;statusEffects.playerSPDBonus=(statusEffects.playerSPDBonus||0)+sb;messages.push('⚙ Blade Form ATK+'+ab+' SPD+'+sb+'!')}
           else if(sk.fn==='ironDomain'){const ab=Math.round(playerATK()*sc);statusEffects.playerATKBonus=(statusEffects.playerATKBonus||0)+ab;messages.push('⚙ Iron Domain ATK+'+ab+'!')}
@@ -3213,7 +3252,7 @@ You walk back out.`
           else if(sk.fn==='ancientRoot'){statusEffects.ancientRootShield=Math.round(maxPlayerHp*0.2*sc);messages.push('🌿 Ancient Root — shield activated!')}
           // Signature stacks also apply when casting attack skills (e.g. Fire
           // Blast during a Cinder Step window applies Ember Memory).
-          const _ATTACK_FNS_STACK = new Set(['fireBlast','earthquake','earthSpike','lightningStrike','thunderstorm','tsunami','dashStrike','overgrowth','embersEnd','chaosEngine'])
+          const _ATTACK_FNS_STACK = new Set(['fireBlast','earthquake','earthSpike','lightningStrike','thunderstorm','tsunami','dashStrike','overgrowth','embersEnd','chaosEngine','resonantBolt','standingChord','shadowLance','umbralBurst','venomSpit','blightNova','waterJet','stoneThrow','thornVolley','bladeArc','cinderstorm','maelstrom','tempest','resonanceBurst','eclipse','tectonicCrush','wildCyclone','carnivoreBloom','annihilate','pandemic'])
           if(_ATTACK_FNS_STACK.has(sk.fn)){ try { applyStacksOnAttack() } catch(_e){} }
         }
       }
@@ -3235,6 +3274,18 @@ You walk back out.`
             const hod = (()=>{try{return elRaw(player,'hp_on_dodge')}catch(_e){return 0}})()
             if(hod > 0){ currentHp = Math.min(maxPlayerHp, currentHp + hod); messages.push('🌑 Dodged — slipped aside (+'+hod+' HP).') }
             else messages.push('🌑 Dodged — the blow finds only shadow.')
+            // Tailwind (Aero): on dodge, your next attack deals double.
+            if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('wind_def_3')){ statusEffects.cfx_tailwindNext=true }
+          }
+        }
+        // ── Parry (Ferro): chance to negate the attack and counter ──
+        if(!_dodged){
+          const pc = (()=>{try{return elRaw(player,'parry_chance_pct')}catch(_e){return 0}})()/100
+          if(pc > 0 && Math.random() < pc){
+            _dodged = true
+            const counter = Math.max(1, Math.round(playerATK() * 0.75))
+            enemyHp = Math.max(0, enemyHp - counter)
+            messages.push('⚙ Parry! You turn the blow and counter for <strong>'+counter+'</strong>.')
           }
         }
         let eDmg = _dodged ? 0 : Math.max(1,Math.round((enemy.atk||10)-(defending?playerDEF()*2:playerDEF())-_bulwarkDef+(Math.random()*6|0)))
@@ -3318,6 +3369,10 @@ You walk back out.`
       // Player stun gate (applied by enemyAI.js): if stunned, skip player
       // action this turn. Enemy still gets to act. The tick happens later
       // in the DoT block so this turn counts against the duration.
+      // Rooted (Terra): immune to stun. Clear any stun and skip the stun lockout.
+      if(Array.isArray(player.elemental_unlocked) && player.elemental_unlocked.includes('earth_util_2')){
+        if((statusEffects.playerStunTurns||0)>0){ statusEffects.playerStunTurns=0; log('🪨 Rooted — you shrug off the stun.') }
+      }
       const playerStunned = (statusEffects.playerStunTurns||0) > 0
       if (playerStunned) {
         log('⚡ You are stunned and cannot act.')
